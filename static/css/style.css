@@ -1,0 +1,806 @@
+/* Oceanarium Dark Theme - Modern Aquatic Design */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --dark-bg: #0A0A1A;
+    --darker-bg: #050510;
+    --text-white: #FFFFFF;
+    --text-gray: rgba(255, 255, 255, 0.7);
+    --accent-blue: #1E88E5;
+    --accent-light-blue: #64B5F6;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --card-bg: rgba(15, 25, 40, 0.95);
+}
+
+body, html {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--dark-bg);
+    color: var(--text-white);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+body.aquatic-bg {
+    background: var(--dark-bg);
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+    background: var(--darker-bg);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.top-nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+}
+
+.top-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.top-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.top-nav-logo {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.top-nav-link {
+    color: var(--text-gray);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 400;
+    transition: color 0.3s ease;
+}
+
+.top-nav-link:hover {
+    color: var(--text-white);
+}
+
+.btn-buy-tickets {
+    background: var(--accent-blue);
+    color: var(--text-white);
+    padding: 8px 20px;
+    border-radius: 4px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-buy-tickets:hover {
+    background: var(--accent-light-blue);
+}
+
+.top-nav-icons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.top-nav-icons i {
+    color: var(--text-gray);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.top-nav-icons i:hover {
+    color: var(--text-white);
+}
+
+/* Main Navigation */
+.aquatic-nav {
+    background: var(--darker-bg) !important;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+}
+
+.navbar-brand {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-white) !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.navbar-brand i {
+    color: var(--accent-light-blue);
+}
+
+.navbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-link {
+    color: var(--text-gray) !important;
+    font-weight: 400;
+    font-size: 0.95rem;
+    padding: 8px 15px !important;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-link:hover {
+    color: var(--text-white) !important;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: var(--accent-blue);
+    transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+    width: 80%;
+}
+
+/* Hero Section */
+.hero-section {
+    position: relative;
+    width: 100%;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+}
+
+.hero-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.3;
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.hero-title {
+    font-size: 5rem;
+    font-weight: 800;
+    color: var(--text-white);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    line-height: 1.2;
+}
+
+.hero-subtitle {
+    font-size: 1.3rem;
+    color: var(--text-gray);
+    font-weight: 300;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Section Headings */
+.section-heading {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 50px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* Cards - Dark Modern Style */
+.card {
+    background: var(--card-bg) !important;
+    border-radius: 8px;
+    border: 1px solid var(--border-color) !important;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    color: var(--text-white) !important;
+}
+
+.card, .card-body, .card-header {
+    background-color: var(--card-bg) !important;
+    background: var(--card-bg) !important;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    border-color: var(--accent-blue);
+    box-shadow: 0 10px 40px rgba(30, 136, 229, 0.2);
+}
+
+.card-img-top {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+/* Fish image helpers */
+.fish-thumb {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.fish-modal-img {
+    width: 100%;
+    max-height: 70vh; /* keep image within viewport */
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+.card-body {
+    padding: 20px;
+    background: var(--card-bg) !important;
+    color: var(--text-white) !important;
+}
+
+.card-title {
+    color: var(--text-white);
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.card-text {
+    color: var(--text-gray);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+/* Buttons - Modern Style */
+.btn {
+    border-radius: 4px;
+    padding: 12px 30px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: var(--accent-blue);
+    color: var(--text-white);
+    border-color: var(--accent-blue);
+}
+
+.btn-primary:hover {
+    background: var(--accent-light-blue);
+    border-color: var(--accent-light-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(30, 136, 229, 0.4);
+}
+
+.btn-success {
+    background: transparent;
+    color: var(--text-white);
+    border: 1px solid var(--text-white);
+}
+
+.btn-success:hover {
+    background: var(--text-white);
+    color: var(--dark-bg);
+}
+
+.btn-danger {
+    background: transparent;
+    color: #EF5350;
+    border: 1px solid #EF5350;
+}
+
+.btn-danger:hover {
+    background: #EF5350;
+    color: var(--text-white);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--text-gray);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--card-bg);
+    color: var(--text-white);
+    border-color: var(--accent-blue);
+}
+
+.btn-sm {
+    padding: 6px 15px;
+    font-size: 0.85rem;
+}
+
+.btn-lg {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+}
+
+/* Forms - Dark Modern Style */
+.form-control, .form-select {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-white);
+    border-radius: 4px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-blue);
+    color: var(--text-white);
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1);
+    outline: none;
+}
+
+.form-control::placeholder {
+    color: var(--text-gray);
+}
+
+.form-label {
+    color: var(--text-white);
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 4px;
+    border: 1px solid;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.alert-danger {
+    background: rgba(211, 47, 47, 0.1);
+    border-color: #D32F2F;
+    color: #D32F2F;
+}
+
+.alert-info {
+    background: rgba(30, 136, 229, 0.1);
+    border-color: var(--accent-blue);
+    color: var(--accent-light-blue);
+}
+
+/* Tables - Dark Theme */
+.table {
+    background: transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.table-wrapper {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+}
+
+.card .table {
+    background: transparent;
+}
+
+.table thead {
+    background: rgba(30, 136, 229, 0.1);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.table thead th {
+    color: var(--text-white);
+    font-weight: 600;
+    padding: 15px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.table tbody {
+    background: transparent;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background: rgba(30, 136, 229, 0.05);
+}
+
+.table tbody td {
+    color: var(--text-gray) !important;
+    padding: 15px;
+}
+
+.table tbody td strong {
+    color: var(--text-white) !important;
+}
+
+.table tbody {
+    color: var(--text-white);
+}
+
+/* Footer */
+.aquatic-footer {
+    background: var(--darker-bg);
+    color: var(--text-gray);
+    border-top: 1px solid var(--border-color);
+    padding: 40px 0;
+    margin-top: 80px;
+}
+
+/* Fish Cards Grid */
+.fish-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 40px 0;
+}
+
+/* Price Badge */
+.price-badge {
+    background: transparent;
+    color: var(--text-white);
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 1.3rem;
+    display: inline-block;
+    border: 1px solid var(--border-color);
+}
+
+/* Category Badge */
+.category-badge {
+    background: rgba(30, 136, 229, 0.2);
+    color: var(--accent-light-blue);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    display: inline-block;
+    font-weight: 500;
+    border: 1px solid rgba(30, 136, 229, 0.3);
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-blue);
+    box-shadow: 0 10px 40px rgba(30, 136, 229, 0.2);
+}
+
+.dashboard-card i {
+    font-size: 3.5rem;
+    color: var(--accent-light-blue);
+    margin-bottom: 20px;
+}
+
+.dashboard-card h3 {
+    color: var(--text-white);
+    font-weight: 700;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.dashboard-card p {
+    color: var(--text-gray);
+    font-size: 1rem;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.empty-state i {
+    font-size: 5rem;
+    color: var(--text-gray);
+    margin-bottom: 30px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    color: var(--text-white);
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    color: var(--text-gray);
+    font-size: 1.1rem;
+}
+
+/* Search Container */
+.search-container {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 40px;
+    backdrop-filter: blur(10px);
+}
+
+/* Container */
+.container-fluid {
+    padding: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Section Spacing */
+.section {
+    padding: 80px 0;
+    position: relative;
+}
+
+/* Text Colors */
+.text-white {
+    color: var(--text-white) !important;
+}
+
+.text-gray {
+    color: var(--text-gray) !important;
+}
+
+/* Cart Badge */
+.top-nav-icons a {
+    position: relative;
+    color: inherit;
+}
+
+.top-nav-icons .fa-shopping-cart {
+    position: relative;
+}
+
+/* Navbar Toggler */
+.navbar-toggler {
+    border: 1px solid var(--border-color);
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 3rem;
+    }
+    
+    .section-heading {
+        font-size: 2rem;
+    }
+    
+    .fish-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    .container-fluid {
+        padding: 20px;
+    }
+    
+    .top-nav-content {
+        padding: 0 20px;
+        flex-wrap: wrap;
+    }
+    
+    .top-nav-link {
+        display: none;
+    }
+    
+    .top-nav-icons {
+        gap: 10px;
+    }
+    
+    .section {
+        padding: 40px 0;
+    }
+}
+
+/* Badges */
+.badge {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.bg-success {
+    background: rgba(76, 175, 80, 0.2) !important;
+    color: #4CAF50 !important;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.bg-danger {
+    background: rgba(211, 47, 47, 0.2) !important;
+    color: #D32F2F !important;
+    border: 1px solid rgba(211, 47, 47, 0.3);
+}
+
+.bg-warning {
+    background: rgba(255, 152, 0, 0.2) !important;
+    color: #FF9800 !important;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.bg-info {
+    background: #1E88E5 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #1E88E5 !important;
+    font-weight: 600;
+    padding: 8px 16px !important;
+    display: inline-block;
+}
+
+.bg-secondary {
+    background: var(--card-bg) !important;
+    color: var(--text-gray) !important;
+    border: 1px solid var(--border-color);
+}
+
+/* Card Header */
+.card-header {
+    background: rgba(30, 136, 229, 0.1);
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px 20px;
+}
+
+.card-header h5 {
+    color: var(--text-white);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Dividers */
+.divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 40px 0;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--darker-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-blue);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-light-blue);
+}
+
+/* Smooth fade-in for AJAX-loaded results */
+.fade-in {
+    animation: fadeInUp 300ms ease both;
+}
+
+/* Reusable black text for admin sections */
+.admin-text-black {
+    color: #000000 !important;
+}
+
+/* Light card variant for admin pages where black text is used */
+.admin-card-light {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid rgba(0,0,0,0.06) !important;
+}
+.admin-card-light .card-body {
+    background: transparent !important;
+}
+.admin-card-light .table thead th {
+    color: #000000 !important;
+}
+.admin-card-light .table tbody td {
+    color: #000000 !important;
+}
+.admin-card-light .table tbody td strong {
+    color: #000000 !important;
+}
+.admin-card-light .table tbody td i {
+    color: #000000 !important;
+}
+
+/* Make price/amount visually consistent in admin light cards */
+.admin-card-light .price-badge {
+    color: #000000 !important;
+    font-size: 1rem !important; /* match surrounding text size */
+    font-weight: 600 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Larger search input styling */
+.search-large {
+    padding: 14px 16px;
+    font-size: 1.05rem;
+    border-radius: 8px;
+}

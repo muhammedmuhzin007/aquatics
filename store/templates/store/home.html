@@ -1,0 +1,150 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    {% if first_category and first_category.image %}
+    <img src="{{ first_category.image.url }}" alt="Aquatic Fish" class="hero-image">
+    {% endif %}
+    <div class="hero-content">
+        <h1 class="hero-title">AQUAFISH STORE</h1>
+        <p class="hero-subtitle">The largest collection of beautiful aquatic fishes. Discover rare breeds and exotic species from around the world.</p>
+        {% if user.is_authenticated and user.role == 'customer' %}
+            <a href="{% url 'fish_list' %}" class="btn btn-primary btn-lg mt-4">
+                <i class="fas fa-fish"></i> Explore Collection
+            </a>
+        {% elif not user.is_authenticated %}
+            <div class="mt-4">
+                <a href="{% url 'register' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-user-plus"></i> Get Started
+                </a>
+                <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
+                    <i class="fas fa-eye"></i> Browse Fishes
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- About Section -->
+{% if categories %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">01 ABOUT OUR COLLECTION</h2>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <p class="text-gray" style="font-size: 0.95rem; line-height: 1.8;">
+                    Welcome to AquaFish Store, your premier destination for premium aquatic fishes. We specialize in providing the finest selection of exotic and rare fish species, carefully curated from trusted breeders worldwide.
+                </p>
+            </div>
+            <div class="col-md-6 mb-4">
+                <p class="text-gray" style="font-size: 0.95rem; line-height: 1.8;">
+                    Our collection features hundreds of species across multiple categories and breeds. Each fish is carefully selected, ensuring quality, health, and beauty. Whether you're a seasoned aquarist or just beginning your journey, we have something special for everyone.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Categories Section -->
+{% if categories %}
+<section class="section" style="background: var(--darker-bg);">
+    <div class="container-fluid">
+        <h2 class="section-heading">Categories</h2>
+        <div class="row">
+            {% for category in categories|slice:":6" %}
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    {% if category.image %}
+                    <img src="{{ category.image.url }}" class="card-img-top" alt="{{ category.name }}">
+                    {% else %}
+                    <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ category.name }}</h5>
+                        <p class="card-text">{{ category.description|truncatewords:20 }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Featured Fishes Section -->
+{% if fishes %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Featured Fishes</h2>
+        <div class="fish-grid">
+            {% for fish in fishes %}
+            <div class="card">
+                {% if fish.image %}
+                <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
+                {% else %}
+                <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    <span class="category-badge">{{ fish.category.name }}</span>
+                    <h5 class="card-title mt-2">{{ fish.name }}</h5>
+                    <p class="card-text">{{ fish.description|truncatewords:15 }}</p>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <span class="price-badge">${{ fish.price }}</span>
+                        {% if user.is_authenticated and user.role == 'customer' %}
+                            <a href="{% url 'fish_detail' fish.id %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        {% elif not user.is_authenticated %}
+                            <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Services Section -->
+{% if not user.is_authenticated %}
+<section class="section" style="background: var(--darker-bg);">
+    <div class="container-fluid">
+        <h2 class="section-heading">Services</h2>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card" style="height: 100%;">
+                    <div style="height: 400px; background: linear-gradient(135deg, rgba(30, 136, 229, 0.2), rgba(100, 181, 246, 0.2)); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-fish fa-6x" style="opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card" style="height: 100%; padding: 40px;">
+                    <h3 class="text-white mb-3">Premium Fish Collection</h3>
+                    <p class="text-gray mb-4" style="line-height: 1.8;">
+                        Explore our extensive collection of premium aquatic fishes. We offer a wide variety of species, from common favorites to rare exotic breeds. Each fish is carefully selected and maintained to ensure the highest quality.
+                    </p>
+                    <p class="text-gray mb-4" style="line-height: 1.8;">
+                        Our team of experts is dedicated to providing you with healthy, beautiful fish and exceptional customer service. Whether you're looking to start a new aquarium or add to your existing collection, we're here to help.
+                    </p>
+                    {% if not user.is_authenticated %}
+                    <a href="{% url 'register' %}" class="btn btn-success">
+                        Get Started
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

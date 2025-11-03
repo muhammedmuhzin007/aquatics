@@ -1,0 +1,26 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<div class="section" style="min-height: calc(100vh - 300px); display: flex; align-items: center;">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-body text-center" style="padding: 50px;">
+                        <i class="fas fa-envelope-open fa-4x mb-4" style="color: var(--accent-light-blue);"></i>
+                        <h2 class="text-white mb-2" style="font-weight: 700; font-size: 2rem;">Resend OTP</h2>
+                        <p class="text-gray mb-4">We'll send a new OTP to <strong>{{ user.email }}</strong></p>
+                        
+                        <form method="POST" class="mt-4">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary w-100" style="padding: 15px;">
+                                <i class="fas fa-redo"></i> Resend OTP
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

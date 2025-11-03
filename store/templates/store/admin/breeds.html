@@ -1,0 +1,54 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="section-heading" style="margin-bottom: 0;">Breeds</h2>
+            <a href="{% url 'admin_add_breed' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Add Breed
+            </a>
+        </div>
+
+        {% if breeds %}
+        <div class="card">
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for breed in breeds %}
+                        <tr>
+                            <td><strong class="text-white">{{ breed.name }}</strong></td>
+                            <td class="text-gray">{{ breed.category.name }}</td>
+                            <td class="text-gray">{{ breed.description|truncatewords:10 }}</td>
+                            <td>
+                                <a href="{% url 'admin_delete_breed' breed.id %}" class="btn btn-danger btn-sm" 
+                                   onclick="return confirm('Are you sure you want to delete this breed?')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-layer-group"></i>
+            <h3>No breeds yet</h3>
+            <a href="{% url 'admin_add_breed' %}" class="btn btn-primary mt-3">
+                <i class="fas fa-plus"></i> Add First Breed
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

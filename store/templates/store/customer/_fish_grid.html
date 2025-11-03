@@ -1,0 +1,41 @@
+{% comment %}Partial: fish grid used by AJAX live search{% endcomment %}
+{% if fishes %}
+<div class="fish-grid">
+    {% for fish in fishes %}
+    <div class="card">
+        {% if fish.image %}
+        <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
+        {% else %}
+        <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
+        </div>
+        {% endif %}
+        <div class="card-body">
+            <span class="category-badge">{{ fish.category.name }}</span>
+            <span class="badge bg-secondary ms-2">{{ fish.breed.name }}</span>
+            <h5 class="card-title mt-2">{{ fish.name }}</h5>
+            <p class="card-text">{{ fish.description|truncatewords:15 }}</p>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <span class="price-badge">₹{{ fish.price }}</span>
+                <div>
+                    <a href="{% url 'fish_detail' fish.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                </div>
+            </div>
+            {% if fish.stock_quantity <= 0 %}
+            <div class="mt-2">
+                <span class="badge bg-danger">Out of Stock</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-search"></i>
+    <h3>No fishes found</h3>
+    <p>Try adjusting your search criteria</p>
+</div>
+{% endif %}

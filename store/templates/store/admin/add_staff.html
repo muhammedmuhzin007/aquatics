@@ -1,0 +1,44 @@
+{% extends 'store/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Add Staff Member</h2>
+
+        <div class="card">
+            <div class="card-body" style="padding: 40px;">
+                <form method="POST">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Add Staff
+                        </button>
+                        <a href="{% url 'admin_staff_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .form-control, .form-select {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-white) !important;
+    }
+    .form-control:focus, .form-select:focus {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--accent-blue) !important;
+        color: var(--text-white) !important;
+        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+    }
+    .form-label {
+        color: var(--text-white) !important;
+    }
+</style>
+{% endblock %}

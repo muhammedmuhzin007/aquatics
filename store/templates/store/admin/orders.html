@@ -1,0 +1,100 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Orders Management</h2>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="text-white">Filter Orders</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        {{ form.status }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Start Date</label>
+                        {{ form.start_date }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">End Date</label>
+                        {{ form.end_date }}
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100 me-2">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                        <a href="{% url 'export_orders_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success w-100">
+                            <i class="fas fa-file-excel"></i> Export
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if orders %}
+        <div class="card admin-card-light">
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order Number</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td><strong class="admin-text-black">{{ order.order_number }}</strong></td>
+                            <td class="admin-text-black">{{ order.user.username }}</td>
+                            <td><span class="price-badge">₹{{ order.total_amount }}</span></td>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="admin-text-black">{{ order.created_at|date:"M d, Y h:i A" }}</td>
+                            <td>
+                                <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-shopping-bag"></i>
+            <h3>No orders found</h3>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+    .form-control, .form-select {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-white) !important;
+    }
+    .form-control:focus, .form-select:focus {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--accent-blue) !important;
+        color: var(--text-white) !important;
+        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+    }
+    .form-label {
+        color: var(--text-white) !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">My Profile</h2>
+
+        <div class="row">
+            <div class="col-md-8 mb-4">
+                <div class="card">
+                    <div class="card-body" style="padding: 40px;">
+                        <div class="text-center mb-4">
+                            {% if user.profile_picture %}
+                            <img src="{{ user.profile_picture.url }}" alt="Profile" 
+                                 style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue);">
+                            {% else %}
+                            <div style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: inline-flex; align-items: center; justify-content: center; border: 3px solid var(--accent-blue);">
+                                <i class="fas fa-user fa-4x text-white"></i>
+                            </div>
+                            {% endif %}
+                            <h3 class="text-white mt-3">{{ user.get_full_name|default:user.username }}</h3>
+                            <span class="badge bg-{% if user.role == 'admin' %}danger{% elif user.role == 'staff' %}warning{% else %}info{% endif %}">
+                                {{ user.get_role_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="divider"></div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-user"></i> Username:</strong></div>
+                            <div class="col-md-8"><span class="text-gray">{{ user.username }}</span></div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-envelope"></i> Email:</strong></div>
+                            <div class="col-md-8"><span class="text-gray">{{ user.email }}</span></div>
+                        </div>
+                        
+                        {% if user.first_name or user.last_name %}
+                        <div class="row mb-3">
+                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-id-card"></i> Full Name:</strong></div>
+                            <div class="col-md-8"><span class="text-gray">{{ user.get_full_name }}</span></div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user.phone_number %}
+                        <div class="row mb-3">
+                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-phone"></i> Phone:</strong></div>
+                            <div class="col-md-8"><span class="text-gray">{{ user.phone_number }}</span></div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user.address %}
+                        <div class="row mb-3">
+                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-map-marker-alt"></i> Address:</strong></div>
+                            <div class="col-md-8"><span class="text-gray">{{ user.address }}</span></div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-calendar"></i> Joined:</strong></div>
+                            <div class="col-md-8"><span class="text-gray">{{ user.created_at|date:"M d, Y" }}</span></div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="{% url 'edit_profile' %}" class="btn btn-primary">
+                                <i class="fas fa-edit"></i> Edit Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-white">Quick Links</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if user.role == 'customer' %}
+                        <a href="{% url 'cart' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-shopping-cart"></i> My Cart
+                        </a>
+                        <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-list"></i> My Orders
+                        </a>
+                        {% elif user.role == 'staff' %}
+                        <a href="{% url 'staff_dashboard' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                        <a href="{% url 'staff_fish_list' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-fish"></i> Manage Fishes
+                        </a>
+                        {% elif user.role == 'admin' %}
+                        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                        <a href="{% url 'admin_orders' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-shopping-bag"></i> Orders
+                        </a>
+                        <a href="{% url 'admin_users' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-users"></i> Users
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

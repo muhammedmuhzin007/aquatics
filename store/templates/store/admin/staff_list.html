@@ -1,0 +1,56 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="section-heading" style="margin-bottom: 0;">Staff Management</h2>
+            <a href="{% url 'add_staff' %}" class="btn btn-success">
+                <i class="fas fa-user-plus"></i> Add Staff
+            </a>
+        </div>
+
+        {% if staff_members %}
+    <div class="card admin-card-light">
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr class="admin-text-black">
+                            <th class="admin-text-black">Username</th>
+                            <th class="admin-text-black">Email</th>
+                            <th class="admin-text-black">Phone</th>
+                            <th class="admin-text-black">Date Joined</th>
+                            <th class="admin-text-black">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in staff_members %}
+                        <tr>
+                            <td class="admin-text-black"><strong class="admin-text-black">{{ staff.username }}</strong></td>
+                            <td class="admin-text-black">{{ staff.email }}</td>
+                            <td class="admin-text-black">{{ staff.phone_number|default:"N/A" }}</td>
+                            <td class="admin-text-black">{{ staff.created_at|date:"M d, Y" }}</td>
+                            <td class="admin-text-black">
+                                <a href="{% url 'remove_staff' staff.id %}" class="btn btn-danger btn-sm" 
+                                   onclick="return confirm('Are you sure you want to remove this staff member?')">
+                                    <i class="fas fa-user-times"></i> Remove
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users-cog"></i>
+            <h3>No staff members yet</h3>
+            <a href="{% url 'add_staff' %}" class="btn btn-primary mt-3">
+                <i class="fas fa-user-plus"></i> Add First Staff Member
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

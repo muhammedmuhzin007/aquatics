@@ -1,0 +1,224 @@
+{% extends 'store/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Add Fish</h2>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body" style="padding: 40px;">
+                        <form method="POST" enctype="multipart/form-data" id="fishForm">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.name|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.category|as_crispy_field }}
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Breed *</label>
+                                    <div class="input-group">
+                                        {{ form.breed }}
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBreedModal">
+                                            <i class="fas fa-plus"></i> Add Breed
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Size (inches)</label>
+                                    <input type="number" name="size_inches" step="0.1" min="0" class="form-control" placeholder="e.g., 4.5" value="{{ form.size_inches.value|default_if_none:'' }}">
+                                    <small class="form-text text-muted">Enter numeric size in inches</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                {{ form.description|as_crispy_field }}
+                            </div>
+
+                            <!-- Media uploads: allow up to 5 images and 2 videos -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Images (max 5)</label>
+                                    <input type="file" name="extra_images" id="extra_images" accept="image/*" multiple class="form-control">
+                                    <small class="form-text text-muted">Select up to 5 images. You can select multiple files.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Videos (max 2)</label>
+                                    <input type="file" name="extra_videos" id="extra_videos" accept="video/*" multiple class="form-control">
+                                    <small class="form-text text-muted">Select up to 2 video files (mp4, webm, etc.).</small>
+                                </div>
+                            </div>
+
+                            <!-- Display option -->
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="display_to_customer" name="display_to_customer">
+                                <label class="form-check-label" for="display_to_customer">Display to customers</label>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    {{ form.price|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.stock_quantity|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.is_available|as_crispy_field }}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.image|as_crispy_field }}
+                            </div>
+                            
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Save Fish
+                                </button>
+                                <a href="{% url 'admin_fishes' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add Breed Modal -->
+<div class="modal fade" id="addBreedModal" tabindex="-1" aria-labelledby="addBreedModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title text-white" id="addBreedModalLabel">Add New Breed</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="breedForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="create_breed" value="1">
+                    {{ breed_form.name|as_crispy_field }}
+                    {{ breed_form.category|as_crispy_field }}
+                    {{ breed_form.description|as_crispy_field }}
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Create Breed
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-white) !important;
+    }
+    .form-control:focus, .form-select:focus {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--accent-blue) !important;
+        color: var(--text-white) !important;
+        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+    }
+    .form-label {
+        color: var(--text-white) !important;
+    }
+    .input-group .btn {
+        border-left: none;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+    .input-group select {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+    .modal-content {
+        color: var(--text-white);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const breedForm = document.getElementById('breedForm');
+    const breedSelect = document.querySelector('#id_breed');
+    
+    breedForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(breedForm);
+        formData.append('create_breed', '1');
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add new breed option to select
+                const option = document.createElement('option');
+                option.value = data.breed_id;
+                option.textContent = data.breed_name;
+                option.selected = true;
+                breedSelect.appendChild(option);
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addBreedModal'));
+                modal.hide();
+                
+                // Show success message
+                alert('Breed created successfully! Selected in the form.');
+                
+                // Reset form
+                breedForm.reset();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error creating breed. Please try again.');
+        });
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imgInput = document.getElementById('extra_images');
+    const vidInput = document.getElementById('extra_videos');
+
+    if (imgInput) {
+        imgInput.addEventListener('change', function() {
+            if (this.files.length > 5) {
+                alert('Please select up to 5 images.');
+                this.value = null;
+            }
+        });
+    }
+
+    if (vidInput) {
+        vidInput.addEventListener('change', function() {
+            if (this.files.length > 2) {
+                alert('Please select up to 2 videos.');
+                this.value = null;
+            }
+        });
+    }
+});
+</script>
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Order Details</h2>
+
+        <div class="row">
+            <div class="col-md-8 mb-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="text-white">Order #{{ order.order_number }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Fish</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if item.fish.image %}
+                                            <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" 
+                                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 15px; border: 1px solid var(--border-color);">
+                                            {% endif %}
+                                            <div>
+                                                <strong class="text-white">{{ item.fish.name }}</strong><br>
+                                                <small class="text-gray">{{ item.fish.breed.name }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-white">{{ item.quantity }}</td>
+                                    <td class="text-white">₹{{ item.price }}</td>
+                                    <td class="text-white"><strong>₹{{ item.get_total }}</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end text-white">Total Amount:</th>
+                                    <th class="price-badge" style="font-size: 1.5rem;">₹{{ order.total_amount }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="text-white">Order Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3"><strong class="text-white">Status:</strong><br>
+                        <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
+                            {{ order.get_status_display }}
+                        </span></p>
+                        <p class="mb-3"><strong class="text-white">Order Date:</strong><br><span class="text-gray">{{ order.created_at|date:"M d, Y h:i A" }}</span></p>
+                        <p class="mb-3"><strong class="text-white">Shipping Address:</strong><br><span class="text-gray">{{ order.shipping_address }}</span></p>
+                        <p class="mb-3"><strong class="text-white">Phone:</strong><br><span class="text-gray">{{ order.phone_number }}</span></p>
+                    </div>
+                </div>
+                
+                <a href="{% url 'customer_orders' %}" class="btn btn-primary w-100">
+                    <i class="fas fa-arrow-left"></i> Back to Orders
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

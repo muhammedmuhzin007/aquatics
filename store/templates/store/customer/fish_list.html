@@ -1,0 +1,26 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Browse Our Collection</h2>
+        
+        <div class="search-container">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label"><i class="fas fa-search"></i> Search</label>
+                    <input id="live-search" type="text" class="form-control" name="search" value="{{ search_query }}"
+                           placeholder="Search by name, description, breed..." autocomplete="off">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button id="clear-search" class="btn btn-secondary w-100">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fish-results">
+            {% include 'store/customer/_fish_grid.html' %}
+        </div>
+    </div>
+</section>
+{% endblock %}

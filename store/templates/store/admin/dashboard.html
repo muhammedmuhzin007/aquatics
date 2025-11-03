@@ -1,0 +1,187 @@
+{% extends 'store/base.html' %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Admin Dashboard</h2>
+
+        <div class="row">
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card">
+                    <i class="fas fa-users"></i>
+                    <h3>{{ total_users }}</h3>
+                    <p>Total Users</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card">
+                    <i class="fas fa-users-cog"></i>
+                    <h3>{{ total_staff }}</h3>
+                    <p>Staff Members</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card">
+                    <i class="fas fa-shopping-bag"></i>
+                    <h3>{{ total_orders }}</h3>
+                    <p>Total Orders</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card">
+                    <i class="fas fa-rupee-sign"></i>
+                    <h3>₹{{ total_revenue }}</h3>
+                    <p>Total Revenue</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-white">Monthly Orders</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="ordersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-white">Monthly Revenue</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-white">Recent Orders</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_orders %}
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Order Number</th>
+                                    <th>User</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td><strong class="text-white">{{ order.order_number }}</strong></td>
+                                    <td class="text-gray">{{ order.user.username }}</td>
+                                    <td class="text-white">₹{{ order.total_amount }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-gray">{{ order.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-gray">No recent orders</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Monthly Orders Chart
+    const ordersCtx = document.getElementById('ordersChart').getContext('2d');
+    new Chart(ordersCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_months|safe }},
+            datasets: [{
+                label: 'Number of Orders',
+                data: {{ chart_orders|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Monthly Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_months|safe }},
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: {{ chart_revenue|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading">Checkout</h2>
+
+        <div class="row">
+            <div class="col-md-7 mb-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="text-white"><i class="fas fa-shopping-cart"></i> Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for item in cart_items %}
+                        <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                            <div>
+                                <strong class="text-white">{{ item.fish.name }}</strong><br>
+                                <small class="text-gray">{{ item.fish.breed.name }} × {{ item.quantity }}</small>
+                            </div>
+                            <strong class="text-white">₹{{ item.get_total }}</strong>
+                        </div>
+                        {% endfor %}
+                        <div class="d-flex justify-content-between mt-3">
+                            <h5 class="text-white">Total:</h5>
+                            <h5 class="price-badge" style="font-size: 1.8rem;">₹{{ total }}</h5>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-white"><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="mb-4">
+                                <label class="form-label">Shipping Address *</label>
+                                <textarea class="form-control" name="shipping_address" rows="3" required 
+                                          placeholder="Enter your complete shipping address">{% if user.address %}{{ user.address }}{% endif %}</textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">Phone Number *</label>
+                                <input type="text" class="form-control" name="phone_number" 
+                                       value="{% if user.phone_number %}{{ user.phone_number }}{% endif %}" 
+                                       required placeholder="Enter your phone number">
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check"></i> Place Order
+                                </button>
+                                <a href="{% url 'cart' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Cart
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

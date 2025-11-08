@@ -1,7 +1,67 @@
 {% extends 'store/base.html' %}
 
+{% block extra_css %}
+<style>
+    /* Scoped styles for user management page */
+    .user-management .card {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
+    }
+    
+    /* Table styling */
+    .user-management .table>:not(caption)>*>* {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #FFFFFF !important;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    
+    /* Table headers */
+    .user-management thead th {
+        background: rgba(25,40,60,0.65) !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid rgba(255,255,255,0.15) !important;
+    }
+    
+    /* Table rows */
+    .user-management tbody tr {
+        background: rgba(20,30,45,0.55) !important;
+        transition: background 0.2s ease;
+    }
+    
+    .user-management tbody tr:nth-child(odd) {
+        background: rgba(25,40,60,0.55) !important;
+    }
+    
+    .user-management tbody tr:hover {
+        background: rgba(40,80,140,0.55) !important;
+    }
+    
+    /* Table cells */
+    .user-management .table tbody td {
+        color: #FFFFFF !important;
+    }
+    
+    .user-management .table tbody td * {
+        color: #FFFFFF !important;
+    }
+    
+    .user-management .table tbody td strong {
+        color: #FFFFFF !important;
+        font-weight: 700;
+    }
+    
+    /* Override admin-text-black class */
+    .user-management .admin-text-black {
+        color: #FFFFFF !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<section class="section">
+<section class="section user-management">
     <div class="container-fluid">
         <h2 class="section-heading">User Management</h2>
 
@@ -39,8 +99,8 @@
                                     <i class="fas fa-unlock"></i> Unblock
                                 </a>
                                 {% else %}
-                                <a href="{% url 'block_user' user_obj.id %}" class="btn btn-danger btn-sm" 
-                                   onclick="return confirm('Are you sure you want to block this user?')">
+                                          <a href="{% url 'block_user' user_obj.id %}" class="btn btn-danger btn-sm" 
+                                              data-confirm="Are you sure you want to block this user?">
                                     <i class="fas fa-ban"></i> Block
                                 </a>
                                 {% endif %}

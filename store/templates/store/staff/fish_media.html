@@ -1,0 +1,123 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .media-form-stable input.form-control,
+  .media-form-stable select.form-select,
+  .media-form-stable input[type="file"] {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  .media-form-stable input.form-control:focus,
+  .media-form-stable select.form-select:focus {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+    border-color: #1E88E5 !important;
+    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
+  }
+  .media-form-stable input.form-control::placeholder { color: rgba(255, 255, 255, 0.5) !important; }
+  .media-form-stable .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+</style>
+<section class="section">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="section-heading" style="margin-bottom:0;">Manage Media: {{ fish.name }}</h2>
+      <a href="{% url 'staff_fish_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Fishes</a>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-5 mb-4">
+        <div class="card admin-card-light h-100">
+          <div class="card-header"><h5 class="text-white" style="margin:0;">Add Media</h5></div>
+          <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" class="needs-validation media-form-stable" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label admin-text-black">Type</label>
+                {{ form.media_type }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label admin-text-black">File (image/video)</label>
+                {{ form.file }}
+                <small class="text-muted d-block">Accepted: images (JPG/PNG), videos (MP4)</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label admin-text-black">External URL (optional)</label>
+                {{ form.external_url }}
+                <small class="text-muted d-block">Provide YouTube/Vimeo URL for streaming instead of uploading.</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label admin-text-black">Title (optional)</label>
+                {{ form.title }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label admin-text-black">Display Order</label>
+                {{ form.display_order }}
+              </div>
+              <button type="submit" class="btn btn-dark w-100"><i class="fas fa-plus"></i> Add Media</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-7 mb-4">
+        <div class="card admin-card-light h-100">
+          <div class="card-header"><h5 class="text-white" style="margin:0;">Existing Media</h5></div>
+          <div class="card-body">
+            {% if media_items %}
+            <div class="row g-3">
+              {% for m in media_items %}
+              <div class="col-md-6">
+                <div class="card h-100" style="background:#fff; color:#000;">
+                  <div class="card-body p-2 d-flex flex-column">
+                    {% if m.media_type == 'image' and m.source %}
+                      <img src="{{ m.source }}" alt="{{ m.title|default:fish.name }}" style="width:100%; height:170px; object-fit:cover; border-radius:4px;">
+                    {% elif m.media_type == 'video' and m.source %}
+                      {% if 'youtube.com' in m.embed_url or 'youtu.be' in m.embed_url %}
+                        <div class="ratio ratio-16x9">
+                          <iframe src="{{ m.embed_url }}" title="video" allowfullscreen style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        </div>
+                      {% elif m.file %}
+                        <video controls style="width:100%; height:170px; object-fit:cover; border-radius:4px;">
+                          <source src="{{ m.embed_url }}" type="video/mp4">
+                          Your browser does not support the video tag.
+                        </video>
+                      {% else %}
+                        <a href="{{ m.embed_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">Open Video</a>
+                      {% endif %}
+                    {% else %}
+                      <div class="d-flex align-items-center justify-content-center" style="height:170px; background:#eee; border-radius:4px;">
+                        <span class="text-muted">No preview</span>
+                      </div>
+                    {% endif %}
+                    <div class="mt-2" style="flex:1;">
+                      <strong style="font-size:0.9rem;">{{ m.title|default:'(Untitled)' }}</strong><br>
+                      <small class="text-muted">Type: {{ m.media_type }} | Order: {{ m.display_order }}</small>
+                    </div>
+                    <div class="mt-2 d-flex justify-content-between">
+                      <form method="POST" action="{% url 'staff_delete_fish_media' m.id %}" data-confirm="Delete this media?">
+                        {% csrf_token %}
+                        <button class="btn btn-danger btn-sm" type="submit"><i class="fas fa-trash"></i></button>
+                      </form>
+                      <a href="{% url 'staff_edit_fish_media' m.id %}" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+              <i class="fas fa-photo-video"></i>
+              <h4>No media yet</h4>
+              <p>Add images or videos using the form.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

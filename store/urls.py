@@ -24,6 +24,9 @@ urlpatterns = [
     path('checkout/', views.checkout_view, name='checkout'),
     path('orders/', views.customer_orders_view, name='customer_orders'),
     path('order/<int:order_id>/', views.order_detail_view, name='order_detail'),
+    path('order/<int:order_id>/cancel/', views.cancel_order_view, name='cancel_order'),
+    path('upi-payment/<int:order_id>/', views.upi_payment_view, name='upi_payment'),
+    path('verify-upi/<int:order_id>/', views.verify_upi_payment, name='verify_upi_payment'),
     
     # Staff Routes
     path('staff/dashboard/', views.staff_dashboard_view, name='staff_dashboard'),
@@ -37,6 +40,9 @@ urlpatterns = [
     path('staff/add-fish/', views.add_fish_view, name='add_fish'),
     path('staff/edit-fish/<int:fish_id>/', views.edit_fish_view, name='edit_fish'),
     path('staff/delete-fish/<int:fish_id>/', views.delete_fish_view, name='delete_fish'),
+    path('staff/fish/<int:fish_id>/media/', views.staff_fish_media_view, name='staff_fish_media'),
+    path('staff/fish/media/delete/<int:media_id>/', views.staff_delete_fish_media_view, name='staff_delete_fish_media'),
+    path('staff/fish/media/<int:media_id>/edit/', views.staff_edit_fish_media_view, name='staff_edit_fish_media'),
     
     # Admin Routes (using store-admin prefix to avoid conflict with Django admin)
     path('store-admin/dashboard/', views.admin_dashboard_view, name='admin_dashboard'),
@@ -52,6 +58,9 @@ urlpatterns = [
     path('store-admin/fishes/', views.admin_fishes_view, name='admin_fishes'),
     path('store-admin/add-fish/', views.admin_add_fish_view, name='admin_add_fish'),
     path('store-admin/delete-fish/<int:fish_id>/', views.admin_delete_fish_view, name='admin_delete_fish'),
+    path('store-admin/fish/<int:fish_id>/media/', views.admin_fish_media_view, name='admin_fish_media'),
+    path('store-admin/fish/media/delete/<int:media_id>/', views.admin_delete_fish_media_view, name='admin_delete_fish_media'),
+    path('store-admin/fish/media/<int:media_id>/edit/', views.admin_edit_fish_media_view, name='admin_edit_fish_media'),
     path('store-admin/orders/', views.admin_orders_view, name='admin_orders'),
     path('store-admin/order/<int:order_id>/', views.admin_order_detail_view, name='admin_order_detail'),
     path('store-admin/users/', views.admin_users_view, name='admin_users'),
@@ -62,5 +71,6 @@ urlpatterns = [
     # Profile
     path('profile/', views.profile_view, name='profile'),
     path('edit-profile/', views.edit_profile_view, name='edit_profile'),
+    path('change-password/', views.change_password_view, name='change_password'),
 ]
 

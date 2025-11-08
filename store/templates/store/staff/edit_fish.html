@@ -2,15 +2,73 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<style>
+  /* Match input fields to website dark theme */
+  .fish-form-stable input.form-control,
+  .fish-form-stable select.form-select,
+  .fish-form-stable textarea.form-control,
+  .fish-form-stable input[type="file"],
+  .fish-form-stable input[type="number"],
+  .fish-form-stable input[type="checkbox"] {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  .fish-form-stable input.form-control:focus,
+  .fish-form-stable select.form-select:focus,
+  .fish-form-stable textarea.form-control:focus {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+    border-color: #1E88E5 !important;
+    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
+  }
+  .fish-form-stable input.form-control:valid,
+  .fish-form-stable select.form-select:valid,
+  .fish-form-stable textarea.form-control:valid,
+  .fish-form-stable input.form-control:invalid,
+  .fish-form-stable select.form-select:invalid,
+  .fish-form-stable textarea.form-control:invalid {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+  }
+  .fish-form-stable input.form-control::placeholder,
+  .fish-form-stable textarea.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+  }
+  /* Autofill state override */
+  .fish-form-stable input:-webkit-autofill,
+  .fish-form-stable input:-webkit-autofill:hover,
+  .fish-form-stable input:-webkit-autofill:focus,
+  .fish-form-stable input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px rgba(15, 25, 40, 0.95) inset !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+  }
+  .fish-form-stable .text-muted,
+  .fish-form-stable .form-text {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+  .fish-form-stable .form-label {
+    color: #000000 !important;
+  }
+  .fish-form-stable .form-check-label {
+    color: #000000 !important;
+  }
+  .fish-form-stable .input-group .btn {
+    background-color: #1E88E5 !important;
+    border-color: #1E88E5 !important;
+    color: #FFFFFF !important;
+  }
+</style>
 <section class="section">
     <div class="container-fluid">
         <h2 class="section-heading">Edit Fish</h2>
 
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-7 col-xl-6 mx-auto">
+                <div class="card admin-card-light">
+                    <div class="card-header"><h5 class="text-white" style="margin:0;">Update Fish</h5></div>
                     <div class="card-body" style="padding: 40px;">
-                        <form method="POST" enctype="multipart/form-data" id="fishForm">
+                        <form method="POST" enctype="multipart/form-data" id="fishForm" class="fish-form-stable">
                             {% csrf_token %}
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -23,16 +81,13 @@
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Breed *</label>
-                                    <div class="input-group">
-                                        {{ form.breed }}
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBreedModal">
-                                            <i class="fas fa-plus"></i> Add Breed
-                                        </button>
-                                    </div>
+                                    {{ form.breed|as_crispy_field }}
+                                    <button type="button" class="btn btn-sm btn-primary mt-1" data-bs-toggle="modal" data-bs-target="#addBreedModal">
+                                        <i class="fas fa-plus"></i> Add New Breed
+                                    </button>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    {{ form.size_inches|as_crispy_field }}
+                                    {{ form.size|as_crispy_field }}
                                 </div>
                             </div>
                             
@@ -57,10 +112,10 @@
                             </div>
                             
                             <div class="mt-4">
-                                <button type="submit" class="btn btn-success">
+                                <button type="submit" class="btn btn-dark w-100">
                                     <i class="fas fa-save"></i> Update Fish
                                 </button>
-                                <a href="{% url 'staff_fish_list' %}" class="btn btn-secondary">
+                                <a href="{% url 'staff_fish_list' %}" class="btn w-100 mt-2" style="background-color: rgba(15, 25, 40, 0.95); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1);">
                                     <i class="fas fa-times"></i> Cancel
                                 </a>
                             </div>
@@ -75,58 +130,29 @@
 <!-- Add Breed Modal -->
 <div class="modal fade" id="addBreedModal" tabindex="-1" aria-labelledby="addBreedModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color);">
-            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+        <div class="modal-content admin-card-light">
+            <div class="modal-header">
                 <h5 class="modal-title text-white" id="addBreedModalLabel">Add New Breed</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" id="breedForm">
+                <form method="POST" id="breedForm" class="fish-form-stable">
                     {% csrf_token %}
                     <input type="hidden" name="create_breed" value="1">
                     {{ breed_form.name|as_crispy_field }}
                     {{ breed_form.category|as_crispy_field }}
                     {{ breed_form.description|as_crispy_field }}
                     <div class="mt-3">
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn btn-dark w-100">
                             <i class="fas fa-save"></i> Create Breed
                         </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary w-100 mt-2" data-bs-dismiss="modal">Cancel</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-    .form-control, .form-select {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-white) !important;
-    }
-    .form-control:focus, .form-select:focus {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border-color: var(--accent-blue) !important;
-        color: var(--text-white) !important;
-        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
-    }
-    .form-label {
-        color: var(--text-white) !important;
-    }
-    .input-group .btn {
-        border-left: none;
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-    }
-    .input-group select {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-    }
-    .modal-content {
-        color: var(--text-white);
-    }
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

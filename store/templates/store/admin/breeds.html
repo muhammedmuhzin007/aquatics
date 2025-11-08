@@ -1,7 +1,71 @@
 {% extends 'store/base.html' %}
 
+{% block extra_css %}
+<style>
+    /* Scoped styles for breeds management page */
+    .breeds-management .card {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
+    }
+    
+    /* Table styling */
+    .breeds-management .table>:not(caption)>*>* {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #FFFFFF !important;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    
+    /* Table headers */
+    .breeds-management thead th {
+        background: rgba(25,40,60,0.65) !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid rgba(255,255,255,0.15) !important;
+    }
+    
+    /* Table rows */
+    .breeds-management tbody tr {
+        background: rgba(20,30,45,0.55) !important;
+        transition: background 0.2s ease;
+    }
+    
+    .breeds-management tbody tr:nth-child(odd) {
+        background: rgba(25,40,60,0.55) !important;
+    }
+    
+    .breeds-management tbody tr:hover {
+        background: rgba(40,80,140,0.55) !important;
+    }
+    
+    /* Table cells */
+    .breeds-management .table tbody td {
+        color: #FFFFFF !important;
+    }
+    
+    .breeds-management .table tbody td * {
+        color: #FFFFFF !important;
+    }
+    
+    .breeds-management .table tbody td strong {
+        color: #FFFFFF !important;
+        font-weight: 700;
+    }
+    
+    /* Override text color classes */
+    .breeds-management .text-white {
+        color: #FFFFFF !important;
+    }
+    
+    .breeds-management .text-gray {
+        color: #FFFFFF !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<section class="section">
+<section class="section breeds-management">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="section-heading" style="margin-bottom: 0;">Breeds</h2>
@@ -29,8 +93,8 @@
                             <td class="text-gray">{{ breed.category.name }}</td>
                             <td class="text-gray">{{ breed.description|truncatewords:10 }}</td>
                             <td>
-                                <a href="{% url 'admin_delete_breed' breed.id %}" class="btn btn-danger btn-sm" 
-                                   onclick="return confirm('Are you sure you want to delete this breed?')">
+                                          <a href="{% url 'admin_delete_breed' breed.id %}" class="btn btn-danger btn-sm" 
+                                              data-confirm="Are you sure you want to delete this breed?">
                                     <i class="fas fa-trash"></i> Delete
                                 </a>
                             </td>

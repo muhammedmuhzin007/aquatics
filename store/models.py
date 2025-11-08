@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 import random
 import string
+from urllib.parse import urlparse, parse_qs
 
 
 class CustomUser(AbstractUser):
@@ -65,19 +66,12 @@ class Breed(models.Model):
 
 
 class Fish(models.Model):
-    SIZE_CHOICES = [
-        ('small', 'Small (< 2 inches)'),
-        ('medium', 'Medium (2-5 inches)'),
-        ('large', 'Large (5-10 inches)'),
-        ('xlarge', 'Extra Large (> 10 inches)'),
-    ]
-    
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='fishes')
     breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='fishes')
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    size = models.CharField(max_length=20, choices=SIZE_CHOICES, default='medium')
+    size = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text='Size in inches')
     stock_quantity = models.IntegerField(default=0)
     image = models.ImageField(upload_to='fishes/', blank=True, null=True)
     is_available = models.BooleanField(default=True)
@@ -86,6 +80,95 @@ class Fish(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.breed.name}"
+
+
+class FishMedia(models.Model):
+    MEDIA_TYPES = [
+        ("image", "Image"),
+        ("video", "Video"),
+    ]
+    fish = models.ForeignKey(Fish, on_delete=models.CASCADE, related_name="media")
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
+    file = models.FileField(upload_to="fishes/media/", blank=True, null=True)
+    external_url = models.URLField(blank=True, null=True, help_text="Optional external video URL (e.g., YouTube)")
+    title = models.CharField(max_length=150, blank=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["display_order", "-created_at"]
+
+    def __str__(self):
+        return f"{self.fish.name} - {self.media_type} - {self.title or self.id}"
+
+    @property
+    def is_video(self):
+        return self.media_type == "video"
+
+    @property
+    def source(self):
+        """Return a usable URL for the media (file or external)."""
+        if self.file:
+            try:
+                return self.file.url
+            except Exception:
+                return None
+        return self.external_url
+
+    @property
+    def embed_url(self):
+        """Return an embeddable URL for known providers (YouTube/Vimeo). Falls back to source."""
+        if self.file:
+            # For uploaded videos/images, use the direct file URL
+            try:
+                return self.file.url
+            except Exception:
+                return None
+
+        url = (self.external_url or '').strip()
+        if not url:
+            return None
+
+        try:
+            # Ensure scheme present; user may paste 'www.youtube.com/watch?v=ID'
+            if not url.startswith(('http://', 'https://')):
+                url = f'https://{url}'
+            parsed = urlparse(url)
+            host = (parsed.netloc or '').lower()
+
+            # YouTube variants
+            if 'youtube.com' in host:
+                # formats like /watch?v=VIDEO_ID or /shorts/VIDEO_ID
+                if parsed.path == '/watch':
+                    vid = parse_qs(parsed.query).get('v', [None])[0]
+                    if vid:
+                        return f"https://www.youtube.com/embed/{vid}"
+                elif parsed.path.startswith('/shorts/'):
+                    vid = parsed.path.split('/shorts/')[-1].split('/')[0]
+                    if vid:
+                        return f"https://www.youtube.com/embed/{vid}"
+                elif parsed.path.startswith('/embed/'):
+                    return url  # already embed format
+            if 'youtu.be' in host:
+                # format: https://youtu.be/VIDEO_ID
+                vid = parsed.path.lstrip('/')
+                if vid:
+                    return f"https://www.youtube.com/embed/{vid}"
+
+            # Vimeo
+            if 'vimeo.com' in host:
+                # format: https://vimeo.com/VIDEO_ID or player.vimeo.com/video/VIDEO_ID
+                if 'player.vimeo.com' in host and parsed.path.startswith('/video/'):
+                    return url  # already embed
+                vid = parsed.path.lstrip('/').split('/')[0]
+                if vid.isdigit():
+                    return f"https://player.vimeo.com/video/{vid}"
+
+            # Unknown provider - return original URL
+            return url
+        except Exception:
+            # On any parsing error, return the original
+            return url
 
 
 class Cart(models.Model):
@@ -113,10 +196,27 @@ class Order(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     
+    PAYMENT_METHOD_CHOICES = [
+        ('card', 'Credit/Debit Card'),
+        ('upi', 'UPI Payment'),
+        ('netbanking', 'Net Banking'),
+        ('wallet', 'Digital Wallet'),
+    ]
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+    
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders')
     order_number = models.CharField(max_length=20, unique=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='card')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
     shipping_address = models.TextField()
     phone_number = models.CharField(max_length=15)
     created_at = models.DateTimeField(auto_now_add=True)

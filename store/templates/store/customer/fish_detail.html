@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load currency %}
 
 {% block content %}
 <section class="section">
@@ -24,7 +25,7 @@
                         <span class="badge bg-secondary ms-2">{{ fish.breed.name }}</span>
                         <h1 class="text-white mt-3 mb-3" style="font-size: 2.5rem; font-weight: 700;">{{ fish.name }}</h1>
                         <div class="mb-4">
-                            <span class="price-badge" style="font-size: 2rem;">₹{{ fish.price }}</span>
+                            <span class="price-badge" style="font-size: 2rem;">{{ fish.price|rupees }}</span>
                         </div>
                         <div class="divider"></div>
                         <h5 class="text-white mb-3">Description</h5>
@@ -94,12 +95,12 @@
 <!-- Media Modal / Carousel -->
 <div class="modal fade" id="mediaModal{{ fish.id }}" tabindex="-1" aria-labelledby="mediaModalLabel{{ fish.id }}" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-white);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
                 <h5 class="modal-title" id="mediaModalLabel{{ fish.id }}">{{ fish.name }} — Media</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="background: transparent;">
                 <div id="mediaCarousel{{ fish.id }}" class="carousel slide" data-bs-ride="false">
                     <div class="carousel-inner">
                         {% if fish.image %}
@@ -111,13 +112,21 @@
                         {% if media %}
                             {% for m in media %}
                                 <div class="carousel-item {% if not fish.image and forloop.first %}active{% endif %}">
-                                    {% if m.type == 'video' %}
-                                        <video controls style="width:100%; max-height:70vh;">
-                                            <source src="{{ m.url }}" type="video/mp4">
-                                            Your browser does not support the video tag.
-                                        </video>
+                                    {% if m.media_type == 'video' %}
+                                        {% if 'youtube.com' in m.embed_url or 'youtu.be' in m.embed_url %}
+                                            <div class="ratio ratio-16x9">
+                                                <iframe src="{{ m.embed_url }}" title="video" allowfullscreen style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                                            </div>
+                                        {% elif m.file %}
+                                            <video controls style="width:100%; max-height:70vh;">
+                                                <source src="{{ m.embed_url }}" type="video/mp4">
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        {% else %}
+                                            <a href="{{ m.embed_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">Open Video</a>
+                                        {% endif %}
                                     {% else %}
-                                        <img src="{{ m.url }}" class="d-block w-100" alt="{{ fish.name }} media" style="max-height:70vh; object-fit:contain;">
+                                        <img src="{{ m.source }}" class="d-block w-100" alt="{{ fish.name }} media" style="max-height:70vh; object-fit:contain;">
                                     {% endif %}
                                 </div>
                             {% endfor %}

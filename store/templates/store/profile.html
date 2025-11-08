@@ -62,10 +62,15 @@
                             <div class="col-md-8"><span class="text-gray">{{ user.created_at|date:"M d, Y" }}</span></div>
                         </div>
                         
-                        <div class="mt-4">
-                            <a href="{% url 'edit_profile' %}" class="btn btn-primary">
+                        <div class="mt-4 d-grid gap-2 d-md-flex">
+                            <a href="{% url 'edit_profile' %}" class="btn btn-primary me-md-2">
                                 <i class="fas fa-edit"></i> Edit Profile
                             </a>
+                            {% if user.email_verified %}
+                            <a href="{% url 'change_password' %}" class="btn btn-dark">
+                                <i class="fas fa-key"></i> Change Password
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

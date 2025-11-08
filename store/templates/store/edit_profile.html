@@ -2,22 +2,73 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<style>
+  .profile-form-stable input.form-control,
+  .profile-form-stable select.form-select,
+  .profile-form-stable textarea.form-control {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  .profile-form-stable input.form-control:focus,
+  .profile-form-stable select.form-select:focus,
+  .profile-form-stable textarea.form-control:focus {
+    background-color: rgba(15, 25, 40, 0.95) !important;
+    color: #FFFFFF !important;
+    border-color: #1E88E5 !important;
+    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
+  }
+    .profile-form-stable .form-label { color: #FFFFFF !important; }
+
+        /* Rounded profile avatar */
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--border-color);
+            display: inline-block;
+        }
+        .profile-avatar.placeholder {
+            background: var(--card-bg);
+            color: var(--text-white);
+            font-weight: 600;
+            font-size: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+</style>
 <section class="section">
     <div class="container-fluid">
         <h2 class="section-heading">Edit Profile</h2>
 
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-body" style="padding: 40px;">
-                        <form method="POST" enctype="multipart/form-data">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6 col-xl-5">
+                                <div class="card">
+                                        <div class="card-header" style="background: linear-gradient(90deg, rgba(30,136,229,0.35), rgba(15,25,40,0.95));"><h5 class="text-white" style="margin:0;">Update Profile</h5></div>
+                                        <div class="card-body" style="padding: 40px;">
+                                                <div class="text-center mb-3">
+                                                        {% if form.instance.profile_picture %}
+                                                                <img id="avatarPreview" src="{{ form.instance.profile_picture.url }}" alt="Profile picture" class="profile-avatar">
+                                                        {% else %}
+                                                                <div id="avatarPlaceholder" class="profile-avatar placeholder">{{ form.instance.username|first|upper }}</div>
+                                                        {% endif %}
+                                                        <div>
+                                                            <button type="button" id="changePhotoBtn" class="btn btn-sm btn-dark mt-2">
+                                                                <i class="fas fa-camera"></i> Change Photo
+                                                            </button>
+                                                        </div>
+                                                </div>
+                                                <hr class="mb-4" style="border-color: rgba(255,255,255,0.1);">
+                        <form method="POST" enctype="multipart/form-data" class="profile-form-stable">
                             {% csrf_token %}
                             {{ form|crispy }}
                             <div class="mt-4">
-                                <button type="submit" class="btn btn-success">
+                                <button type="submit" class="btn btn-dark w-100">
                                     <i class="fas fa-save"></i> Save Changes
                                 </button>
-                                <a href="{% url 'profile' %}" class="btn btn-secondary">
+                                <a href="{% url 'profile' %}" class="btn w-100 mt-2" style="background-color: rgba(15, 25, 40, 0.95); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1);">
                                     <i class="fas fa-times"></i> Cancel
                                 </a>
                             </div>
@@ -28,21 +79,39 @@
         </div>
     </div>
 </section>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const changeBtn = document.getElementById('changePhotoBtn');
+    const fileInput = document.getElementById('id_profile_picture');
+    const img = document.getElementById('avatarPreview');
+    const placeholder = document.getElementById('avatarPlaceholder');
 
-<style>
-    .form-control, .form-select {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-white) !important;
+    if (changeBtn && fileInput) {
+        changeBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
     }
-    .form-control:focus, .form-select:focus {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border-color: var(--accent-blue) !important;
-        color: var(--text-white) !important;
-        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    if (img) {
+                        img.src = ev.target.result;
+                    } else if (placeholder) {
+                        // Replace placeholder with an img element
+                        const newImg = document.createElement('img');
+                        newImg.id = 'avatarPreview';
+                        newImg.src = ev.target.result;
+                        newImg.className = 'profile-avatar';
+                        placeholder.replaceWith(newImg);
+                    }
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
     }
-    .form-label {
-        color: var(--text-white) !important;
-    }
-</style>
+});
+</script>
 {% endblock %}

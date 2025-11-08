@@ -7,13 +7,10 @@
         
         <div class="search-container">
             <div class="row g-3">
-                <div class="col-md-8">
+                <div class="col-12">
                     <label class="form-label"><i class="fas fa-search"></i> Search</label>
-                    <input id="live-search" type="text" class="form-control" name="search" value="{{ search_query }}"
+                    <input id="live-search" type="text" class="form-control search-large" name="search" value="{{ search_query }}"
                            placeholder="Search by name, description, breed..." autocomplete="off">
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button id="clear-search" class="btn btn-secondary w-100">Clear</button>
                 </div>
             </div>
         </div>
@@ -23,4 +20,53 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const searchInput = document.getElementById('live-search');
+    const resultsContainer = document.getElementById('fish-results');
+    const clearBtn = document.getElementById('clear-search');
+    let timeout = null;
+
+    function fetchResults(query){
+        const params = new URLSearchParams({search: query});
+        fetch(window.location.pathname + '?' + params.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data && data.html !== undefined) {
+                insertResults(data.html);
+            }
+        })
+        .catch(err => {
+            console.error('Live search error', err);
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e){
+            const q = this.value.trim();
+            // debounce
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                fetchResults(q);
+            }, 300);
+        });
+    }
+
+    // Smoothly animate new results when received
+    function insertResults(html) {
+        resultsContainer.innerHTML = html;
+        resultsContainer.classList.remove('fade-in');
+        // force reflow to restart animation
+        void resultsContainer.offsetWidth;
+        resultsContainer.classList.add('fade-in');
+    }
+});
+</script>
 {% endblock %}

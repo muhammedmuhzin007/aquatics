@@ -1,12 +1,117 @@
 {% extends 'store/base.html' %}
+{% load currency %}
+
+{% block extra_css %}
+<style>
+    /* Center the checkout page content */
+    .checkout-center .container-fluid {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    /* Payment Method Selection Styles */
+    .payment-method-selector {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .payment-option {
+        position: relative;
+    }
+    
+    .payment-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+    }
+    
+    .payment-card {
+        background: rgba(20,30,45,0.6);
+        border: 2px solid rgba(100,150,255,0.2);
+        border-radius: 12px;
+        padding: 1.25rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 140px;
+        justify-content: center;
+    }
+    
+    .payment-card:hover {
+        border-color: rgba(100,150,255,0.4);
+        background: rgba(25,35,50,0.7);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(30,136,229,0.2);
+    }
+    
+    .payment-option input[type="radio"]:checked + .payment-card {
+        border-color: #1E88E5;
+        background: linear-gradient(135deg, rgba(30,136,229,0.2), rgba(21,101,192,0.2));
+        box-shadow: 0 0 20px rgba(30,136,229,0.3);
+    }
+    
+    .payment-card i {
+        font-size: 2.5rem;
+        color: #1E88E5;
+    }
+    
+    .payment-card .payment-name {
+        color: #FFFFFF;
+        font-weight: 600;
+        font-size: 1rem;
+        text-align: center;
+    }
+    
+    .payment-card .payment-desc {
+        color: rgba(255,255,255,0.7);
+        font-size: 0.75rem;
+        text-align: center;
+    }
+    
+    .payment-option input[type="radio"]:checked + .payment-card i {
+        color: #1E88E5;
+        animation: pulse 0.5s ease;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .checkout-form .form-control,
+    .checkout-form textarea.form-control {
+        background: rgba(15,25,40,0.6) !important;
+        border: 1px solid rgba(100,150,255,0.25) !important;
+        color: #FFFFFF !important;
+        border-radius: 8px;
+    }
+    
+    .checkout-form .form-control:focus,
+    .checkout-form textarea.form-control:focus {
+        background: rgba(20,30,45,0.7) !important;
+        border-color: #1E88E5 !important;
+        box-shadow: 0 0 0 3px rgba(30,136,229,0.15) !important;
+    }
+    
+    .checkout-form .form-label {
+        color: #FFFFFF !important;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<section class="section">
+<section class="section checkout-center">
     <div class="container-fluid">
-        <h2 class="section-heading">Checkout</h2>
+        <h2 class="section-heading text-center">Checkout</h2>
 
-        <div class="row">
-            <div class="col-md-7 mb-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 col-xl-7 mb-4">
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5 class="text-white"><i class="fas fa-shopping-cart"></i> Order Summary</h5>
@@ -18,23 +123,69 @@
                                 <strong class="text-white">{{ item.fish.name }}</strong><br>
                                 <small class="text-gray">{{ item.fish.breed.name }} × {{ item.quantity }}</small>
                             </div>
-                            <strong class="text-white">₹{{ item.get_total }}</strong>
+                            <strong class="text-white">{{ item.get_total|rupees }}</strong>
                         </div>
                         {% endfor %}
                         <div class="d-flex justify-content-between mt-3">
                             <h5 class="text-white">Total:</h5>
-                            <h5 class="price-badge" style="font-size: 1.8rem;">₹{{ total }}</h5>
+                            <h5 class="price-badge" style="font-size: 1.8rem;">{{ total|rupees }}</h5>
                         </div>
                     </div>
                 </div>
                 
+                <form method="POST" class="checkout-form">
+                    {% csrf_token %}
                 <div class="card">
+                    <div class="card-header">
+                        <h5 class="text-white"><i class="fas fa-credit-card"></i> Payment Method</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="payment-method-selector">
+                            <div class="payment-option">
+                                <input type="radio" id="card" name="payment_method" value="card" required>
+                                <label for="card" class="payment-card">
+                                    <i class="fas fa-credit-card"></i>
+                                    <span class="payment-name">Card Payment</span>
+                                    <span class="payment-desc">Credit/Debit Card</span>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="upi" name="payment_method" value="upi" required>
+                                <label for="upi" class="payment-card">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    <span class="payment-name">UPI Payment</span>
+                                    <span class="payment-desc">Google Pay, PhonePe, etc.</span>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="netbanking" name="payment_method" value="netbanking" required>
+                                <label for="netbanking" class="payment-card">
+                                    <i class="fas fa-university"></i>
+                                    <span class="payment-name">Net Banking</span>
+                                    <span class="payment-desc">Online bank transfer</span>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="wallet" name="payment_method" value="wallet" required>
+                                <label for="wallet" class="payment-card">
+                                    <i class="fas fa-wallet"></i>
+                                    <span class="payment-name">Digital Wallet</span>
+                                    <span class="payment-desc">Paytm, Amazon Pay, etc.</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
                     <div class="card-header">
                         <h5 class="text-white"><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
                     </div>
                     <div class="card-body">
-                        <form method="POST">
-                            {% csrf_token %}
+                        
                             <div class="mb-4">
                                 <label class="form-label">Shipping Address *</label>
                                 <textarea class="form-control" name="shipping_address" rows="3" required 
@@ -54,9 +205,10 @@
                                     <i class="fas fa-arrow-left"></i> Back to Cart
                                 </a>
                             </div>
-                        </form>
+                        
                     </div>
                 </div>
+                </form>
             </div>
         </div>
     </div>

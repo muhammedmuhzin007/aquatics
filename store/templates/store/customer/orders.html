@@ -1,45 +1,200 @@
 {% extends 'store/base.html' %}
+{% load currency %}
 
 {% block content %}
 <section class="section">
     <div class="container-fluid">
-        <h2 class="section-heading">My Orders</h2>
-
-        {% if orders %}
-        <div class="card">
-            <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Order Number</th>
-                            <th>Date</th>
-                            <th>Total Amount</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in orders %}
-                        <tr>
-                            <td><strong class="text-white">{{ order.order_number }}</strong></td>
-                            <td class="text-gray">{{ order.created_at|date:"M d, Y" }}</td>
-                            <td><span class="price-badge">${{ order.total_amount }}</span></td>
-                            <td>
-                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
-                                    {{ order.get_status_display }}
-                                </span>
-                            </td>
-                            <td>
-                                <a href="{% url 'order_detail' order.id %}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-eye"></i> View Details
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="section-heading mb-0">My Orders</h2>
+            <div class="text-gray">
+                <i class="fas fa-box"></i> Total Orders: <strong class="text-white">{{ orders.count }}</strong>
             </div>
         </div>
+
+        {% if orders %}
+        <div class="row">
+            {% for order in orders %}
+            <div class="col-12 mb-4">
+                <div class="card" style="border-left: 4px solid {% if order.status == 'delivered' %}#28a745{% elif order.status == 'pending' %}#ffc107{% elif order.status == 'cancelled' %}#dc3545{% elif order.status == 'shipped' %}#17a2b8{% else %}#1E88E5{% endif %};">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <!-- Order Header Info -->
+                            <div class="col-md-3 mb-3 mb-md-0">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-receipt me-2" style="color: #1E88E5;"></i>
+                                    <div>
+                                        <small class="text-gray d-block">Order Number</small>
+                                        <strong class="text-white" style="font-size: 0.95rem;">{{ order.order_number }}</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-calendar me-2" style="color: #1E88E5;"></i>
+                                    <div>
+                                        <small class="text-gray d-block">Order Date</small>
+                                        <span class="text-white" style="font-size: 0.9rem;">{{ order.created_at|date:"M d, Y" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Items Preview -->
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <small class="text-gray d-block mb-2">
+                                    <i class="fas fa-fish"></i> Items ({{ order.items.count }})
+                                </small>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for item in order.items.all|slice:":4" %}
+                                    {% if item.fish.image %}
+                                    <div style="position: relative;">
+                                        <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" 
+                                             style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color);"
+                                             title="{{ item.fish.name }} (x{{ item.quantity }})">
+                                        <span class="badge bg-dark" style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; padding: 2px 5px;">{{ item.quantity }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% if order.items.count > 4 %}
+                                    <div class="d-flex align-items-center justify-content-center" 
+                                         style="width: 50px; height: 50px; background: rgba(30, 136, 229, 0.1); border-radius: 8px; border: 2px dashed var(--border-color);">
+                                        <small class="text-white">+{{ order.items.count|add:"-4" }}</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Order Status & Amount -->
+                            <div class="col-md-3 mb-3 mb-md-0">
+                                <div class="mb-2">
+                                    <small class="text-gray d-block mb-1">Status</small>
+                                    <span class="badge badge-lg bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% elif order.status == 'shipped' %}info{% else %}primary{% endif %}" 
+                                          style="padding: 6px 12px; font-size: 0.85rem;">
+                                        <i class="fas {% if order.status == 'delivered' %}fa-check-circle{% elif order.status == 'pending' %}fa-clock{% elif order.status == 'cancelled' %}fa-times-circle{% elif order.status == 'shipped' %}fa-shipping-fast{% else %}fa-spinner{% endif %} me-1"></i>
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </div>
+                                {% if order.payment_status == 'pending' %}
+                                <div class="mb-2">
+                                    <span class="badge bg-danger" style="padding: 5px 10px; font-size: 0.8rem; animation: pulse 2s infinite;">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Payment Pending
+                                    </span>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <small class="text-gray d-block">Total Amount</small>
+                                    <span class="price-badge" style="font-size: 1.3rem; display: inline-block; margin-top: 4px;">
+                                        {{ order.total_amount|rupees }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="col-md-2 text-md-end">
+                                {% if order.payment_status == 'pending' %}
+                                <a href="{% url 'upi_payment' order.id %}" class="btn btn-warning w-100 mb-2" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; color: #000; font-weight: 600;">
+                                    <i class="fas fa-credit-card"></i> Pay Now
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'order_detail' order.id %}" class="btn btn-primary w-100 mb-2">
+                                    <i class="fas fa-eye"></i> View Details
+                                </a>
+                                {% if order.status == 'delivered' %}
+                                <button class="btn btn-outline-success w-100" style="font-size: 0.85rem;" disabled>
+                                    <i class="fas fa-star"></i> Rate Order
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Order Progress Timeline for shipped/processing orders -->
+                        {% if order.status == 'processing' or order.status == 'shipped' %}
+                        <hr style="border-color: var(--border-color); margin: 20px 0;">
+                        <div class="order-timeline">
+                            <div class="d-flex justify-content-between align-items-center" style="position: relative;">
+                                <div class="timeline-step text-center" style="flex: 1;">
+                                    <div class="timeline-icon active">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <small class="text-white d-block mt-2">Ordered</small>
+                                    <small class="text-gray" style="font-size: 0.75rem;">{{ order.created_at|date:"M d" }}</small>
+                                </div>
+                                <div class="timeline-line {% if order.status == 'processing' or order.status == 'shipped' or order.status == 'delivered' %}active{% endif %}"></div>
+                                <div class="timeline-step text-center" style="flex: 1;">
+                                    <div class="timeline-icon {% if order.status == 'processing' or order.status == 'shipped' or order.status == 'delivered' %}active{% endif %}">
+                                        <i class="fas fa-cog"></i>
+                                    </div>
+                                    <small class="text-white d-block mt-2">Processing</small>
+                                </div>
+                                <div class="timeline-line {% if order.status == 'shipped' or order.status == 'delivered' %}active{% endif %}"></div>
+                                <div class="timeline-step text-center" style="flex: 1;">
+                                    <div class="timeline-icon {% if order.status == 'shipped' or order.status == 'delivered' %}active{% endif %}">
+                                        <i class="fas fa-truck"></i>
+                                    </div>
+                                    <small class="text-white d-block mt-2">Shipped</small>
+                                </div>
+                                <div class="timeline-line {% if order.status == 'delivered' %}active{% endif %}"></div>
+                                <div class="timeline-step text-center" style="flex: 1;">
+                                    <div class="timeline-icon {% if order.status == 'delivered' %}active{% endif %}">
+                                        <i class="fas fa-box-open"></i>
+                                    </div>
+                                    <small class="text-white d-block mt-2">Delivered</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <style>
+        .order-timeline {
+            padding: 0 20px;
+        }
+        .timeline-step {
+            position: relative;
+            z-index: 2;
+        }
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(15, 25, 40, 0.8);
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            color: #6c757d;
+        }
+        .timeline-icon.active {
+            background: #1E88E5;
+            border-color: #1E88E5;
+            color: white;
+        }
+        .timeline-line {
+            height: 2px;
+            background: var(--border-color);
+            flex: 1;
+            margin: 0 -10px;
+            position: relative;
+            top: -30px;
+            z-index: 1;
+        }
+        .timeline-line.active {
+            background: #1E88E5;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+        </style>
         {% else %}
         <div class="empty-state">
             <i class="fas fa-shopping-bag"></i>

@@ -1,0 +1,356 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}UPI Payment - AquaFish Store{% endblock %}
+
+{% block content %}
+<style>
+    .upi-payment-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .payment-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .payment-header h2 {
+        margin: 0 0 10px 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .payment-amount {
+        font-size: 3rem;
+        font-weight: 800;
+        margin: 10px 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .order-info {
+        font-size: 1rem;
+        opacity: 0.95;
+        margin-top: 10px;
+    }
+
+    .payment-card {
+        background: #1e1e1e;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        border: 1px solid #333;
+    }
+
+    .payment-card h4 {
+        color: #667eea;
+        margin-bottom: 20px;
+        font-size: 1.3rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .payment-card h4 i {
+        font-size: 1.5rem;
+    }
+
+    .qr-code-container {
+        text-align: center;
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin: 20px 0;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .qr-code-container img {
+        max-width: 300px;
+        width: 100%;
+        height: auto;
+        border: 5px solid #667eea;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .qr-instruction {
+        color: #333;
+        margin-top: 15px;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .upi-id-display {
+        background: #2a2a2a;
+        border: 2px solid #667eea;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+    }
+
+    .upi-id-label {
+        color: #aaa;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .upi-id-value {
+        color: #667eea;
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+        word-break: break-all;
+    }
+
+    .upi-apps-container {
+        margin-top: 20px;
+    }
+
+    .upi-apps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .upi-app-btn {
+        background: #2a2a2a;
+        border: 2px solid #444;
+        border-radius: 12px;
+        padding: 20px 15px;
+        text-decoration: none;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    .upi-app-btn:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .upi-app-btn i {
+        font-size: 2.5rem;
+    }
+
+    .verification-form {
+        background: #2a2a2a;
+        border-radius: 12px;
+        padding: 25px;
+        margin-top: 20px;
+        border: 2px solid #444;
+    }
+
+    .verification-form .form-label {
+        color: #aaa;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .verification-form .form-control {
+        background: #1e1e1e;
+        border: 2px solid #444;
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+
+    .verification-form .form-control:focus {
+        background: #1e1e1e;
+        border-color: #667eea;
+        color: white;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .btn-verify {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 15px 40px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        margin-top: 20px;
+        width: 100%;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-verify:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        color: white;
+    }
+
+    .payment-instructions {
+        background: #2a2a2a;
+        border-left: 4px solid #667eea;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+
+    .payment-instructions h5 {
+        color: #667eea;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .payment-instructions ul {
+        color: #ccc;
+        padding-left: 20px;
+        margin: 0;
+    }
+
+    .payment-instructions li {
+        margin-bottom: 10px;
+        line-height: 1.6;
+    }
+
+    .back-btn {
+        background: #2a2a2a;
+        border: 2px solid #444;
+        color: white;
+        padding: 12px 30px;
+        border-radius: 10px;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 20px;
+        transition: all 0.3s ease;
+    }
+
+    .back-btn:hover {
+        background: #444;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        .payment-amount {
+            font-size: 2rem;
+        }
+
+        .qr-code-container img {
+            max-width: 250px;
+        }
+
+        .upi-apps-grid {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
+    }
+</style>
+
+<div class="upi-payment-container">
+    <!-- Payment Header -->
+    <div class="payment-header">
+        <h2><i class="fas fa-mobile-alt"></i> UPI Payment</h2>
+        <div class="payment-amount">₹{{ order.total_amount }}</div>
+        <div class="order-info">
+            Order #{{ order.order_number }}
+        </div>
+    </div>
+
+    <!-- QR Code Section -->
+    <div class="payment-card">
+        <h4><i class="fas fa-qrcode"></i> Scan QR Code</h4>
+        <div class="qr-code-container">
+            <img src="data:image/png;base64,{{ qr_code }}" alt="UPI QR Code">
+            <p class="qr-instruction">
+                <i class="fas fa-camera"></i> Scan this QR code using any UPI app
+            </p>
+        </div>
+    </div>
+
+    <!-- UPI ID Display -->
+    <div class="payment-card">
+        <h4><i class="fas fa-at"></i> Or Pay to UPI ID</h4>
+        <div class="upi-id-display">
+            <div class="upi-id-label">UPI ID</div>
+            <div class="upi-id-value">{{ upi_id }}</div>
+        </div>
+    </div>
+
+    <!-- UPI Apps Quick Links -->
+    <div class="payment-card">
+        <h4><i class="fas fa-mobile-alt"></i> Pay Using UPI Apps</h4>
+        <div class="upi-apps-grid">
+            <a href="{{ upi_apps.phonepe }}" class="upi-app-btn">
+                <i class="fas fa-mobile-alt"></i>
+                <span>PhonePe</span>
+            </a>
+            <a href="{{ upi_apps.googlepay }}" class="upi-app-btn">
+                <i class="fab fa-google"></i>
+                <span>Google Pay</span>
+            </a>
+            <a href="{{ upi_apps.paytm }}" class="upi-app-btn">
+                <i class="fas fa-wallet"></i>
+                <span>Paytm</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Payment Verification Form -->
+    <div class="payment-card">
+        <h4><i class="fas fa-check-circle"></i> Confirm Payment</h4>
+        <div class="payment-instructions">
+            <h5><i class="fas fa-info-circle"></i> Instructions</h5>
+            <ul>
+                <li>Complete the payment using any UPI app</li>
+                <li>After successful payment, you will receive a UPI Transaction ID</li>
+                <li>Enter the 12-digit UPI Transaction ID below to confirm your order</li>
+                <li>Example format: 123456789012</li>
+            </ul>
+        </div>
+
+        <form method="POST" action="{% url 'verify_upi_payment' order.id %}" class="verification-form">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="upi_transaction_id" class="form-label">
+                    <i class="fas fa-receipt"></i> UPI Transaction ID *
+                </label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="upi_transaction_id" 
+                    name="upi_transaction_id" 
+                    placeholder="Enter 12-digit UPI Transaction ID"
+                    pattern="[0-9]{12}"
+                    maxlength="12"
+                    required
+                >
+                <small class="text-muted">Enter the 12-digit transaction ID you received after payment</small>
+            </div>
+            <button type="submit" class="btn btn-verify">
+                <i class="fas fa-check-double"></i> Verify Payment & Confirm Order
+            </button>
+        </form>
+    </div>
+
+    <!-- Back to Orders -->
+    <div class="text-center">
+        <a href="{% url 'customer_orders' %}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Orders
+        </a>
+    </div>
+</div>
+{% endblock %}

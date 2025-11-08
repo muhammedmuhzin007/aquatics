@@ -2,23 +2,45 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<h2 class="text-white mb-4"><i class="fas fa-plus"></i> Add Breed</h2>
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading"><i class="fas fa-plus"></i> Add Breed</h2>
 
-<div class="card">
-    <div class="card-body">
-        <form method="POST">
-            {% csrf_token %}
-            {{ form|crispy }}
-            <div class="mt-4">
-                <button type="submit" class="btn btn-success">
-                    <i class="fas fa-save"></i> Save Breed
-                </button>
-                <a href="{% url 'staff_breeds' %}" class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Cancel
-                </a>
+        <div class="card">
+            <div class="card-body" style="padding: 40px;">
+                <form method="POST" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Save Breed
+                        </button>
+                        <a href="{% url 'staff_breeds' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</section>
+
+<style>
+    /* Dark theme for inputs and the Category dropdown */
+    .form-control, .form-select, select {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-white) !important;
+    }
+    .form-control:focus, .form-select:focus, select:focus {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--accent-blue) !important;
+        color: var(--text-white) !important;
+        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+    }
+    .form-label { color: var(--text-white) !important; }
+    /* Dropdown menu items in some browsers */
+    select option { background: #0f1928; color: #fff; }
+</style>
 {% endblock %}
 

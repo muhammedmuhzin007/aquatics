@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load currency %}
 
 {% block content %}
 <!-- Hero Section -->
@@ -95,7 +96,7 @@
                     <h5 class="card-title mt-2">{{ fish.name }}</h5>
                     <p class="card-text">{{ fish.description|truncatewords:15 }}</p>
                     <div class="d-flex justify-content-between align-items-center mt-3">
-                        <span class="price-badge">${{ fish.price }}</span>
+                        <span class="price-badge">{{ fish.price|rupees }}</span>
                         {% if user.is_authenticated and user.role == 'customer' %}
                             <a href="{% url 'fish_detail' fish.id %}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-eye"></i> View

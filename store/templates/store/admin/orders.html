@@ -1,35 +1,303 @@
 {% extends 'store/base.html' %}
+{% load currency %}
+
+{% block extra_css %}
+<style>
+    /* Scoped styles for orders management page */
+    .orders-management .card {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
+    }
+    
+    /* Table styling */
+    .orders-management .table>:not(caption)>*>* {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #FFFFFF !important;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    
+    /* Table headers */
+    .orders-management thead th {
+        background: rgba(25,40,60,0.65) !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid rgba(255,255,255,0.15) !important;
+    }
+    
+    /* Table rows */
+    .orders-management tbody tr {
+        background: rgba(20,30,45,0.55) !important;
+        transition: background 0.2s ease;
+    }
+    
+    .orders-management tbody tr:nth-child(odd) {
+        background: rgba(25,40,60,0.55) !important;
+    }
+    
+    .orders-management tbody tr:hover {
+        background: rgba(40,80,140,0.55) !important;
+    }
+    
+    /* Table cells */
+    .orders-management .table tbody td {
+        color: #FFFFFF !important;
+    }
+    
+    .orders-management .table tbody td * {
+        color: #FFFFFF !important;
+    }
+    
+    .orders-management .table tbody td strong {
+        color: #FFFFFF !important;
+        font-weight: 700;
+    }
+    
+    /* Override admin-text-black class */
+    .orders-management .admin-text-black {
+        color: #FFFFFF !important;
+    }
+    
+    /* Form styling */
+    .orders-management .form-control, 
+    .orders-management .form-select {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-white) !important;
+    }
+    
+    .orders-management .form-control:focus, 
+    .orders-management .form-select:focus {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--accent-blue) !important;
+        color: var(--text-white) !important;
+        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+    }
+    
+    .orders-management .form-label {
+        color: var(--text-white) !important;
+    }
+    
+    /* Enhanced Filter Card Styling */
+    .orders-management .filter-card {
+        background: linear-gradient(135deg, rgba(20,30,50,0.95), rgba(30,45,70,0.95)) !important;
+        border: 1px solid rgba(100,150,255,0.2) !important;
+        box-shadow: 0 8px 32px rgba(0,100,255,0.2) !important;
+        border-radius: 12px !important;
+        overflow: hidden;
+    }
+    
+    .orders-management .filter-card .card-header {
+        background: linear-gradient(135deg, rgba(30,136,229,0.2), rgba(21,101,192,0.2)) !important;
+        border-bottom: 2px solid rgba(100,150,255,0.3) !important;
+        padding: 1rem 1.5rem;
+    }
+    
+    .orders-management .filter-card .card-header h5 {
+        color: #FFFFFF !important;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .orders-management .filter-card .card-header h5 i {
+        color: var(--accent-blue);
+        font-size: 1.2rem;
+    }
+    
+    .orders-management .filter-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* Filter Form Groups */
+    .orders-management .filter-group {
+        position: relative;
+    }
+    
+    .orders-management .filter-group .form-label {
+        font-weight: 500;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        color: rgba(255,255,255,0.85) !important;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .orders-management .filter-group .form-label i {
+        color: var(--accent-blue);
+        font-size: 0.875rem;
+    }
+    
+    .orders-management .filter-group .form-control,
+    .orders-management .filter-group .form-select {
+        background: rgba(15,25,40,0.6) !important;
+        border: 1px solid rgba(100,150,255,0.25) !important;
+        border-radius: 8px;
+        padding: 0.625rem 1rem;
+        color: #FFFFFF !important;
+        transition: all 0.3s ease;
+    }
+    
+    .orders-management .filter-group .form-control:hover,
+    .orders-management .filter-group .form-select:hover {
+        border-color: rgba(100,150,255,0.4) !important;
+        background: rgba(20,30,45,0.7) !important;
+    }
+    
+    .orders-management .filter-group .form-control:focus,
+    .orders-management .filter-group .form-select:focus {
+        background: rgba(25,35,50,0.8) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 0 0 3px rgba(30,136,229,0.15) !important;
+    }
+    
+    /* Action Buttons */
+    .orders-management .filter-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .orders-management .filter-actions .btn {
+        flex: 1;
+        padding: 0.75rem 1.25rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .orders-management .filter-actions .btn-filter {
+        background: linear-gradient(135deg, #1E88E5, #1565C0) !important;
+        box-shadow: 0 4px 12px rgba(30,136,229,0.3);
+    }
+    
+    .orders-management .filter-actions .btn-filter:hover {
+        background: linear-gradient(135deg, #1976D2, #0D47A1) !important;
+        box-shadow: 0 6px 16px rgba(30,136,229,0.4);
+        transform: translateY(-2px);
+    }
+    
+    .orders-management .filter-actions .btn-export {
+        background: linear-gradient(135deg, #43A047, #2E7D32) !important;
+        box-shadow: 0 4px 12px rgba(67,160,71,0.3);
+    }
+    
+    .orders-management .filter-actions .btn-export:hover {
+        background: linear-gradient(135deg, #388E3C, #1B5E20) !important;
+        box-shadow: 0 6px 16px rgba(67,160,71,0.4);
+        transform: translateY(-2px);
+    }
+    
+    .orders-management .filter-actions .btn-reset {
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)) !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    .orders-management .filter-actions .btn-reset:hover {
+        background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08)) !important;
+        border-color: rgba(255,255,255,0.3) !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        transform: translateY(-2px);
+    }
+    
+    .orders-management .filter-actions .btn i {
+        font-size: 1rem;
+    }
+    
+    /* Standalone Export Button */
+    .orders-management .btn-export {
+        background: linear-gradient(135deg, #43A047, #2E7D32) !important;
+        box-shadow: 0 4px 12px rgba(67,160,71,0.3);
+        color: #FFFFFF !important;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .orders-management .btn-export:hover {
+        background: linear-gradient(135deg, #388E3C, #1B5E20) !important;
+        box-shadow: 0 6px 16px rgba(67,160,71,0.4);
+        transform: translateY(-2px);
+    }
+    
+    .orders-management .btn-export i {
+        font-size: 1rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<section class="section">
+<section class="section orders-management">
     <div class="container-fluid">
         <h2 class="section-heading">Orders Management</h2>
 
-        <div class="card mb-4">
+        <div class="card filter-card mb-4">
             <div class="card-header">
-                <h5 class="text-white">Filter Orders</h5>
+                <h5>
+                    <i class="fas fa-sliders-h"></i>
+                    Advanced Filters
+                </h5>
             </div>
             <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Status</label>
+                <form method="GET" class="row g-4">
+                    <div class="col-lg-3 col-md-6 filter-group">
+                        <label class="form-label">
+                            <i class="fas fa-tag"></i>
+                            Order Status
+                        </label>
                         {{ form.status }}
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Start Date</label>
+                    <div class="col-lg-3 col-md-6 filter-group">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            Start Date
+                        </label>
                         {{ form.start_date }}
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">End Date</label>
+                    <div class="col-lg-3 col-md-6 filter-group">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-check"></i>
+                            End Date
+                        </label>
                         {{ form.end_date }}
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100 me-2">
-                            <i class="fas fa-filter"></i> Filter
-                        </button>
-                        <a href="{% url 'export_orders_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success w-100">
-                            <i class="fas fa-file-excel"></i> Export
-                        </a>
+                    <div class="col-lg-3 col-md-6 filter-group d-flex align-items-end">
+                        <div class="filter-actions w-100">
+                            <button type="submit" class="btn btn-filter">
+                                <i class="fas fa-search"></i>
+                                Apply
+                            </button>
+                            <a href="{% url 'admin_orders' %}" class="btn btn-reset">
+                                <i class="fas fa-redo"></i>
+                                Reset
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'export_orders_excel' %}?{{ request.GET.urlencode }}" class="btn btn-export" style="width: auto; padding: 0.75rem 2rem;">
+                                <i class="fas fa-file-excel"></i>
+                                Export to Excel
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -54,7 +322,7 @@
                         <tr>
                             <td><strong class="admin-text-black">{{ order.order_number }}</strong></td>
                             <td class="admin-text-black">{{ order.user.username }}</td>
-                            <td><span class="price-badge">₹{{ order.total_amount }}</span></td>
+                            <td><span class="price-badge">{{ order.total_amount|rupees }}</span></td>
                             <td>
                                 <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
                                     {{ order.get_status_display }}
@@ -80,21 +348,4 @@
         {% endif %}
     </div>
 </section>
-
-<style>
-    .form-control, .form-select {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-white) !important;
-    }
-    .form-control:focus, .form-select:focus {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border-color: var(--accent-blue) !important;
-        color: var(--text-white) !important;
-        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
-    }
-    .form-label {
-        color: var(--text-white) !important;
-    }
-</style>
 {% endblock %}

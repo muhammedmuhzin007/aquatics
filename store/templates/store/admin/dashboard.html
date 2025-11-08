@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load currency %}
 
 {% block extra_css %}
 <style>
@@ -8,11 +9,54 @@
         width: 100%;
         margin-bottom: 2rem;
     }
+    
+    /* Dark theme for recent orders table */
+    .admin-dashboard .card { 
+        background: var(--card-bg) !important; 
+        border: 1px solid var(--border-color) !important; 
+    }
+    .admin-dashboard .table { 
+        background: transparent !important; 
+    }
+    .admin-dashboard .table>:not(caption)>*>* {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #FFFFFF !important;
+    }
+    .admin-dashboard thead th {
+        background: rgba(25,40,60,0.65) !important;
+        color: #FFFFFF !important;
+        border-color: var(--border-color) !important;
+        font-weight: 600 !important;
+    }
+    .admin-dashboard tbody tr { 
+        background: rgba(20,30,45,0.55) !important; 
+        transition: background .18s ease; 
+    }
+    .admin-dashboard tbody tr:nth-child(odd) { 
+        background: rgba(25,40,60,0.55) !important; 
+    }
+    .admin-dashboard tbody tr:hover { 
+        background: rgba(40,80,140,0.55) !important; 
+    }
+    .admin-dashboard td, .admin-dashboard th { 
+        color: #FFFFFF !important; 
+        border-color: var(--border-color) !important; 
+    }
+    .admin-dashboard .text-gray { 
+        color: rgba(255,255,255,0.85) !important; 
+    }
+    .admin-dashboard .text-white { 
+        color: #FFFFFF !important; 
+    }
+    .admin-dashboard .badge { 
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.25); 
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="section">
+<section class="section admin-dashboard">
     <div class="container-fluid">
         <h2 class="section-heading">Admin Dashboard</h2>
 
@@ -41,7 +85,7 @@
             <div class="col-md-3 mb-4">
                 <div class="dashboard-card">
                     <i class="fas fa-rupee-sign"></i>
-                    <h3>₹{{ total_revenue }}</h3>
+                    <h3>{{ total_revenue|rupees }}</h3>
                     <p>Total Revenue</p>
                 </div>
             </div>
@@ -98,7 +142,7 @@
                                 <tr>
                                     <td><strong class="text-white">{{ order.order_number }}</strong></td>
                                     <td class="text-gray">{{ order.user.username }}</td>
-                                    <td class="text-white">₹{{ order.total_amount }}</td>
+                                    <td class="text-white">{{ order.total_amount|rupees }}</td>
                                     <td>
                                         <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
                                             {{ order.get_status_display }}

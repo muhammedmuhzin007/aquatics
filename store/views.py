@@ -4,20 +4,27 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.http import JsonResponse, HttpResponse
+from django.db import models
 from django.db.models import Q, Sum, Count
 from django.conf import settings
+from django.urls import reverse
+from django.contrib.auth import update_session_auth_hash
 from django.utils import timezone
 from .models import (
-    CustomUser, Category, Breed, Fish, Cart, Order, OrderItem, OTP
+    CustomUser, Category, Breed, Fish, FishMedia, Cart, Order, OrderItem, OTP
 )
 from .forms import (
-    CustomUserCreationForm, CategoryForm, BreedForm, FishForm,
-    ProfileEditForm, OrderFilterForm
+    CustomUserCreationForm, StaffCreateForm, CategoryForm, BreedForm, FishForm, FishMediaForm,
+    ProfileEditForm, OrderFilterForm, ChangePasswordForm
 )
 from datetime import timedelta
 import openpyxl
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Font, PatternFill, Alignment
 import pandas as pd
+import qrcode
+from io import BytesIO
+import base64
+import uuid
 
 
 # Helper Functions
@@ -269,7 +276,78 @@ def customer_fish_list_view(request):
 @user_passes_test(is_customer)
 def fish_detail_view(request, fish_id):
     fish = get_object_or_404(Fish, id=fish_id, is_available=True)
-    return render(request, 'store/customer/fish_detail.html', {'fish': fish})
+    # Collect up to 5 images and 2 videos
+    images = list(FishMedia.objects.filter(fish=fish, media_type='image')[:5])
+    videos = list(FishMedia.objects.filter(fish=fish, media_type='video')[:2])
+    media = images + videos
+    return render(request, 'store/customer/fish_detail.html', {'fish': fish, 'media': media})
+
+
+# Admin: Manage Fish Media
+@login_required
+@user_passes_test(is_admin)
+def admin_fish_media_view(request, fish_id):
+    fish = get_object_or_404(Fish, id=fish_id)
+    media_items = FishMedia.objects.filter(fish=fish)
+
+    if request.method == 'POST':
+        form = FishMediaForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.fish = fish
+            # Basic validation: require either file or external_url
+            if not obj.file and not obj.external_url:
+                messages.error(request, 'Please provide a file or an external URL.')
+            else:
+                obj.save()
+                messages.success(request, 'Media added successfully.')
+                return redirect('admin_fish_media', fish_id=fish.id)
+    else:
+        form = FishMediaForm()
+
+    return render(request, 'store/admin/fish_media.html', {
+        'fish': fish,
+        'media_items': media_items,
+        'form': form,
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_fish_media_view(request, media_id):
+    media = get_object_or_404(FishMedia, id=media_id)
+    fish_id = media.fish.id
+    media.delete()
+    messages.success(request, 'Media deleted successfully.')
+    return redirect('admin_fish_media', fish_id=fish_id)
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_fish_media_view(request, media_id):
+    """Edit an existing FishMedia item (title, order, file, external URL, type)."""
+    media = get_object_or_404(FishMedia, id=media_id)
+    fish = media.fish
+
+    if request.method == 'POST':
+        form = FishMediaForm(request.POST, request.FILES, instance=media)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            # Require either a file or external URL (for videos). Allow images without external_url.
+            if not obj.file and not obj.external_url:
+                messages.error(request, 'Please provide a file or an external URL.')
+            else:
+                obj.save()
+                messages.success(request, 'Media updated successfully.')
+                return redirect('admin_fish_media', fish_id=fish.id)
+    else:
+        form = FishMediaForm(instance=media)
+
+    return render(request, 'store/admin/edit_fish_media.html', {
+        'fish': fish,
+        'media': media,
+        'form': form,
+    })
 
 
 @login_required
@@ -340,19 +418,35 @@ def checkout_view(request):
     if request.method == 'POST':
         shipping_address = request.POST.get('shipping_address')
         phone_number = request.POST.get('phone_number')
+        payment_method = request.POST.get('payment_method')
         
-        if not shipping_address or not phone_number:
+        if not shipping_address or not phone_number or not payment_method:
             messages.error(request, 'Please fill in all required fields.')
-            return render(request, 'store/customer/checkout.html', {'cart_items': cart_items})
+            total = sum(item.get_total() for item in cart_items)
+            return render(request, 'store/customer/checkout.html', {
+                'cart_items': cart_items,
+                'total': total,
+            })
         
         # Create order
         total_amount = sum(item.get_total() for item in cart_items)
+        
+        # Generate transaction ID
+        transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
+        
+        # Set initial payment status based on payment method
+        # UPI payments start as pending and will be updated after verification
+        payment_status = 'pending' if payment_method == 'upi' else 'paid'
+        
         order = Order.objects.create(
             user=request.user,
             order_number=Order.generate_order_number(),
             total_amount=total_amount,
             shipping_address=shipping_address,
             phone_number=phone_number,
+            payment_method=payment_method,
+            payment_status=payment_status,
+            transaction_id=transaction_id,
         )
         
         # Create order items
@@ -369,6 +463,10 @@ def checkout_view(request):
         
         # Clear cart
         cart_items.delete()
+        
+        # Redirect to UPI payment page if UPI is selected
+        if payment_method == 'upi':
+            return redirect('upi_payment', order_id=order.id)
         
         messages.success(request, f'Order placed successfully! Order number: {order.order_number}')
         return redirect('order_detail', order_id=order.id)
@@ -392,6 +490,113 @@ def customer_orders_view(request):
 def order_detail_view(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     return render(request, 'store/customer/order_detail.html', {'order': order})
+
+
+@login_required
+@user_passes_test(is_customer)
+def cancel_order_view(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    if request.method == 'POST':
+        # Only allow cancellation for pending or processing orders
+        if order.status in ['pending', 'processing']:
+            order.status = 'cancelled'
+            order.save()
+            messages.success(request, f'Order #{order.order_number} has been cancelled successfully.')
+        else:
+            messages.error(request, f'Order #{order.order_number} cannot be cancelled at this stage.')
+        
+        return redirect('order_detail', order_id=order.id)
+    
+    return redirect('order_detail', order_id=order.id)
+
+
+# UPI Payment Views
+@login_required
+@user_passes_test(is_customer)
+def upi_payment_view(request, order_id):
+    """Display UPI payment page with QR code and payment options"""
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    # Check if payment is already completed
+    if order.payment_status == 'paid':
+        messages.info(request, 'This order has already been paid.')
+        return redirect('order_detail', order_id=order.id)
+    
+    # Check if order is cancelled
+    if order.status == 'cancelled':
+        messages.error(request, 'Cannot process payment for a cancelled order.')
+        return redirect('order_detail', order_id=order.id)
+    
+    # Generate UPI payment string
+    # Format: upi://pay?pa=UPI_ID&pn=MERCHANT_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&cu=INR
+    upi_id = "muhzinmuhammed4@oksbi"  # Replace with your actual UPI ID
+    merchant_name = "AquaFish Store"
+    amount = str(order.total_amount)
+    transaction_note = f"Order {order.order_number}"
+    
+    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR"
+    
+    # Generate QR Code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(upi_string)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 for embedding in HTML
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    # UPI app deep links
+    upi_apps = {
+        'phonepe': f"phonepe://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+        'googlepay': f"gpay://upi/pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+        'paytm': f"paytmmp://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+    }
+    
+    context = {
+        'order': order,
+        'upi_id': upi_id,
+        'upi_string': upi_string,
+        'qr_code': qr_code_base64,
+        'upi_apps': upi_apps,
+    }
+    
+    return render(request, 'store/customer/upi_payment.html', context)
+
+
+@login_required
+@user_passes_test(is_customer)
+def verify_upi_payment(request, order_id):
+    """Verify UPI payment and update order status"""
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    if request.method == 'POST':
+        # In a real scenario, you would verify with payment gateway
+        # For now, we'll simulate successful payment
+        upi_transaction_id = request.POST.get('upi_transaction_id', '').strip()
+        
+        if upi_transaction_id:
+            # Update order with payment details
+            order.transaction_id = upi_transaction_id
+            order.payment_status = 'paid'
+            order.save()
+            
+            messages.success(request, f'Payment successful! Your order has been confirmed.')
+            return redirect('order_detail', order_id=order.id)
+        else:
+            messages.error(request, 'Please enter a valid UPI transaction ID.')
+            return redirect('upi_payment', order_id=order.id)
+    
+    return redirect('upi_payment', order_id=order.id)
 
 
 # Staff Views
@@ -598,6 +803,71 @@ def delete_fish_view(request, fish_id):
     return redirect('staff_fish_list')
 
 
+# Staff: Manage Fish Media
+@login_required
+@user_passes_test(is_staff)
+def staff_fish_media_view(request, fish_id):
+    fish = get_object_or_404(Fish, id=fish_id)
+    media_items = FishMedia.objects.filter(fish=fish)
+
+    if request.method == 'POST':
+        form = FishMediaForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.fish = fish
+            # Require either file or external URL
+            if not obj.file and not obj.external_url:
+                messages.error(request, 'Please provide a file or an external URL.')
+            else:
+                obj.save()
+                messages.success(request, 'Media added successfully.')
+                return redirect('staff_fish_media', fish_id=fish.id)
+    else:
+        form = FishMediaForm()
+
+    return render(request, 'store/staff/fish_media.html', {
+        'fish': fish,
+        'media_items': media_items,
+        'form': form,
+    })
+
+
+@login_required
+@user_passes_test(is_staff)
+def staff_delete_fish_media_view(request, media_id):
+    media = get_object_or_404(FishMedia, id=media_id)
+    fish_id = media.fish.id
+    media.delete()
+    messages.success(request, 'Media deleted successfully.')
+    return redirect('staff_fish_media', fish_id=fish_id)
+
+
+@login_required
+@user_passes_test(is_staff)
+def staff_edit_fish_media_view(request, media_id):
+    media = get_object_or_404(FishMedia, id=media_id)
+    fish = media.fish
+
+    if request.method == 'POST':
+        form = FishMediaForm(request.POST, request.FILES, instance=media)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            if not obj.file and not obj.external_url:
+                messages.error(request, 'Please provide a file or an external URL.')
+            else:
+                obj.save()
+                messages.success(request, 'Media updated successfully.')
+                return redirect('staff_fish_media', fish_id=fish.id)
+    else:
+        form = FishMediaForm(instance=media)
+
+    return render(request, 'store/staff/edit_fish_media.html', {
+        'fish': fish,
+        'media': media,
+        'form': form,
+    })
+
+
 # Admin Views
 @login_required
 @user_passes_test(is_admin)
@@ -690,17 +960,45 @@ def admin_staff_list_view(request):
 @user_passes_test(is_admin)
 def add_staff_view(request):
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
+        # Use a passwordless staff creation form; password will be set via OTP reset flow
+        form = StaffCreateForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.role = 'staff'
             user.email_verified = True
             user.is_active = True
+            # Do not set a password from admin input; require secure setup via OTP
+            user.set_unusable_password()
             user.save()
-            messages.success(request, 'Staff member added successfully.')
+            # Security: do not email passwords. Send OTP-based password setup email instead.
+            try:
+                otp_code = OTP.generate_otp()
+                OTP.objects.create(user=user, otp_code=otp_code)
+                # Build absolute URL to reset password page
+                reset_path = reverse('reset_password', kwargs={'user_id': user.id})
+                reset_url = request.build_absolute_uri(reset_path)
+                send_mail(
+                    'You have been added as Staff - AquaFish Store',
+                    (
+                        f"Hello {user.username},\n\n"
+                        "You've been added as staff to AquaFish Store.\n\n"
+                        "To securely set your password, use the OTP below within 5 minutes and visit this link:\n"
+                        f"{reset_url}\n\n"
+                        f"OTP: {otp_code}\n\n"
+                        "If you didn't expect this email, please ignore it.\n\n"
+                        "Thanks,\nAquaFish Store"
+                    ),
+                    settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
+                    [user.email],
+                    fail_silently=False,
+                )
+                messages.success(request, 'Staff member added and invite email sent successfully.')
+            except Exception as e:
+                # If email sending fails, still keep the account, but notify admin
+                messages.warning(request, f'Staff member added, but failed to send email: {e}')
             return redirect('admin_staff_list')
     else:
-        form = CustomUserCreationForm()
+        form = StaffCreateForm()
     
     return render(request, 'store/admin/add_staff.html', {'form': form})
 
@@ -863,6 +1161,15 @@ def admin_orders_view(request):
 @user_passes_test(is_admin)
 def admin_order_detail_view(request, order_id):
     order = get_object_or_404(Order, id=order_id)
+    
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        if new_status and new_status in dict(Order.STATUS_CHOICES):
+            order.status = new_status
+            order.save()
+            messages.success(request, f'Order status updated to {order.get_status_display()}.')
+            return redirect('admin_order_detail', order_id=order.id)
+    
     return render(request, 'store/admin/order_detail.html', {'order': order})
 
 
@@ -912,38 +1219,160 @@ def export_orders_excel_view(request):
     
     # Create Excel workbook
     wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Orders"
     
-    # Header
-    headers = ['Order Number', 'User', 'Total Amount', 'Status', 'Shipping Address', 'Phone', 'Date']
-    ws.append(headers)
+    # Sheet 1: Orders Summary
+    ws1 = wb.active
+    ws1.title = "Orders Summary"
+    
+    # Orders Summary Headers
+    summary_headers = [
+        'Order Number', 'Customer Username', 'Customer Email', 'Customer Phone', 
+        'Total Amount', 'Order Status', 'Payment Method', 'Payment Status', 'Transaction ID',
+        'Shipping Address', 'Contact Phone', 'Total Items', 'Order Created', 'Last Updated'
+    ]
+    ws1.append(summary_headers)
     
     # Style header
     header_fill = PatternFill(start_color="0066CC", end_color="0066CC", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
     
-    for cell in ws[1]:
+    for cell in ws1[1]:
         cell.fill = header_fill
         cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
     
-    # Data
+    # Orders Summary Data
     for order in orders:
-        ws.append([
+        total_items = order.items.aggregate(total=models.Sum('quantity'))['total'] or 0
+        ws1.append([
             order.order_number,
             order.user.username,
+            order.user.email,
+            order.user.phone_number if order.user.phone_number else 'N/A',
             float(order.total_amount),
-            order.status,
+            order.get_status_display(),
+            order.get_payment_method_display(),
+            order.get_payment_status_display(),
+            order.transaction_id if order.transaction_id else 'N/A',
             order.shipping_address,
             order.phone_number,
+            total_items,
             order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            order.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
         ])
+    
+    # Auto-adjust column widths for summary sheet
+    for column in ws1.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws1.column_dimensions[column_letter].width = adjusted_width
+    
+    # Sheet 2: Detailed Order Items
+    ws2 = wb.create_sheet(title="Order Items Detail")
+    
+    # Order Items Headers
+    items_headers = [
+        'Order Number', 'Customer Name', 'Fish Name', 'Fish Breed', 'Fish Category',
+        'Quantity', 'Unit Price', 'Item Total', 'Order Status', 'Order Date'
+    ]
+    ws2.append(items_headers)
+    
+    # Style items header
+    for cell in ws2[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Order Items Data
+    for order in orders:
+        for item in order.items.all():
+            ws2.append([
+                order.order_number,
+                order.user.username,
+                item.fish.name,
+                item.fish.breed.name,
+                item.fish.category.name,
+                item.quantity,
+                float(item.price),
+                float(item.get_total()),
+                order.get_status_display(),
+                order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            ])
+    
+    # Auto-adjust column widths for items sheet
+    for column in ws2.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws2.column_dimensions[column_letter].width = adjusted_width
+    
+    # Sheet 3: Customer Information
+    ws3 = wb.create_sheet(title="Customer Details")
+    
+    # Get unique customers from filtered orders
+    customer_ids = orders.values_list('user_id', flat=True).distinct()
+    customers = CustomUser.objects.filter(id__in=customer_ids)
+    
+    # Customer Headers
+    customer_headers = [
+        'Username', 'Email', 'Phone Number', 'Date Joined', 
+        'Email Verified', 'Total Orders', 'Total Spent'
+    ]
+    ws3.append(customer_headers)
+    
+    # Style customer header
+    for cell in ws3[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Customer Data
+    for customer in customers:
+        customer_orders = orders.filter(user=customer)
+        total_orders = customer_orders.count()
+        total_spent = customer_orders.aggregate(total=models.Sum('total_amount'))['total'] or 0
+        
+        ws3.append([
+            customer.username,
+            customer.email,
+            customer.phone_number if customer.phone_number else 'N/A',
+            customer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'Yes' if customer.email_verified else 'No',
+            total_orders,
+            float(total_spent),
+        ])
+    
+    # Auto-adjust column widths for customer sheet
+    for column in ws3.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws3.column_dimensions[column_letter].width = adjusted_width
     
     # Response
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="orders.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="orders_detailed_report.xlsx"'
     wb.save(response)
     return response
 
@@ -966,4 +1395,25 @@ def edit_profile_view(request):
         form = ProfileEditForm(instance=request.user)
     
     return render(request, 'store/edit_profile.html', {'form': form})
+
+
+@login_required
+def change_password_view(request):
+    # Only allow users who have verified email to change password
+    if not request.user.email_verified:
+        messages.error(request, 'Please verify your email before changing password.')
+        return redirect('profile')
+
+    if request.method == 'POST':
+        form = ChangePasswordForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Keep user logged in after password change
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Your password has been changed successfully.')
+            return redirect('profile')
+    else:
+        form = ChangePasswordForm(request.user)
+
+    return render(request, 'store/change_password.html', {'form': form})
 

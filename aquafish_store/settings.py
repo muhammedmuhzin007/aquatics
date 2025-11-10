@@ -4,9 +4,13 @@ Django settings for aquafish_store project.
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env if present
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -134,17 +138,46 @@ AUTH_USER_MODEL = 'store.CustomUser'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# Email Configuration (For OTP)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
-DEFAULT_FROM_EMAIL = 'noreply@aquafishstore.com'
-# For production, configure with actual SMTP settings:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your-email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your-password'
-# DEFAULT_FROM_EMAIL = 'your-email@gmail.com'
+"""
+Email Configuration (for OTP and notifications)
+
+Rules:
+- If both EMAIL_HOST and EMAIL_HOST_USER are provided, configure SMTP backend.
+- Otherwise, fall back to console backend (useful for local development).
+
+Supported env vars (examples):
+- EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+- EMAIL_HOST=smtp.gmail.com
+- EMAIL_PORT=587
+- EMAIL_USE_TLS=True
+- EMAIL_USE_SSL=False
+- EMAIL_HOST_USER=you@example.com
+- EMAIL_HOST_PASSWORD=app_password_or_secret
+- DEFAULT_FROM_EMAIL=you@example.com
+"""
+EMAIL_HOST_ENV = os.getenv('EMAIL_HOST')
+EMAIL_HOST_USER_ENV = os.getenv('EMAIL_HOST_USER')
+
+if EMAIL_HOST_ENV and EMAIL_HOST_USER_ENV:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_USE_SSL = False
+    EMAIL_HOST_USER = 'muhzinmuhammed4@gmail.com'
+    EMAIL_HOST_PASSWORD = 'jejo nueg ovmb xmnd'
+    DEFAULT_FROM_EMAIL = 'muhzinmuhammed4@gmail.com'
+    if DEBUG:
+        print(f"[EMAIL CONFIG] Using SMTP backend: {EMAIL_BACKEND} host={EMAIL_HOST}:{EMAIL_PORT} TLS={EMAIL_USE_TLS} SSL={EMAIL_USE_SSL} user={EMAIL_HOST_USER}")
+else:
+    # Development fallback: print emails to console
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@aquafishstore.local')
+    if DEBUG:
+        print(f"[EMAIL CONFIG] Using console email backend. Set EMAIL_HOST and EMAIL_HOST_USER in .env to enable SMTP.")
+
+# Email send timeout (in seconds)
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
 
 # Login URLs
 LOGIN_URL = 'login'

@@ -10,13 +10,17 @@ from django.conf import settings
 from django.urls import reverse
 from django.contrib.auth import update_session_auth_hash
 from django.utils import timezone
+from django.template.loader import render_to_string
+from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
 from .models import (
-    CustomUser, Category, Breed, Fish, FishMedia, Cart, Order, OrderItem, OTP
+    CustomUser, Category, Breed, Fish, FishMedia, Cart, Order, OrderItem, OTP, Review, Service, ContactInfo, Coupon
 )
 from .forms import (
     CustomUserCreationForm, StaffCreateForm, CategoryForm, BreedForm, FishForm, FishMediaForm,
-    ProfileEditForm, OrderFilterForm, ChangePasswordForm
+    ProfileEditForm, OrderFilterForm, ChangePasswordForm, ReviewForm, ServiceForm, ContactInfoForm, CouponForm
 )
+from urllib.parse import quote_plus
 from datetime import timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -25,6 +29,8 @@ import qrcode
 from io import BytesIO
 import base64
 import uuid
+import smtplib
+import socket
 
 
 # Helper Functions
@@ -44,81 +50,139 @@ def is_admin(user):
 def register_view(request):
     if request.user.is_authenticated:
         return redirect('home')
-    
+
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.role = 'customer'
-            user.is_active = False  # Inactive until email verified
-            user.save()
-            
-            # Generate OTP
+            # Do not create user yet; store form data in session
+            data = {
+                'username': form.cleaned_data.get('username'),
+                'email': form.cleaned_data.get('email'),
+                'password1': form.cleaned_data.get('password1'),
+                'first_name': form.cleaned_data.get('first_name', ''),
+                'last_name': form.cleaned_data.get('last_name', ''),
+            }
+            request.session['pending_registration'] = data
+
+            # Generate OTP for email verification (session-based)
             otp_code = OTP.generate_otp()
-            OTP.objects.create(user=user, otp_code=otp_code)
-            
+            request.session['pending_registration_otp'] = otp_code
+            request.session['pending_registration_time'] = timezone.now().isoformat()
+
             # Send OTP email
             send_mail(
                 'Email Verification OTP - AquaFish Store',
-                f'Your OTP for email verification is: {otp_code}\n\nThis OTP will expire in 5 minutes.',
+                f"Your OTP for email verification is: {otp_code}\n\nThis OTP will expire in 5 minutes.",
                 settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
-                [user.email],
+                [data['email']],
                 fail_silently=False,
             )
-            
-            messages.success(request, 'Registration successful! Please check your email for OTP verification.')
-            return redirect('verify_otp', user_id=user.id)
+
+            messages.success(request, 'We\'ve sent an OTP to your email. Please verify to complete registration.')
+            return redirect('verify_otp')
     else:
         form = CustomUserCreationForm()
-    
+
     return render(request, 'store/register.html', {'form': form})
 
 
-def verify_otp_view(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
-    
+def verify_otp_view(request):
+    # Registration OTP verification using session
+    pending = request.session.get('pending_registration')
+    if not pending:
+        messages.error(request, 'No registration in progress. Please register first.')
+        return redirect('register')
+
+    pending_email = pending.get('email')
+    created_iso = request.session.get('pending_registration_time')
+    try:
+        created_at = timezone.datetime.fromisoformat(created_iso) if created_iso else None
+        if created_at and timezone.is_naive(created_at):
+            created_at = timezone.make_aware(created_at, timezone.get_current_timezone())
+    except Exception:
+        created_at = None
+
     if request.method == 'POST':
-        otp_code = request.POST.get('otp_code')
-        otp_obj = OTP.objects.filter(user=user, is_used=False).order_by('-created_at').first()
-        
-        if otp_obj and otp_obj.otp_code == otp_code:
-            if otp_obj.is_expired():
-                messages.error(request, 'OTP has expired. Please request a new one.')
-                return redirect('resend_otp', user_id=user.id)
-            
-            otp_obj.is_used = True
-            otp_obj.save()
-            user.email_verified = True
-            user.is_active = True
+        otp_code = (request.POST.get('otp_code') or '').strip()
+        session_otp = request.session.get('pending_registration_otp')
+
+        # Expiry check: 5 minutes
+        is_expired = False
+        if created_at:
+            delta = timezone.now() - created_at
+            is_expired = delta.total_seconds() > 300
+
+        if is_expired:
+            messages.error(request, 'OTP has expired. Please request a new one.')
+            return redirect('resend_otp')
+
+        if session_otp and otp_code == session_otp:
+            # Create user now
+            username = pending.get('username')
+            email = pending.get('email')
+            password = pending.get('password1')
+            first_name = pending.get('first_name', '')
+            last_name = pending.get('last_name', '')
+
+            if CustomUser.objects.filter(username=username).exists():
+                messages.error(request, 'Username already exists. Please register again with a different username.')
+                # Clear pending session
+                for k in ['pending_registration', 'pending_registration_otp', 'pending_registration_time']:
+                    request.session.pop(k, None)
+                return redirect('register')
+            if CustomUser.objects.filter(email=email).exists():
+                messages.error(request, 'Email already registered. Try logging in or reset your password.')
+                for k in ['pending_registration', 'pending_registration_otp', 'pending_registration_time']:
+                    request.session.pop(k, None)
+                return redirect('login')
+
+            user = CustomUser(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                role='customer',
+                is_active=True,
+                email_verified=True,
+            )
+            user.set_password(password)
             user.save()
-            
-            messages.success(request, 'Email verified successfully! You can now login.')
+
+            # Clear pending session
+            for k in ['pending_registration', 'pending_registration_otp', 'pending_registration_time']:
+                request.session.pop(k, None)
+
+            messages.success(request, 'Email verified and account created successfully! You can now login.')
             return redirect('login')
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
-    
-    return render(request, 'store/verify_otp.html', {'user': user})
+
+    return render(request, 'store/verify_otp.html', {'pending_email': pending_email})
 
 
-def resend_otp_view(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
-    
+def resend_otp_view(request):
+    pending = request.session.get('pending_registration')
+    if not pending:
+        messages.error(request, 'No registration in progress. Please register first.')
+        return redirect('register')
+
     if request.method == 'POST':
         otp_code = OTP.generate_otp()
-        OTP.objects.create(user=user, otp_code=otp_code)
-        
+        request.session['pending_registration_otp'] = otp_code
+        request.session['pending_registration_time'] = timezone.now().isoformat()
+
         send_mail(
             'Email Verification OTP - AquaFish Store',
-            f'Your OTP for email verification is: {otp_code}\n\nThis OTP will expire in 5 minutes.',
+            f"Your OTP for email verification is: {otp_code}\n\nThis OTP will expire in 5 minutes.",
             settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
-            [user.email],
+            [pending.get('email')],
             fail_silently=False,
         )
-        
-        messages.success(request, 'OTP has been resent to your email.')
-        return redirect('verify_otp', user_id=user.id)
-    
-    return render(request, 'store/resend_otp.html', {'user': user})
+
+        messages.success(request, 'A new OTP has been sent to your email.')
+        return redirect('verify_otp')
+
+    return render(request, 'store/resend_otp.html', {'pending_email': pending.get('email')})
 
 
 def login_view(request):
@@ -138,7 +202,9 @@ def login_view(request):
             
             if not user.email_verified:
                 messages.error(request, 'Please verify your email first.')
-                return redirect('verify_otp', user_id=user.id)
+                # Registration OTP flow is session-based; just send the user to verification page.
+                # Note: If there's no pending registration session, the page will prompt them to register again.
+                return redirect('verify_otp')
             
             login(request, user)
             
@@ -159,6 +225,71 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('login')
+
+
+def test_email_view(request):
+    """DEBUG-only endpoint to test email delivery.
+    Usage: /test-email/?to=address@example.com
+    Sends a simple email and returns backend info or error details.
+    """
+    if not settings.DEBUG:
+        return HttpResponse(status=404)
+    to_addr = request.GET.get('to') or (request.user.email if request.user.is_authenticated else None)
+    if not to_addr:
+        return HttpResponse("Provide ?to=email@example.com or login with an email.", status=400)
+    try:
+        send_mail(
+            'AquaFish Store - Test Email',
+            'This is a test email from AquaFish Store. If you received this, SMTP is configured correctly.',
+            settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.local',
+            [to_addr],
+            fail_silently=False,
+        )
+        return HttpResponse(f"Sent test email to {to_addr} using backend {settings.EMAIL_BACKEND}.")
+    except Exception as e:
+        return HttpResponse(f"Email send error: {e}", status=500)
+
+
+def email_config_view(request):
+    """DEBUG diagnostic: shows current email settings and attempts SMTP connectivity."""
+    if not settings.DEBUG:
+        return HttpResponse(status=404)
+    info = {
+        'EMAIL_BACKEND': settings.EMAIL_BACKEND,
+        'EMAIL_HOST': getattr(settings, 'EMAIL_HOST', None),
+        'EMAIL_PORT': getattr(settings, 'EMAIL_PORT', None),
+        'EMAIL_USE_TLS': getattr(settings, 'EMAIL_USE_TLS', None),
+        'EMAIL_USE_SSL': getattr(settings, 'EMAIL_USE_SSL', None),
+        'EMAIL_HOST_USER': getattr(settings, 'EMAIL_HOST_USER', None),
+        'DEFAULT_FROM_EMAIL': settings.DEFAULT_FROM_EMAIL,
+        'EMAIL_TIMEOUT': getattr(settings, 'EMAIL_TIMEOUT', None),
+    }
+    connectivity = 'skip (console backend)'
+    error = None
+    if info['EMAIL_BACKEND'] != 'django.core.mail.backends.console.EmailBackend' and info['EMAIL_HOST'] and info['EMAIL_PORT']:
+        try:
+            if info['EMAIL_USE_SSL']:
+                server = smtplib.SMTP_SSL(host=info['EMAIL_HOST'], port=info['EMAIL_PORT'], timeout=info['EMAIL_TIMEOUT'])
+            else:
+                server = smtplib.SMTP(host=info['EMAIL_HOST'], port=info['EMAIL_PORT'], timeout=info['EMAIL_TIMEOUT'])
+                if info['EMAIL_USE_TLS']:
+                    server.starttls()
+            server.quit()
+            connectivity = 'ok'
+        except (socket.error, smtplib.SMTPException) as e:
+            connectivity = 'fail'
+            error = str(e)
+
+    html = ["<h2>Email Configuration Diagnostic</h2>"]
+    html.append("<table border='1' cellpadding='5' style='border-collapse:collapse;font-family:monospace;'>")
+    for k, v in info.items():
+        html.append(f"<tr><th>{k}</th><td>{v}</td></tr>")
+    html.append(f"<tr><th>SMTP Connectivity</th><td>{connectivity}</td></tr>")
+    if error:
+        html.append(f"<tr><th>Error</th><td style='color:red'>{error}</td></tr>")
+    html.append("</table>")
+    html.append("<p>Use /test-email/?to=address to send a test message.</p>")
+    return HttpResponse(''.join(html))
 
 
 def forgot_password_view(request):
@@ -223,12 +354,45 @@ def reset_password_view(request, user_id):
 # Home/Customer Views
 def home_view(request):
     categories = Category.objects.all()[:6]
-    fishes = Fish.objects.filter(is_available=True)[:8]
+    fishes = Fish.objects.filter(is_available=True, is_featured=True)[:8]
     first_category = Category.objects.first() if Category.objects.exists() else None
+    reviews = (Review.objects.filter(approved=True)
+               .select_related('order', 'user')
+               .prefetch_related('order__items', 'order__items__fish')[:10])
     return render(request, 'store/home.html', {
         'categories': categories, 
         'fishes': fishes,
-        'first_category': first_category
+        'first_category': first_category,
+        'reviews': reviews
+    })
+
+
+def about_view(request):
+    services = Service.objects.filter(is_active=True)
+    contact = ContactInfo.objects.first()
+    map_url = None
+    if contact:
+        # Prefer a proper Google Maps embed URL if provided
+        raw = (contact.map_embed_url or '').strip()
+        if raw and 'google.com/maps/embed' in raw:
+            map_url = raw
+        else:
+            # Fallback: build a query-based embed from the address
+            parts = [
+                contact.address_line1 or '',
+                contact.address_line2 or '',
+                contact.city or '',
+                contact.state or '',
+                contact.postal_code or '',
+                contact.country or '',
+            ]
+            full_addr = ' '.join([p for p in parts if p]).strip()
+            if full_addr:
+                map_url = f"https://www.google.com/maps?q={quote_plus(full_addr)}&output=embed"
+    return render(request, 'store/about.html', {
+        'services': services,
+        'contact': contact,
+        'map_url': map_url,
     })
 
 
@@ -356,6 +520,11 @@ def add_to_cart_view(request, fish_id):
     fish = get_object_or_404(Fish, id=fish_id)
     quantity = int(request.POST.get('quantity', 1))
     
+    # Check minimum order quantity
+    if quantity < fish.minimum_order_quantity:
+        messages.error(request, f'Minimum order quantity for {fish.name} is {fish.minimum_order_quantity}.')
+        return redirect('fish_detail', fish_id=fish_id)
+    
     cart_item, created = Cart.objects.get_or_create(
         user=request.user,
         fish=fish,
@@ -387,6 +556,11 @@ def cart_view(request):
 def update_cart_view(request, cart_id):
     cart_item = get_object_or_404(Cart, id=cart_id, user=request.user)
     quantity = int(request.POST.get('quantity', 1))
+    
+    # Check minimum order quantity
+    if quantity > 0 and quantity < cart_item.fish.minimum_order_quantity:
+        messages.error(request, f'Minimum order quantity for {cart_item.fish.name} is {cart_item.fish.minimum_order_quantity}.')
+        return redirect('cart')
     
     if quantity > 0:
         cart_item.quantity = quantity
@@ -431,6 +605,26 @@ def checkout_view(request):
         # Create order
         total_amount = sum(item.get_total() for item in cart_items)
         
+        # Apply coupon if exists
+        applied_coupon = None
+        discount_amount = 0
+        final_amount = total_amount
+        
+        if 'applied_coupon_code' in request.session:
+            try:
+                coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
+                if coupon.is_valid() and coupon.can_use(request.user):
+                    applied_coupon = coupon
+                    discount_amount = (total_amount * coupon.discount_percentage) / 100
+                    if coupon.max_discount_amount:
+                        discount_amount = min(discount_amount, coupon.max_discount_amount)
+                    final_amount = total_amount - discount_amount
+                    # Increment coupon usage
+                    coupon.times_used += 1
+                    coupon.save()
+            except Coupon.DoesNotExist:
+                pass
+        
         # Generate transaction ID
         transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
         
@@ -442,6 +636,9 @@ def checkout_view(request):
             user=request.user,
             order_number=Order.generate_order_number(),
             total_amount=total_amount,
+            coupon=applied_coupon,
+            discount_amount=discount_amount,
+            final_amount=final_amount,
             shipping_address=shipping_address,
             phone_number=phone_number,
             payment_method=payment_method,
@@ -464,6 +661,10 @@ def checkout_view(request):
         # Clear cart
         cart_items.delete()
         
+        # Clear coupon session
+        if 'applied_coupon_code' in request.session:
+            del request.session['applied_coupon_code']
+        
         # Redirect to UPI payment page if UPI is selected
         if payment_method == 'upi':
             return redirect('upi_payment', order_id=order.id)
@@ -472,9 +673,144 @@ def checkout_view(request):
         return redirect('order_detail', order_id=order.id)
     
     total = sum(item.get_total() for item in cart_items)
+    
+    # Get available coupons for the user
+    now = timezone.now()
+    available_coupons = Coupon.objects.filter(
+        is_active=True,
+        show_in_suggestions=True,
+        valid_from__lte=now,
+        valid_until__gte=now
+    ).filter(
+        Q(coupon_type='all') |
+        Q(coupon_type='favorites', user__is_favorite=True) if request.user.is_favorite else Q(coupon_type='normal')
+    ).exclude(
+        usage_limit__isnull=False,
+        times_used__gte=models.F('usage_limit')
+    ).filter(
+        Q(min_order_amount__isnull=True) | Q(min_order_amount__lte=total)
+    ).order_by('-discount_percentage')[:5]  # Show top 5 best coupons
+    
+    # Get applied coupon from session
+    applied_coupon = None
+    discount = 0
+    final_total = total
+    
+    if 'applied_coupon_code' in request.session:
+        try:
+            coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
+            if coupon.is_valid() and coupon.can_use(request.user):
+                applied_coupon = coupon
+                discount = (total * coupon.discount_percentage) / 100
+                if coupon.max_discount_amount:
+                    discount = min(discount, coupon.max_discount_amount)
+                final_total = total - discount
+        except Coupon.DoesNotExist:
+            del request.session['applied_coupon_code']
+    
     return render(request, 'store/customer/checkout.html', {
         'cart_items': cart_items,
         'total': total,
+        'applied_coupon': applied_coupon,
+        'discount': discount,
+        'final_total': final_total,
+        'available_coupons': available_coupons,
+    })
+
+
+@login_required
+@user_passes_test(is_customer)
+@require_POST
+def apply_coupon_view(request):
+    """AJAX view to apply coupon code"""
+    try:
+        coupon_code = request.POST.get('coupon_code', '').strip().upper()
+        
+        if not coupon_code:
+            return JsonResponse({'success': False, 'message': 'Please enter a coupon code'})
+        
+        try:
+            coupon = Coupon.objects.get(code=coupon_code)
+        except Coupon.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Invalid coupon code'})
+        
+        # Validate coupon
+        if not coupon.is_active:
+            return JsonResponse({'success': False, 'message': 'This coupon is no longer active'})
+        
+        # Check validity with detailed error
+        now = timezone.now()
+        if coupon.valid_from and now < coupon.valid_from:
+            return JsonResponse({
+                'success': False, 
+                'message': f'This coupon is not valid yet. Valid from: {coupon.valid_from.strftime("%d %b %Y, %I:%M %p")}'
+            })
+        
+        if coupon.valid_until and now > coupon.valid_until:
+            return JsonResponse({
+                'success': False, 
+                'message': f'This coupon expired on: {coupon.valid_until.strftime("%d %b %Y, %I:%M %p")}'
+            })
+        
+        # Check usage limit
+        if coupon.usage_limit and coupon.times_used >= coupon.usage_limit:
+            return JsonResponse({'success': False, 'message': 'This coupon has reached its usage limit'})
+        
+        # Check if user can use this coupon
+        if coupon.coupon_type == 'favorites' and not request.user.is_favorite:
+            return JsonResponse({'success': False, 'message': 'This coupon is only for favorite customers'})
+        
+        if coupon.coupon_type == 'normal' and request.user.is_favorite:
+            return JsonResponse({'success': False, 'message': 'This coupon is only for normal users'})
+        
+        # Calculate cart total
+        cart_items = Cart.objects.filter(user=request.user)
+        total = sum(item.get_total() for item in cart_items)
+        
+        # Check minimum order amount
+        if coupon.min_order_amount and total < coupon.min_order_amount:
+            return JsonResponse({
+                'success': False, 
+                'message': f'Minimum order amount of ₹{coupon.min_order_amount} required'
+            })
+        
+        # Calculate discount
+        discount = (total * coupon.discount_percentage) / 100
+        if coupon.max_discount_amount:
+            discount = min(discount, coupon.max_discount_amount)
+        
+        final_total = total - discount
+        
+        # Store in session
+        request.session['applied_coupon_code'] = coupon_code
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Coupon applied! You saved ₹{discount:.2f}',
+            'discount': float(discount),
+            'final_total': float(final_total),
+            'coupon_code': coupon_code,
+            'discount_percentage': float(coupon.discount_percentage)
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+
+
+@login_required
+@user_passes_test(is_customer)
+@require_POST
+def remove_coupon_view(request):
+    """AJAX view to remove applied coupon"""
+    if 'applied_coupon_code' in request.session:
+        del request.session['applied_coupon_code']
+    
+    cart_items = Cart.objects.filter(user=request.user)
+    total = sum(item.get_total() for item in cart_items)
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Coupon removed',
+        'total': float(total)
     })
 
 
@@ -489,7 +825,39 @@ def customer_orders_view(request):
 @user_passes_test(is_customer)
 def order_detail_view(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    return render(request, 'store/customer/order_detail.html', {'order': order})
+    existing_review = Review.objects.filter(user=request.user, order=order).first()
+    review_form = None
+    if order.status == 'delivered' and not existing_review:
+        review_form = ReviewForm()
+    return render(request, 'store/customer/order_detail.html', {
+        'order': order,
+        'review_form': review_form,
+        'existing_review': existing_review,
+    })
+
+
+@login_required
+@user_passes_test(is_customer)
+def submit_review_view(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if order.status != 'delivered':
+        messages.error(request, 'You can only review a delivered order.')
+        return redirect('order_detail', order_id=order.id)
+    if Review.objects.filter(user=request.user, order=order).exists():
+        messages.info(request, 'You have already reviewed this order.')
+        return redirect('order_detail', order_id=order.id)
+    form = ReviewForm(request.POST or None)
+    if request.method == 'POST':
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.user = request.user
+            review.order = order
+            review.save()
+            messages.success(request, 'Review submitted successfully!')
+            return redirect('order_detail', order_id=order.id)
+        else:
+            messages.error(request, 'Please correct the errors in your review form.')
+    return redirect('order_detail', order_id=order.id)
 
 
 @login_required
@@ -931,7 +1299,7 @@ def admin_dashboard_view(request):
             month_data[month_key]['revenue'] = float(entry['total'] if entry['total'] else 0)
     
     # Convert to lists for the template
-    sorted_months = sorted(month_data.keys(), reverse=True)  # Most recent first
+    sorted_months = sorted(month_data.keys())  # Oldest first for proper chart display
     for month_key in sorted_months:
         months.append(month_data[month_key]['month_name'])
         orders_data.append(month_data[month_key]['orders'])
@@ -1130,6 +1498,125 @@ def admin_delete_fish_view(request, fish_id):
     return redirect('admin_fishes')
 
 
+# -------------------- Services (Admin Managed) --------------------
+@login_required
+@user_passes_test(is_admin)
+def admin_services_view(request):
+    services = Service.objects.all()
+    return render(request, 'store/admin/services.html', {'services': services})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_service_view(request):
+    if request.method == 'POST':
+        form = ServiceForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Service added successfully.')
+            return redirect('admin_services')
+    else:
+        form = ServiceForm()
+    return render(request, 'store/admin/add_service.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_service_view(request, service_id):
+    service = get_object_or_404(Service, id=service_id)
+    if request.method == 'POST':
+        form = ServiceForm(request.POST, request.FILES, instance=service)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Service updated successfully.')
+            return redirect('admin_services')
+    else:
+        form = ServiceForm(instance=service)
+    return render(request, 'store/admin/add_service.html', {'form': form, 'is_edit': True})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_service_view(request, service_id):
+    service = get_object_or_404(Service, id=service_id)
+    service.delete()
+    messages.success(request, 'Service deleted successfully.')
+    return redirect('admin_services')
+
+
+# -------------------- Contact Info (Admin Managed) --------------------
+@login_required
+@user_passes_test(is_admin)
+@login_required
+@user_passes_test(is_admin)
+def admin_contact_view(request):
+    contact = ContactInfo.objects.first()
+    return render(request, 'store/admin/contact.html', {'contact': contact})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_contact_view(request):
+    existing = ContactInfo.objects.first()
+    if existing:
+        return redirect('admin_edit_contact', contact_id=existing.id)
+    if request.method == 'POST':
+        form = ContactInfoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Contact information saved.')
+            return redirect('admin_contact')
+    else:
+        form = ContactInfoForm()
+    return render(request, 'store/admin/add_contact.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_contact_view(request, contact_id):
+    contact = get_object_or_404(ContactInfo, id=contact_id)
+    if request.method == 'POST':
+        form = ContactInfoForm(request.POST, instance=contact)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Contact information updated.')
+            return redirect('admin_contact')
+    else:
+        form = ContactInfoForm(instance=contact)
+    return render(request, 'store/admin/add_contact.html', {'form': form, 'is_edit': True})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_reviews_view(request):
+    pending_reviews = Review.objects.filter(approved=False).select_related('user', 'order').order_by('-created_at')
+    approved_reviews = Review.objects.filter(approved=True).select_related('user', 'order').order_by('-created_at')
+    
+    return render(request, 'store/admin/reviews.html', {
+        'pending_reviews': pending_reviews,
+        'approved_reviews': approved_reviews,
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_approve_review(request, review_id):
+    review = get_object_or_404(Review, id=review_id)
+    review.approved = True
+    review.save()
+    messages.success(request, 'Review approved successfully.')
+    return redirect('admin_reviews')
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_reject_review(request, review_id):
+    review = get_object_or_404(Review, id=review_id)
+    review.delete()
+    messages.success(request, 'Review rejected and deleted.')
+    return redirect('admin_reviews')
+
+
 @login_required
 @user_passes_test(is_admin)
 def admin_orders_view(request):
@@ -1157,6 +1644,33 @@ def admin_orders_view(request):
     })
 
 
+# AJAX endpoint for admin orders filter/search
+@login_required
+@user_passes_test(is_admin)
+@require_GET
+def admin_orders_ajax_view(request):
+    orders = Order.objects.all().order_by('-created_at')
+    form = OrderFilterForm(request.GET)
+    if form.is_valid():
+        status = form.cleaned_data.get('status')
+        start_date = form.cleaned_data.get('start_date')
+        end_date = form.cleaned_data.get('end_date')
+        if status:
+            orders = orders.filter(status=status)
+        if start_date:
+            orders = orders.filter(created_at__gte=start_date)
+        if end_date:
+            orders = orders.filter(created_at__lte=end_date)
+    search = request.GET.get('search', '').strip()
+    if search:
+        orders = orders.filter(
+            Q(order_number__icontains=search) |
+            Q(user__username__icontains=search)
+        )
+    html = render_to_string('store/admin/_orders_table.html', {'orders': orders}, request=request)
+    return JsonResponse({'html': html})
+
+
 @login_required
 @user_passes_test(is_admin)
 def admin_order_detail_view(request, order_id):
@@ -1176,8 +1690,19 @@ def admin_order_detail_view(request, order_id):
 @login_required
 @user_passes_test(is_admin)
 def admin_users_view(request):
-    users = CustomUser.objects.filter(role='customer')
+    users = CustomUser.objects.filter(role='customer').order_by('-is_favorite', '-created_at')
     return render(request, 'store/admin/users.html', {'users': users})
+
+
+@login_required
+@user_passes_test(is_admin)
+def toggle_favorite_user_view(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id, role='customer')
+    user.is_favorite = not user.is_favorite
+    user.save()
+    status = 'added to' if user.is_favorite else 'removed from'
+    messages.success(request, f'User {user.username} has been {status} favorites.')
+    return redirect('admin_users')
 
 
 @login_required
@@ -1375,6 +1900,96 @@ def export_orders_excel_view(request):
     response['Content-Disposition'] = 'attachment; filename="orders_detailed_report.xlsx"'
     wb.save(response)
     return response
+
+
+# Coupon Management Views
+@login_required
+@user_passes_test(is_admin)
+def admin_coupons_view(request):
+    filter_type = request.GET.get('filter', 'all_coupons')
+    
+    if filter_type == 'all_users':
+        coupons = Coupon.objects.filter(coupon_type='all').order_by('-created_at')
+    elif filter_type == 'favorites':
+        coupons = Coupon.objects.filter(coupon_type='favorites').order_by('-created_at')
+    elif filter_type == 'normal':
+        coupons = Coupon.objects.filter(coupon_type='normal').order_by('-created_at')
+    elif filter_type == 'active':
+        coupons = Coupon.objects.filter(is_active=True).order_by('-created_at')
+    elif filter_type == 'inactive':
+        coupons = Coupon.objects.filter(is_active=False).order_by('-created_at')
+    else:
+        coupons = Coupon.objects.all().order_by('-created_at')
+    
+    # Get counts for badges
+    all_users_count = Coupon.objects.filter(coupon_type='all').count()
+    favorites_count = Coupon.objects.filter(coupon_type='favorites').count()
+    normal_count = Coupon.objects.filter(coupon_type='normal').count()
+    active_count = Coupon.objects.filter(is_active=True).count()
+    inactive_count = Coupon.objects.filter(is_active=False).count()
+    
+    context = {
+        'coupons': coupons,
+        'filter_type': filter_type,
+        'all_users_count': all_users_count,
+        'favorites_count': favorites_count,
+        'normal_count': normal_count,
+        'active_count': active_count,
+        'inactive_count': inactive_count,
+    }
+    return render(request, 'store/admin/coupons.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_coupon_view(request):
+    if request.method == 'POST':
+        form = CouponForm(request.POST)
+        if form.is_valid():
+            coupon = form.save(commit=False)
+            coupon.created_by = request.user
+            coupon.save()
+            messages.success(request, f'Coupon "{coupon.code}" created successfully!')
+            return redirect('admin_coupons')
+    else:
+        form = CouponForm()
+    return render(request, 'store/admin/add_coupon.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_coupon_view(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    if request.method == 'POST':
+        form = CouponForm(request.POST, instance=coupon)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Coupon "{coupon.code}" updated successfully!')
+            return redirect('admin_coupons')
+    else:
+        form = CouponForm(instance=coupon)
+    return render(request, 'store/admin/add_coupon.html', {'form': form, 'is_edit': True, 'coupon': coupon})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_coupon_view(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    code = coupon.code
+    coupon.delete()
+    messages.success(request, f'Coupon "{code}" deleted successfully!')
+    return redirect('admin_coupons')
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_toggle_coupon_view(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    coupon.is_active = not coupon.is_active
+    coupon.save()
+    status = 'activated' if coupon.is_active else 'deactivated'
+    messages.success(request, f'Coupon "{coupon.code}" has been {status}!')
+    return redirect('admin_coupons')
 
 
 # Profile Views

@@ -1,9 +1,40 @@
 {% extends 'store/base.html' %}
 
+{% block extra_css %}
+<script>
+// Apply stored theme as early as possible on this page
+(function(){
+    try {
+        const t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') {
+            document.documentElement.setAttribute('data-theme', t);
+        }
+    } catch(e) {}
+})();
+</script>
+<style>
+        /* Theme-aware static profile text colors */
+        .profile-label { color: var(--text-white); font-weight:600; font-size:0.9rem; }
+        .profile-value { color: var(--text-gray); font-size:0.9rem; }
+        .profile-name { color: var(--text-white); font-weight:600; }
+        html[data-theme='light'] .profile-label { color: var(--light-text); }
+        html[data-theme='light'] .profile-value { color: var(--light-text-soft); }
+        html[data-theme='light'] .profile-name { color: var(--light-text); }
+        .profile-row i { margin-right:4px; color: var(--accent-blue); }
+        html[data-theme='light'] .profile-row i { color: var(--light-accent); }
+    </style>
+{% endblock %}
+
 {% block content %}
 <section class="section">
     <div class="container-fluid">
-        <h2 class="section-heading">My Profile</h2>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="section-heading m-0">My Profile</h2>
+                        <button id="profileThemeToggle" class="btn btn-theme-toggle">
+                                <i class="fas fa-moon me-2"></i>
+                                <span class="label">Dark</span>
+                        </button>
+                </div>
 
         <div class="row">
             <div class="col-md-8 mb-4">
@@ -18,7 +49,7 @@
                                 <i class="fas fa-user fa-4x text-white"></i>
                             </div>
                             {% endif %}
-                            <h3 class="text-white mt-3">{{ user.get_full_name|default:user.username }}</h3>
+                            <h3 class="mt-3 profile-name">{{ user.get_full_name|default:user.username }}</h3>
                             <span class="badge bg-{% if user.role == 'admin' %}danger{% elif user.role == 'staff' %}warning{% else %}info{% endif %}">
                                 {{ user.get_role_display }}
                             </span>
@@ -26,40 +57,40 @@
                         
                         <div class="divider"></div>
                         
-                        <div class="row mb-3">
-                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-user"></i> Username:</strong></div>
-                            <div class="col-md-8"><span class="text-gray">{{ user.username }}</span></div>
+                        <div class="row mb-3 profile-row">
+                            <div class="col-md-4"><strong class="profile-label"><i class="fas fa-user"></i> Username:</strong></div>
+                            <div class="col-md-8"><span class="profile-value">{{ user.username }}</span></div>
                         </div>
                         
-                        <div class="row mb-3">
-                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-envelope"></i> Email:</strong></div>
-                            <div class="col-md-8"><span class="text-gray">{{ user.email }}</span></div>
+                        <div class="row mb-3 profile-row">
+                            <div class="col-md-4"><strong class="profile-label"><i class="fas fa-envelope"></i> Email:</strong></div>
+                            <div class="col-md-8"><span class="profile-value">{{ user.email }}</span></div>
                         </div>
                         
                         {% if user.first_name or user.last_name %}
-                        <div class="row mb-3">
-                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-id-card"></i> Full Name:</strong></div>
-                            <div class="col-md-8"><span class="text-gray">{{ user.get_full_name }}</span></div>
+                        <div class="row mb-3 profile-row">
+                            <div class="col-md-4"><strong class="profile-label"><i class="fas fa-id-card"></i> Full Name:</strong></div>
+                            <div class="col-md-8"><span class="profile-value">{{ user.get_full_name }}</span></div>
                         </div>
                         {% endif %}
                         
                         {% if user.phone_number %}
-                        <div class="row mb-3">
-                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-phone"></i> Phone:</strong></div>
-                            <div class="col-md-8"><span class="text-gray">{{ user.phone_number }}</span></div>
+                        <div class="row mb-3 profile-row">
+                            <div class="col-md-4"><strong class="profile-label"><i class="fas fa-phone"></i> Phone:</strong></div>
+                            <div class="col-md-8"><span class="profile-value">{{ user.phone_number }}</span></div>
                         </div>
                         {% endif %}
                         
                         {% if user.address %}
-                        <div class="row mb-3">
-                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-map-marker-alt"></i> Address:</strong></div>
-                            <div class="col-md-8"><span class="text-gray">{{ user.address }}</span></div>
+                        <div class="row mb-3 profile-row">
+                            <div class="col-md-4"><strong class="profile-label"><i class="fas fa-map-marker-alt"></i> Address:</strong></div>
+                            <div class="col-md-8"><span class="profile-value">{{ user.address }}</span></div>
                         </div>
                         {% endif %}
                         
-                        <div class="row mb-3">
-                            <div class="col-md-4"><strong class="text-white"><i class="fas fa-calendar"></i> Joined:</strong></div>
-                            <div class="col-md-8"><span class="text-gray">{{ user.created_at|date:"M d, Y" }}</span></div>
+                        <div class="row mb-3 profile-row">
+                            <div class="col-md-4"><strong class="profile-label"><i class="fas fa-calendar"></i> Joined:</strong></div>
+                            <div class="col-md-8"><span class="profile-value">{{ user.created_at|date:"M d, Y" }}</span></div>
                         </div>
                         
                         <div class="mt-4 d-grid gap-2 d-md-flex">
@@ -100,11 +131,23 @@
                         <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
+                        <a href="{% url 'admin_coupons' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-ticket-alt"></i> Manage Coupons
+                        </a>
+                        <a href="{% url 'admin_reviews' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-star-half-alt"></i> Moderate Reviews
+                        </a>
                         <a href="{% url 'admin_orders' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-shopping-bag"></i> Orders
                         </a>
                         <a href="{% url 'admin_users' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-users"></i> Users
+                        </a>
+                        <a href="{% url 'admin_services' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-concierge-bell"></i> Services
+                        </a>
+                        <a href="{% url 'admin_contact' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-address-book"></i> Contact Info
                         </a>
                         {% endif %}
                     </div>
@@ -113,4 +156,38 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('profileThemeToggle');
+    const root = document.documentElement;
+    const labelEl = btn ? btn.querySelector('.label') : null;
+    const STORAGE_KEY = 'theme';
+
+    function currentTheme(){
+        return root.getAttribute('data-theme') || 'dark';
+    }
+    function setTheme(theme){
+        root.setAttribute('data-theme', theme);
+        try { localStorage.setItem(STORAGE_KEY, theme); } catch(e) {}
+        if (btn && labelEl){
+            const isLight = theme === 'light';
+            labelEl.textContent = isLight ? 'Light' : 'Dark';
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = isLight ? 'fas fa-sun me-2' : 'fas fa-moon me-2';
+        }
+    }
+    // Initialize button state
+    setTheme(currentTheme());
+    if (btn){
+        btn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            const nxt = currentTheme() === 'dark' ? 'light' : 'dark';
+            setTheme(nxt);
+        });
+    }
+});
+</script>
 {% endblock %}

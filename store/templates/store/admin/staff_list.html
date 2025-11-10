@@ -2,15 +2,15 @@
 
 {% block extra_css %}
 <style>
-    /* Scoped styles for staff management page */
-    .staff-management .card {
+    /* Scoped styles for staff management page (dark mode only) */
+    html[data-theme='dark'] .staff-management .card {
         background: var(--card-bg) !important;
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
     }
     
     /* Table styling */
-    .staff-management .table>:not(caption)>*>* {
+    html[data-theme='dark'] .staff-management .table>:not(caption)>*>*:not(.btn):not(.badge) {
         background: transparent !important;
         box-shadow: none !important;
         color: #FFFFFF !important;
@@ -18,51 +18,51 @@
     }
     
     /* Table headers */
-    .staff-management thead th {
+    html[data-theme='dark'] .staff-management thead th {
         background: rgba(25,40,60,0.65) !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
         border-bottom: 2px solid rgba(255,255,255,0.15) !important;
     }
     
-    .staff-management .table thead th {
+    html[data-theme='dark'] .staff-management .table thead th {
         color: #FFFFFF !important;
     }
     
-    .staff-management table thead tr th {
+    html[data-theme='dark'] .staff-management table thead tr th {
         color: #FFFFFF !important;
     }
     
     /* Table rows */
-    .staff-management tbody tr {
+    html[data-theme='dark'] .staff-management tbody tr {
         background: rgba(20,30,45,0.55) !important;
         transition: background 0.2s ease;
     }
     
-    .staff-management tbody tr:nth-child(odd) {
+    html[data-theme='dark'] .staff-management tbody tr:nth-child(odd) {
         background: rgba(25,40,60,0.55) !important;
     }
     
-    .staff-management tbody tr:hover {
+    html[data-theme='dark'] .staff-management tbody tr:hover {
         background: rgba(40,80,140,0.55) !important;
     }
     
     /* Table cells */
-    .staff-management .table tbody td {
+    html[data-theme='dark'] .staff-management .table tbody td {
         color: #FFFFFF !important;
     }
     
-    .staff-management .table tbody td * {
+    html[data-theme='dark'] .staff-management .table tbody td *:not(.btn):not(.badge) {
         color: #FFFFFF !important;
     }
     
-    .staff-management .table tbody td strong {
+    html[data-theme='dark'] .staff-management .table tbody td strong {
         color: #FFFFFF !important;
         font-weight: 700;
     }
     
     /* Override admin-text-black class */
-    .staff-management .admin-text-black {
+    html[data-theme='dark'] .staff-management .admin-text-black {
         color: #FFFFFF !important;
     }
 </style>

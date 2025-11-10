@@ -98,7 +98,13 @@
                                     {{ form.stock_quantity|as_crispy_field }}
                                 </div>
                                 <div class="col-md-4 mb-3">
+                                    {{ form.minimum_order_quantity|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     {{ form.is_available|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.is_featured|as_crispy_field }}
                                 </div>
                             </div>
                             

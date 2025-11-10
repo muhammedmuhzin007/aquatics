@@ -16,24 +16,19 @@
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
-    
-    .payment-option {
-        position: relative;
-    }
-    
+    .payment-option { position: relative; }
     .payment-option input[type="radio"] {
         position: absolute;
         opacity: 0;
         cursor: pointer;
     }
-    
     .payment-card {
-        background: rgba(20,30,45,0.6);
-        border: 2px solid rgba(100,150,255,0.2);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
         border-radius: 12px;
         padding: 1.25rem;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.25s ease;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -41,66 +36,85 @@
         min-height: 140px;
         justify-content: center;
     }
-    
-    .payment-card:hover {
-        border-color: rgba(100,150,255,0.4);
-        background: rgba(25,35,50,0.7);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(30,136,229,0.2);
-    }
-    
+    /* Light theme base for payment tiles */
+    html[data-theme='light'] .payment-card { background: var(--light-card); border-color: var(--light-border); }
+    /* Hover state adapts to theme */
+    html[data-theme='dark'] .payment-card:hover { background: rgba(255,255,255,0.05); border-color: var(--accent-blue); box-shadow: 0 4px 12px rgba(30,136,229,0.15); }
+    html[data-theme='light'] .payment-card:hover { background: rgba(30,136,229,0.06); border-color: var(--accent-blue); box-shadow: 0 4px 12px rgba(30,136,229,0.10); }
+
     .payment-option input[type="radio"]:checked + .payment-card {
-        border-color: #1E88E5;
-        background: linear-gradient(135deg, rgba(30,136,229,0.2), rgba(21,101,192,0.2));
-        box-shadow: 0 0 20px rgba(30,136,229,0.3);
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px rgba(30,136,229,0.2);
+        background: linear-gradient(135deg, rgba(30,136,229,0.12), transparent);
     }
-    
-    .payment-card i {
-        font-size: 2.5rem;
-        color: #1E88E5;
-    }
-    
-    .payment-card .payment-name {
-        color: #FFFFFF;
-        font-weight: 600;
-        font-size: 1rem;
-        text-align: center;
-    }
-    
-    .payment-card .payment-desc {
-        color: rgba(255,255,255,0.7);
-        font-size: 0.75rem;
-        text-align: center;
-    }
-    
-    .payment-option input[type="radio"]:checked + .payment-card i {
-        color: #1E88E5;
-        animation: pulse 0.5s ease;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
-    
+    .payment-card i { font-size: 2.5rem; color: var(--accent-blue); }
+    .payment-card .payment-name { font-weight: 600; font-size: 1rem; text-align: center; color: var(--text-white); }
+    .payment-card .payment-desc { font-size: 0.75rem; text-align: center; color: rgba(255,255,255,0.7); }
+    html[data-theme='light'] .payment-card .payment-name { color: var(--light-text); }
+    html[data-theme='light'] .payment-card .payment-desc { color: var(--light-text-soft, rgba(0,0,0,0.6)); }
+    .payment-option input[type="radio"]:checked + .payment-card i { color: var(--accent-blue); animation: pulse 0.5s ease; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+    /* Themed form controls */
     .checkout-form .form-control,
     .checkout-form textarea.form-control {
-        background: rgba(15,25,40,0.6) !important;
-        border: 1px solid rgba(100,150,255,0.25) !important;
-        color: #FFFFFF !important;
+        background: var(--card-bg) !important; /* dark default */
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-white) !important;
         border-radius: 8px;
     }
-    
+    /* Light theme inputs should be bright surface with light borders/text */
+    html[data-theme='light'] .checkout-form .form-control,
+    html[data-theme='light'] .checkout-form textarea.form-control {
+        background: var(--light-surface) !important;
+        border-color: var(--light-border) !important;
+        color: var(--light-text) !important;
+    }
+    .checkout-form .form-control::placeholder,
+    .checkout-form textarea.form-control::placeholder { color: rgba(255,255,255,0.6) !important; }
+    html[data-theme='light'] .checkout-form .form-control::placeholder,
+    html[data-theme='light'] .checkout-form textarea.form-control::placeholder { color: var(--light-text-soft, rgba(0,0,0,0.5)) !important; }
     .checkout-form .form-control:focus,
     .checkout-form textarea.form-control:focus {
-        background: rgba(20,30,45,0.7) !important;
-        border-color: #1E88E5 !important;
+        background: var(--card-bg) !important;
+        border-color: var(--accent-blue) !important;
         box-shadow: 0 0 0 3px rgba(30,136,229,0.15) !important;
     }
+    .checkout-form .form-label { color: var(--text-white) !important; font-weight: 500; }
+    html[data-theme='light'] .checkout-form .form-label { color: var(--light-text) !important; }
+
+    /* Card header titles adapt to theme on checkout */
+    html[data-theme='dark'] .checkout-center .card-header h5 { color: var(--text-white) !important; }
+    html[data-theme='light'] .checkout-center .card-header h5 { color: var(--light-text) !important; }
     
-    .checkout-form .form-label {
-        color: #FFFFFF !important;
-        font-weight: 500;
+    /* Coupon suggestion styles */
+    .available-coupons {
+        margin-top: 1rem;
+    }
+    
+    .coupon-suggestion {
+        background: rgba(102, 126, 234, 0.1);
+        border: 1px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    html[data-theme='light'] .coupon-suggestion {
+        background: rgba(102, 126, 234, 0.05);
+        border-color: var(--light-border);
+    }
+    
+    .coupon-suggestion:hover {
+        background: rgba(102, 126, 234, 0.15);
+        border-color: var(--accent-blue);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    html[data-theme='light'] .coupon-suggestion:hover {
+        background: rgba(102, 126, 234, 0.1);
     }
 </style>
 {% endblock %}
@@ -126,10 +140,89 @@
                             <strong class="text-white">{{ item.get_total|rupees }}</strong>
                         </div>
                         {% endfor %}
-                        <div class="d-flex justify-content-between mt-3">
-                            <h5 class="text-white">Total:</h5>
-                            <h5 class="price-badge" style="font-size: 1.8rem;">{{ total|rupees }}</h5>
+                        <div class="d-flex justify-content-between mt-3 pt-3" style="border-top: 2px solid var(--border-color);">
+                            <h6 class="text-white">Subtotal:</h6>
+                            <h6 class="text-white">{{ total|rupees }}</h6>
                         </div>
+                        {% if applied_coupon %}
+                        <div class="d-flex justify-content-between text-success">
+                            <span><i class="fas fa-tag me-1"></i>Discount ({{ applied_coupon.discount_percentage }}%):</span>
+                            <span id="discount-amount">-{{ discount|rupees }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="d-flex justify-content-between mt-2">
+                            <h5 class="text-white">Total:</h5>
+                            <h5 class="price-badge" style="font-size: 1.8rem;" id="final-total">{{ final_total|rupees }}</h5>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Coupon Code Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-ticket-alt"></i> Have a Coupon Code?</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if applied_coupon %}
+                        <div class="alert alert-success d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>{{ applied_coupon.code }}</strong> applied!
+                                <br>
+                                <small>You saved {{ discount|rupees }}</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="remove-coupon-btn">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="coupon-code-input" 
+                                   placeholder="Enter coupon code" style="text-transform: uppercase;"
+                                   list="coupon-suggestions">
+                            <button class="btn btn-primary" type="button" id="apply-coupon-btn">
+                                <i class="fas fa-tag me-1"></i>Apply
+                            </button>
+                        </div>
+                        
+                        {% if available_coupons %}
+                        <datalist id="coupon-suggestions">
+                            {% for coupon in available_coupons %}
+                            <option value="{{ coupon.code }}">{{ coupon.discount_percentage }}% OFF{% if coupon.max_discount_amount %} (Max {{ coupon.max_discount_amount|rupees }}){% endif %}</option>
+                            {% endfor %}
+                        </datalist>
+                        
+                        <div class="available-coupons">
+                            <small class="text-muted mb-2 d-block"><i class="fas fa-info-circle me-1"></i>Available Coupons:</small>
+                            <div class="row g-2">
+                                {% for coupon in available_coupons %}
+                                <div class="col-md-6">
+                                    <div class="coupon-suggestion" data-code="{{ coupon.code }}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong class="text-primary">{{ coupon.code }}</strong>
+                                                <br>
+                                                <small class="text-success">{{ coupon.discount_percentage }}% OFF</small>
+                                                {% if coupon.max_discount_amount %}
+                                                <br><small class="text-muted">Max: {{ coupon.max_discount_amount|rupees }}</small>
+                                                {% endif %}
+                                                {% if coupon.min_order_amount %}
+                                                <br><small class="text-muted">Min: {{ coupon.min_order_amount|rupees }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary apply-suggested-coupon">
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div id="coupon-message" class="mt-2"></div>
+                        {% endif %}
                     </div>
                 </div>
                 
@@ -137,7 +230,7 @@
                     {% csrf_token %}
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="text-white"><i class="fas fa-credit-card"></i> Payment Method</h5>
+                        <h5><i class="fas fa-credit-card"></i> Payment Method</h5>
                     </div>
                     <div class="card-body">
                         <div class="payment-method-selector">
@@ -182,7 +275,7 @@
                 
                 <div class="card mt-4">
                     <div class="card-header">
-                        <h5 class="text-white"><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
+                        <h5><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
                     </div>
                     <div class="card-body">
                         
@@ -198,7 +291,7 @@
                                        required placeholder="Enter your phone number">
                             </div>
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success btn-lg">
+                                <button type="submit" class="btn btn-primary btn-lg">
                                     <i class="fas fa-check"></i> Place Order
                                 </button>
                                 <a href="{% url 'cart' %}" class="btn btn-secondary">
@@ -213,4 +306,141 @@
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const applyBtn = document.getElementById('apply-coupon-btn');
+    const removeBtn = document.getElementById('remove-coupon-btn');
+    const couponInput = document.getElementById('coupon-code-input');
+    const messageDiv = document.getElementById('coupon-message');
+    
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
+    // Apply coupon function
+    function applyCoupon(code) {
+        const formData = new FormData();
+        formData.append('coupon_code', code);
+        
+        // Disable all apply buttons
+        document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = true);
+        if (applyBtn) applyBtn.disabled = true;
+        
+        fetch('{% url "apply_coupon" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showMessage(data.message, 'danger');
+                document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
+                if (applyBtn) applyBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred. Please try again.', 'danger');
+            document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
+            if (applyBtn) applyBtn.disabled = false;
+        });
+    }
+    
+    // Apply coupon from input
+    if (applyBtn) {
+        applyBtn.addEventListener('click', function() {
+            const code = couponInput.value.trim().toUpperCase();
+            
+            if (!code) {
+                showMessage('Please enter a coupon code', 'danger');
+                return;
+            }
+            
+            applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+            applyCoupon(code);
+        });
+        
+        // Allow Enter key to apply coupon
+        couponInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyBtn.click();
+            }
+        });
+    }
+    
+    // Apply suggested coupons
+    document.querySelectorAll('.apply-suggested-coupon').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const code = this.closest('.coupon-suggestion').dataset.code;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            applyCoupon(code);
+        });
+    });
+    
+    // Click on coupon card to fill input
+    document.querySelectorAll('.coupon-suggestion').forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (!e.target.closest('.apply-suggested-coupon')) {
+                const code = this.dataset.code;
+                if (couponInput) {
+                    couponInput.value = code;
+                    couponInput.focus();
+                }
+            }
+        });
+    });
+    
+    // Remove coupon
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+            if (confirm('Remove this coupon?')) {
+                fetch('{% url "remove_coupon" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+    }
+    
+    function showMessage(message, type) {
+        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => {
+            messageDiv.innerHTML = '';
+        }, 5000);
+    }
+});
+</script>
 {% endblock %}

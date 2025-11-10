@@ -1,0 +1,371 @@
+{% extends "store/base.html" %}
+{% load currency %}
+
+{% block title %}Coupon Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-ticket-alt me-2"></i>Coupon Management
+        </h2>
+        <a href="{% url 'admin_add_coupon' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New Coupon
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filter Tabs -->
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if not filter_type or filter_type == 'all_coupons' %}active{% endif %}" 
+               href="?filter=all_coupons">
+                <i class="fas fa-ticket-alt me-1"></i>All Coupons
+                <span class="badge bg-secondary ms-1">{{ coupons|length }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if filter_type == 'all_users' %}active{% endif %}" 
+               href="?filter=all_users">
+                <i class="fas fa-users me-1"></i>All Users
+                <span class="badge bg-primary ms-1">{{ all_users_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if filter_type == 'favorites' %}active{% endif %}" 
+               href="?filter=favorites">
+                <i class="fas fa-heart me-1"></i>Favorite Customers
+                <span class="badge bg-danger ms-1">{{ favorites_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if filter_type == 'normal' %}active{% endif %}" 
+               href="?filter=normal">
+                <i class="fas fa-user me-1"></i>Normal Users
+                <span class="badge bg-info ms-1">{{ normal_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if filter_type == 'active' %}active{% endif %}" 
+               href="?filter=active">
+                <i class="fas fa-check-circle me-1"></i>Active
+                <span class="badge bg-success ms-1">{{ active_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if filter_type == 'inactive' %}active{% endif %}" 
+               href="?filter=inactive">
+                <i class="fas fa-times-circle me-1"></i>Inactive
+                <span class="badge bg-warning ms-1">{{ inactive_count }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Coupons Table -->
+    <div class="coupons-table-container">
+        {% if coupons %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Type</th>
+                        <th>Discount</th>
+                        <th>Min Order</th>
+                        <th>Max Discount</th>
+                        <th>Valid Period</th>
+                        <th>Usage</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                        {% for coupon in coupons %}
+                        <tr {% if not coupon.is_active %}class="table-secondary"{% endif %}>
+                            <td>
+                                <strong class="text-primary">{{ coupon.code }}</strong>
+                            </td>
+                            <td>
+                                {% if coupon.coupon_type == 'all' %}
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-users me-1"></i>All Users
+                                </span>
+                                {% elif coupon.coupon_type == 'favorites' %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-heart me-1"></i>Favorites
+                                </span>
+                                {% else %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-user me-1"></i>Normal
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong class="text-success">{{ coupon.discount_percentage }}%</strong>
+                            </td>
+                            <td>
+                                {% if coupon.min_order_amount %}
+                                {{ coupon.min_order_amount|rupees }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if coupon.max_discount_amount %}
+                                {{ coupon.max_discount_amount|rupees }}
+                                {% else %}
+                                <span class="text-muted">No Limit</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>
+                                    <div>From: {{ coupon.valid_from|date:"d M Y, g:i A" }}</div>
+                                    <div>To: {{ coupon.valid_until|date:"d M Y, g:i A" }}</div>
+                                </small>
+                            </td>
+                            <td>
+                                {% if coupon.usage_limit %}
+                                <span class="badge {% if coupon.times_used >= coupon.usage_limit %}bg-danger{% else %}bg-info{% endif %}">
+                                    {{ coupon.times_used }} / {{ coupon.usage_limit }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ coupon.times_used }} / ∞</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if coupon.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>Active
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-times-circle me-1"></i>Inactive
+                                </span>
+                                {% endif %}
+                                <br>
+                                {% if coupon.show_in_suggestions %}
+                                <span class="badge bg-info mt-1">
+                                    <i class="fas fa-eye me-1"></i>Visible
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary mt-1">
+                                    <i class="fas fa-eye-slash me-1"></i>Hidden
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'admin_edit_coupon' coupon.id %}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'admin_toggle_coupon' coupon.id %}" 
+                                       class="btn btn-sm btn-outline-{% if coupon.is_active %}warning{% else %}success{% endif %}" 
+                                       title="{% if coupon.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                        <i class="fas fa-power-off"></i>
+                                    </a>
+                                    <a href="{% url 'admin_delete_coupon' coupon.id %}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       title="Delete"
+                                       onclick="return confirm('Are you sure you want to delete this coupon?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-ticket-alt fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No coupons found</h5>
+            <p class="text-muted">Create your first coupon to get started</p>
+            <a href="{% url 'admin_add_coupon' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add New Coupon
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.coupons-table-container {
+    background: transparent;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.nav-pills .nav-link {
+    color: var(--text-white);
+    background: rgba(15, 25, 40, 0.6);
+    border: 1px solid var(--border-color);
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+html[data-theme='light'] .nav-pills .nav-link {
+    color: var(--light-text-soft);
+    background: var(--light-surface);
+    border-color: var(--light-border);
+}
+
+.nav-pills .nav-link:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.5);
+    transform: translateY(-2px);
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .card {
+    background: var(--light-card);
+    border-color: var(--light-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.table {
+    color: var(--text-white);
+    background: transparent !important;
+    margin-bottom: 0;
+}
+
+html[data-theme='light'] .table {
+    color: var(--light-text);
+    background: transparent !important;
+}
+
+.table-responsive {
+    background: rgba(15, 25, 40, 0.95);
+    border-radius: 15px;
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+html[data-theme='light'] .table-responsive {
+    background: var(--light-surface);
+    border-color: var(--light-border);
+}
+
+.table thead {
+    border-bottom: 2px solid var(--border-color);
+    background: rgba(102, 126, 234, 0.15);
+}
+
+html[data-theme='light'] .table thead {
+    border-bottom: 2px solid var(--light-border);
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.table thead th {
+    color: var(--text-white);
+    font-weight: 600;
+    padding: 1rem;
+    background: transparent;
+}
+
+html[data-theme='light'] .table thead th {
+    color: var(--light-text);
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s ease;
+    background: rgba(10, 15, 30, 0.5);
+}
+
+html[data-theme='light'] .table tbody tr {
+    border-bottom: 1px solid var(--light-border);
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.table tbody tr:hover {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+html[data-theme='light'] .table tbody tr:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.table tbody td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+    background: transparent;
+}
+
+.table-secondary {
+    opacity: 0.5;
+    background: rgba(10, 15, 30, 0.3) !important;
+}
+
+html[data-theme='light'] .table-secondary {
+    opacity: 0.6;
+    background: rgba(200, 200, 200, 0.3) !important;
+}
+
+.btn-group .btn {
+    margin: 0 2px;
+}
+
+.text-muted {
+    color: var(--text-gray) !important;
+}
+
+html[data-theme='light'] .text-muted {
+    color: var(--light-text-soft) !important;
+}
+
+h2, h5 {
+    color: var(--text-white);
+}
+
+html[data-theme='light'] h2,
+html[data-theme='light'] h5 {
+    color: var(--light-text);
+}
+
+.badge {
+    padding: 0.35em 0.65em;
+    font-weight: 500;
+}
+
+.text-primary {
+    color: #667eea !important;
+}
+
+.text-success {
+    color: #51cf66 !important;
+}
+
+html[data-theme='light'] .text-success {
+    color: #2e7d32 !important;
+}
+</style>
+{% endblock %}

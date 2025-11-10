@@ -5,75 +5,62 @@
 <section class="section manage-fish-minimal">
     <div class="container-fluid">
         <style>
-            /* Minimal darkening: only remove white backgrounds on this page */
-            .manage-fish-minimal .card.admin-card-light {
+            /* Dark mode specific overrides */
+            html[data-theme='dark'] .manage-fish-minimal .card.admin-card-light {
                 background: var(--card-bg) !important;
                 border: 1px solid var(--border-color) !important;
             }
-            .manage-fish-minimal .card.admin-card-light .card-body { background: transparent !important; }
-            .manage-fish-minimal table.table { background: transparent !important; }
-            /* Force cells (Bootstrap sets background on > * > * selector) */
-            .manage-fish-minimal .table>:not(caption)>*>* { 
+            html[data-theme='dark'] .manage-fish-minimal .card.admin-card-light .card-body { background: transparent !important; }
+            html[data-theme='dark'] .manage-fish-minimal table.table { background: transparent !important; }
+            html[data-theme='dark'] .manage-fish-minimal .table>:not(caption)>*>*:not(.btn):not(.badge) { 
                 background: transparent !important; 
                 box-shadow: none !important;
                 color: #FFFFFF !important;
             }
-            /* Theme search inputs to match site */
-            .manage-fish-minimal .form-control,
-            .manage-fish-minimal .form-select {
-                background-color: rgba(15, 25, 40, 0.95) !important;
-                color: #FFFFFF !important;
-                border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            }
-            .manage-fish-minimal .form-control::placeholder {
-                color: rgba(255, 255, 255, 0.6) !important;
-            }
-            .manage-fish-minimal .form-control:focus,
-            .manage-fish-minimal .form-select:focus {
-                background-color: rgba(15, 25, 40, 0.95) !important;
-                color: #FFFFFF !important;
-                border-color: #1E88E5 !important;
-                box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
-            }
-            .manage-fish-minimal thead th {
+            html[data-theme='dark'] .manage-fish-minimal thead th {
                 background: rgba(25,40,60,0.65) !important;
                 color: #FFFFFF !important;
                 border-color: var(--border-color) !important;
                 font-weight: 600 !important;
             }
-            .manage-fish-minimal thead th * {
-                color: #FFFFFF !important;
-            }
-            .manage-fish-minimal .table thead th {
-                color: #FFFFFF !important;
-            }
-            .manage-fish-minimal table thead tr th {
-                color: #FFFFFF !important;
-            }
-            /* Add subtle dark row backgrounds + hover */
-            .manage-fish-minimal tbody tr { background: rgba(20,30,45,0.55) !important; transition: background .18s ease; }
-            .manage-fish-minimal tbody tr:nth-child(odd) { background: rgba(25,40,60,0.55) !important; }
-            .manage-fish-minimal tbody tr:hover { background: rgba(40,80,140,0.55) !important; }
-            .manage-fish-minimal td, .manage-fish-minimal th { color: #FFFFFF !important; border-color: var(--border-color) !important; }
-            .manage-fish-minimal .admin-text-black { color: #FFFFFF !important; }
-            .manage-fish-minimal .empty-state .fas { color: var(--text-white); }
-            /* Keep badges readable */
-            .manage-fish-minimal .badge { box-shadow: 0 0 0 1px rgba(0,0,0,0.25); }
-            /* Explicit white text utility for table cells and all text content */
-            .manage-fish-minimal .table td strong { color: #FFFFFF !important; }
-            .manage-fish-minimal .table td, .manage-fish-minimal .table th { font-weight: 500; color: #FFFFFF !important; }
-            .manage-fish-minimal .table tbody td { color: #FFFFFF !important; }
-            .manage-fish-minimal .table tbody td * { color: #FFFFFF !important; }
-            .manage-fish-minimal .table tbody td strong { color: #FFFFFF !important; font-weight: 700; }
-            /* Vivid red delete button override */
-            .manage-fish-minimal a.btn.btn-danger.btn-sm {
-                background: #d32f2f !important;
-                border-color: #d32f2f !important;
-                color: #fff !important;
-            }
-            .manage-fish-minimal a.btn.btn-danger.btn-sm:hover {
-                background: #b71c1c !important;
-                border-color: #b71c1c !important;
+            html[data-theme='dark'] .manage-fish-minimal tbody tr { background: rgba(20,30,45,0.55) !important; transition: background .18s ease; }
+            html[data-theme='dark'] .manage-fish-minimal tbody tr:nth-child(odd) { background: rgba(25,40,60,0.55) !important; }
+            html[data-theme='dark'] .manage-fish-minimal tbody tr:hover { background: rgba(40,80,140,0.55) !important; }
+            html[data-theme='dark'] .manage-fish-minimal td, html[data-theme='dark'] .manage-fish-minimal th { color: #FFFFFF !important; border-color: var(--border-color) !important; }
+            html[data-theme='dark'] .manage-fish-minimal .admin-text-black { color: #FFFFFF !important; }
+            html[data-theme='dark'] .manage-fish-minimal .empty-state .fas { color: var(--text-white); }
+            html[data-theme='dark'] .manage-fish-minimal .badge { box-shadow: 0 0 0 1px rgba(0,0,0,0.25); }
+            html[data-theme='dark'] .manage-fish-minimal .table td strong { color: #FFFFFF !important; }
+            html[data-theme='dark'] .manage-fish-minimal .table td, html[data-theme='dark'] .manage-fish-minimal .table th { font-weight: 500; color: #FFFFFF !important; }
+            html[data-theme='dark'] .manage-fish-minimal a.btn.btn-danger.btn-sm { background: #d32f2f !important; border-color: #d32f2f !important; color: #fff !important; }
+            html[data-theme='dark'] .manage-fish-minimal a.btn.btn-danger.btn-sm:hover { background: #b71c1c !important; border-color: #b71c1c !important; }
+
+            /* Light mode refinements */
+            html[data-theme='light'] .manage-fish-minimal .card.admin-card-light { background: var(--light-card) !important; border: 1px solid var(--light-border) !important; }
+            html[data-theme='light'] .manage-fish-minimal .table { background: var(--light-card) !important; }
+            html[data-theme='light'] .manage-fish-minimal thead th { background: rgba(25,118,210,0.08) !important; color: var(--light-text) !important; border-color: var(--light-border) !important; font-weight:600 !important; }
+            html[data-theme='light'] .manage-fish-minimal tbody tr { background: var(--light-card) !important; }
+            html[data-theme='light'] .manage-fish-minimal tbody tr:nth-child(even) { background: rgba(26,35,50,0.03) !important; }
+            html[data-theme='light'] .manage-fish-minimal tbody tr:hover { background: rgba(25,118,210,0.05) !important; }
+            html[data-theme='light'] .manage-fish-minimal td, html[data-theme='light'] .manage-fish-minimal th { color: var(--light-text-soft) !important; border-color: var(--light-border) !important; }
+            html[data-theme='light'] .manage-fish-minimal td strong { color: var(--light-text) !important; }
+            html[data-theme='light'] .manage-fish-minimal .badge.bg-success { background: rgba(76,175,80,0.15)!important; color:#2e7d32!important; border-color: rgba(76,175,80,0.3)!important; }
+            html[data-theme='light'] .manage-fish-minimal .badge.bg-danger { background: rgba(198,40,40,0.15)!important; color:#c62828!important; border-color: rgba(198,40,40,0.3)!important; }
+            html[data-theme='light'] .manage-fish-minimal a.btn.btn-danger.btn-sm { background: transparent !important; color: #c62828 !important; border:1px solid #c62828 !important; }
+            html[data-theme='light'] .manage-fish-minimal a.btn.btn-danger.btn-sm:hover { background:#c62828 !important; color:#fff !important; }
+
+            /* Themed form controls rely on global styles; only adjust border radius */
+            .manage-fish-minimal .form-control, .manage-fish-minimal .form-select { border-radius:6px; }
+            html[data-theme='light'] .manage-fish-minimal .form-control::placeholder { color: var(--light-text-soft)!important; opacity:.7; }
+            html[data-theme='dark'] .manage-fish-minimal .form-control::placeholder { color: rgba(255,255,255,0.6)!important; }
+
+            /* Responsive table improvements (already globally scrollable) */
+            @media (max-width: 576px) {
+                .manage-fish-minimal table.table thead { display: none; }
+                .manage-fish-minimal table.table tbody tr { display: block; margin-bottom: 12px; border:1px solid var(--border-color); border-radius:8px; padding:8px 10px; }
+                html[data-theme='light'] .manage-fish-minimal table.table tbody tr { border-color: var(--light-border); }
+                .manage-fish-minimal table.table tbody td { display: flex; justify-content: space-between; align-items: center; padding:6px 8px; font-size:0.85rem; }
+                .manage-fish-minimal table.table tbody td:before { content: attr(data-label); font-weight:600; opacity:.8; margin-right:8px; }
             }
         </style>
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -147,20 +134,20 @@
                                 </div>
                                 {% endif %}
                             </td>
-                            <td><strong>{{ fish.name }}</strong></td>
-                            <td>{{ fish.category.name }}</td>
-                            <td>{{ fish.breed.name }}</td>
-                            <td>{{ fish.size }}</td>
-                            <td style="font-weight:600;">{{ fish.price|rupees }}</td>
-                            <td>{{ fish.stock_quantity }}</td>
-                            <td>
+                            <td data-label="Name"><strong>{{ fish.name }}</strong></td>
+                            <td data-label="Category">{{ fish.category.name }}</td>
+                            <td data-label="Breed">{{ fish.breed.name }}</td>
+                            <td data-label="Size">{{ fish.size }}</td>
+                            <td data-label="Price" style="font-weight:600;">{{ fish.price|rupees }}</td>
+                            <td data-label="Stock">{{ fish.stock_quantity }}</td>
+                            <td data-label="Status">
                                 {% if fish.is_available %}
                                 <span class="badge bg-success">Available</span>
                                 {% else %}
                                 <span class="badge bg-danger">Unavailable</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Actions">
                                 <a href="{% url 'edit_fish' fish.id %}" class="btn btn-primary btn-sm" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>

@@ -1,0 +1,275 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="about-hero">
+    <div class="container-fluid">
+        <div class="row align-items-center" style="min-height: 400px;">
+            <div class="col-lg-6">
+                <h1 class="hero-title mb-4">About AquaFish Store</h1>
+                <p class="text-gray" style="font-size: 1.1rem; line-height: 1.8;">
+                    Welcome to AquaFish Store, your premier destination for premium aquatic fishes. 
+                    We specialize in providing the finest selection of exotic and rare fish species, 
+                    carefully curated from trusted breeders worldwide.
+                </p>
+            </div>
+            <div class="col-lg-6">
+                <div class="about-image-container">
+                    <i class="fas fa-fish" style="font-size: 15rem; opacity: 0.1; color: var(--accent-blue);"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mission Section -->
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading mb-5">Our Mission</h2>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card" style="height: 100%; padding: 30px;">
+                    <div class="mb-3">
+                        <i class="fas fa-bullseye" style="font-size: 2.5rem; color: var(--accent-blue);"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Quality First</h4>
+                    <p class="text-gray" style="line-height: 1.8;">
+                        Our collection features hundreds of species across multiple categories and breeds. 
+                        Each fish is carefully selected, ensuring quality, health, and beauty. We work only 
+                        with certified breeders who maintain the highest standards.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card" style="height: 100%; padding: 30px;">
+                    <div class="mb-3">
+                        <i class="fas fa-heart" style="font-size: 2.5rem; color: var(--accent-blue);"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Customer Satisfaction</h4>
+                    <p class="text-gray" style="line-height: 1.8;">
+                        Whether you're a seasoned aquarist or just beginning your journey, we have something 
+                        special for everyone. Our team of experts is dedicated to providing you with healthy, 
+                        beautiful fish and exceptional customer service.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Services Section -->
+{% if services %}
+<section class="section services-section">
+    <div class="container-fluid">
+        <h2 class="section-heading mb-5">Our Services</h2>
+        <div class="row">
+            {% for service in services %}
+            <div class="col-md-6 mb-4">
+                <div class="card service-card" style="height: 100%;">
+                    <div class="row g-0 h-100">
+                        <div class="col-md-5">
+                            {% if service.image %}
+                            <img src="{{ service.image.url }}" class="service-image" alt="{{ service.title }}">
+                            {% else %}
+                            <div class="service-image-placeholder">
+                                <i class="{{ service.icon }}" style="font-size: 4rem; opacity: 0.3;"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-7">
+                            <div class="card-body h-100 d-flex flex-column" style="padding: 30px;">
+                                <div class="mb-3">
+                                    <i class="{{ service.icon }}" style="font-size: 2rem; color: var(--accent-blue);"></i>
+                                </div>
+                                <h4 class="text-white mb-3">{{ service.title }}</h4>
+                                <p class="text-gray flex-grow-1" style="line-height: 1.8;">
+                                    {{ service.description }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Contact Information -->
+{% if contact %}
+<section class="section contact-section">
+    <div class="container-fluid">
+        <h2 class="section-heading mb-5">Get In Touch</h2>
+        <div class="row">
+            <!-- Quick Actions -->
+            <div class="col-lg-4 mb-4">
+                <div class="card contact-card quick-card" style="padding:32px; height:100%;">
+                    <h4 class="text-white mb-4"><i class="fas fa-hands-helping me-2" style="color:var(--accent-blue);"></i>Quick Contact</h4>
+                    <div class="quick-actions d-grid gap-3 mb-4">
+                        <a href="tel:{{ contact.phone_primary }}" class="btn btn-primary w-100"><i class="fas fa-phone-alt me-2"></i>Call Now</a>
+                        {% if contact.whatsapp %}<a href="https://wa.me/{{ contact.whatsapp|cut:'+' }}" target="_blank" class="btn btn-success w-100"><i class="fab fa-whatsapp me-2"></i>WhatsApp</a>{% endif %}
+                        <a href="mailto:{{ contact.email_support }}" class="btn btn-info w-100" style="--bs-btn-color:#fff;"><i class="fas fa-envelope me-2"></i>Email Support</a>
+                        {% if contact.email_sales %}<a href="mailto:{{ contact.email_sales }}" class="btn btn-outline-light w-100"><i class="fas fa-envelope-open-text me-2"></i>Email Sales</a>{% endif %}
+                    </div>
+                    <div class="small text-gray">
+                        <i class="fas fa-map-marker-alt me-2" style="color:var(--accent-blue);"></i>
+                        {{ contact.city }}, {{ contact.country }}
+                        <div class="mt-2"><a href="#full-address" class="text-decoration-none" style="color:var(--accent-blue);">View full address ↓</a></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Full Address & Emails -->
+            <div class="col-lg-4 mb-4">
+                <div class="card contact-card" style="padding:32px; height:100%;" id="full-address">
+                    <h4 class="text-white mb-3"><i class="fas fa-map-marker-alt me-2" style="color:var(--accent-blue);"></i>Address</h4>
+                    <p class="text-gray" style="line-height:1.7;">
+                        {{ contact.address_line1 }}<br>
+                        {% if contact.address_line2 %}{{ contact.address_line2 }}<br>{% endif %}
+                        {{ contact.city }}{% if contact.state %}, {{ contact.state }}{% endif %}<br>
+                        {% if contact.postal_code %}{{ contact.postal_code }}<br>{% endif %}
+                        {{ contact.country }}
+                    </p>
+                    <hr class="my-4" style="border-color:rgba(255,255,255,0.08);">
+                    <h4 class="text-white mb-3"><i class="fas fa-phone-alt me-2" style="color:var(--accent-blue);"></i>Phones</h4>
+                    <ul class="list-unstyled text-gray mb-0" style="line-height:1.6;">
+                        <li>Primary: <a href="tel:{{ contact.phone_primary }}" class="text-decoration-none text-white">{{ contact.phone_primary }}</a></li>
+                        {% if contact.phone_secondary %}<li>Secondary: <a href="tel:{{ contact.phone_secondary }}" class="text-decoration-none text-white">{{ contact.phone_secondary }}</a></li>{% endif %}
+                    </ul>
+                </div>
+            </div>
+            <!-- Hours & Social -->
+            <div class="col-lg-4 mb-4">
+                <div class="card contact-card" style="padding:32px; height:100%;">
+                    <h4 class="text-white mb-3"><i class="fas fa-clock me-2" style="color:var(--accent-blue);"></i>Opening Hours</h4>
+                    {% if contact.opening_hours %}
+                        <pre class="text-gray" style="white-space:pre-wrap; font-family:inherit; line-height:1.6;">{{ contact.opening_hours }}</pre>
+                    {% else %}
+                        <p class="text-gray">Hours not set.</p>
+                    {% endif %}
+                    <hr class="my-4" style="border-color:rgba(255,255,255,0.08);">
+                    <h4 class="text-white mb-3"><i class="fas fa-share-alt me-2" style="color:var(--accent-blue);"></i>Social</h4>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if contact.whatsapp %}<a href="https://wa.me/{{ contact.whatsapp|cut:'+' }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
+                        {% if contact.facebook_url %}<a href="{{ contact.facebook_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>{% endif %}
+                        {% if contact.instagram_url %}<a href="{{ contact.instagram_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
+                        {% if contact.twitter_url %}<a href="{{ contact.twitter_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>{% endif %}
+                        {% if contact.youtube_url %}<a href="{{ contact.youtube_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="YouTube"><i class="fab fa-youtube"></i></a>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% if map_url %}
+        <div class="row mt-2">
+            <div class="col-12">
+                <div class="card contact-card" style="padding:0; overflow:hidden;">
+                    <iframe src="{{ map_url }}" width="100%" height="500" style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row mt-2">
+            <div class="col-12">
+                <div class="card contact-card d-flex align-items-center justify-content-center" style="min-height:300px;">
+                    <div class="text-center">
+                        <i class="fas fa-map-marked-alt" style="font-size:3rem; color:var(--accent-blue); opacity:.6;"></i>
+                        <p class="text-gray mt-3">Map location not provided.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+
+<style>
+.about-hero {
+    background: linear-gradient(135deg, rgba(30, 136, 229, 0.05), rgba(100, 181, 246, 0.05));
+    padding: 80px 0;
+    margin-bottom: 60px;
+}
+
+.about-image-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.services-section {
+    background: var(--darker-bg);
+    padding: 80px 0;
+}
+
+.service-card {
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.service-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(30, 136, 229, 0.2);
+}
+
+.service-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.service-image-placeholder {
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(100, 181, 246, 0.1));
+}
+
+
+.contact-section {
+    padding: 80px 0;
+    background: var(--darker-bg);
+}
+.contact-card { background: rgba(20,30,45,0.85); border:1px solid rgba(255,255,255,0.08); }
+html[data-theme='light'] .contact-section { background: var(--light-surface); }
+html[data-theme='light'] .contact-card { background:#fff; border:1px solid var(--light-border); }
+
+html[data-theme='light'] .about-hero {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(66, 165, 245, 0.05));
+}
+
+html[data-theme='light'] .services-section {
+    background: var(--light-surface);
+}
+
+html[data-theme='light'] .service-card {
+    background: white;
+}
+
+html[data-theme='light'] .service-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .service-image-placeholder {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1), rgba(66, 165, 245, 0.1));
+}
+
+@media (max-width: 768px) {
+    .about-hero {
+        padding: 40px 0;
+    }
+    
+    .services-section {
+        padding: 40px 0;
+    }
+    
+    .service-image-placeholder {
+        min-height: 200px;
+    }
+}
+</style>
+{% endblock %}

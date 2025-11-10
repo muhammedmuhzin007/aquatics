@@ -1,0 +1,56 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="section-heading">Services</h2>
+      <a class="btn btn-primary" href="{% url 'admin_add_service' %}"><i class="fas fa-plus"></i> Add Service</a>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        {% if services %}
+        <div class="table-responsive">
+          <table class="table table-dark table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Title</th>
+                <th>Icon</th>
+                <th>Active</th>
+                <th>Updated</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in services %}
+              <tr>
+                <td>{{ s.display_order }}</td>
+                <td>{{ s.title }}</td>
+                <td><i class="{{ s.icon }}"></i> <small class="text-gray ms-2">{{ s.icon }}</small></td>
+                <td>
+                  {% if s.is_active %}
+                    <span class="badge bg-success">Active</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Hidden</span>
+                  {% endif %}
+                </td>
+                <td>{{ s.updated_at|date:"M d, Y" }}</td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_edit_service' s.id %}"><i class="fas fa-edit"></i></a>
+                  <a class="btn btn-sm btn-outline-danger" href="{% url 'admin_delete_service' s.id %}" onclick="return confirm('Delete this service?');"><i class="fas fa-trash"></i></a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="text-gray mb-0">No services yet. Click "Add Service" to create one.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

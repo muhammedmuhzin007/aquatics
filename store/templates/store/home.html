@@ -16,7 +16,7 @@
             </a>
         {% elif not user.is_authenticated %}
             <div class="mt-4">
-                <a href="{% url 'register' %}" class="btn btn-primary btn-lg">
+                <a href="{% url 'register' %}" class="btn btn-primary btn-lg btn-register">
                     <i class="fas fa-user-plus"></i> Get Started
                 </a>
                 <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
@@ -115,37 +115,273 @@
 </section>
 {% endif %}
 
-<!-- Services Section -->
-{% if not user.is_authenticated %}
-<section class="section" style="background: var(--darker-bg);">
+<!-- Reviews Section -->
+{% if reviews %}
+<section class="section review-section" style="padding: 80px 0;">
     <div class="container-fluid">
-        <h2 class="section-heading">Services</h2>
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card" style="height: 100%;">
-                    <div style="height: 400px; background: linear-gradient(135deg, rgba(30, 136, 229, 0.2), rgba(100, 181, 246, 0.2)); display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-fish fa-6x" style="opacity: 0.3;"></i>
+        <h2 class="section-heading mb-5">What Customers Say</h2>
+        <div class="review-carousel-container" style="max-width: 1000px; margin: 0 auto; position: relative;">
+            <div id="reviewCarouselTrack" style="min-height: 280px; padding: 40px 80px;">
+                {% for r in reviews %}
+                <div class="review-slide" style="display:none;">
+                    <div class="d-flex flex-column align-items-center text-center">
+                        <!-- Star Rating -->
+                        <div class="mb-4" style="font-size: 1.5rem;">
+                            {% for ch in '12345' %}
+                                {% if forloop.counter <= r.rating %}
+                                    <i class="fas fa-star" style="color:#FFC107;"></i>
+                                {% else %}
+                                    <i class="far fa-star" style="color:#FFE082;"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Review Comment -->
+                        <div class="mb-4" style="position: relative;">
+                            <i class="fas fa-quote-left" style="position: absolute; left: -30px; top: -10px; font-size: 2rem; color: var(--accent-blue); opacity: 0.3;"></i>
+                            <p class="text-white" style="max-width: 700px; font-size: 1.1rem; line-height: 1.9; font-weight: 300; padding: 0 20px;">
+                                {{ r.comment|default:'Great experience! Highly recommended.' }}
+                            </p>
+                            <i class="fas fa-quote-right" style="position: absolute; right: -30px; bottom: -10px; font-size: 2rem; color: var(--accent-blue); opacity: 0.3;"></i>
+                        </div>
+                        
+                        <!-- User Info -->
+                        <div class="mt-3">
+                            <div class="mb-2">
+                                <span class="text-white" style="font-size: 1rem; font-weight: 500;">
+                                    <i class="fas fa-user-circle me-2" style="color: var(--accent-blue);"></i>{{ r.user.username }}
+                                </span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted" style="font-size: 0.75rem;">
+                                    <i class="far fa-calendar-alt me-1"></i>{{ r.created_at|date:"M d, Y" }}
+                                </small>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            <div class="col-md-6 mb-4">
-                <div class="card" style="height: 100%; padding: 40px;">
-                    <h3 class="text-white mb-3">Premium Fish Collection</h3>
-                    <p class="text-gray mb-4" style="line-height: 1.8;">
-                        Explore our extensive collection of premium aquatic fishes. We offer a wide variety of species, from common favorites to rare exotic breeds. Each fish is carefully selected and maintained to ensure the highest quality.
-                    </p>
-                    <p class="text-gray mb-4" style="line-height: 1.8;">
-                        Our team of experts is dedicated to providing you with healthy, beautiful fish and exceptional customer service. Whether you're looking to start a new aquarium or add to your existing collection, we're here to help.
-                    </p>
-                    {% if not user.is_authenticated %}
-                    <a href="{% url 'register' %}" class="btn btn-success">
-                        Get Started
-                    </a>
-                    {% endif %}
-                </div>
+            
+            <!-- Navigation Arrows -->
+            <button id="reviewPrev" class="review-nav-btn review-nav-prev" aria-label="Previous review">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button id="reviewNext" class="review-nav-btn review-nav-next" aria-label="Next review">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <!-- Indicator Dots -->
+            <div id="reviewIndicators" class="review-indicators">
+                {% for r in reviews %}
+                <span class="review-dot" data-index="{{ forloop.counter0 }}"></span>
+                {% endfor %}
             </div>
         </div>
     </div>
 </section>
+
+<style>
+.review-section {
+    background: var(--darker-bg);
+}
+
+html[data-theme='light'] .review-section {
+    background: var(--light-surface);
+}
+
+.review-carousel-container {
+    position: relative;
+}
+
+.review-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(30, 136, 229, 0.15);
+    border: 2px solid var(--accent-blue);
+    color: var(--accent-blue);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    font-size: 1.2rem;
+}
+
+.review-nav-btn:hover {
+    background: var(--accent-blue);
+    color: white;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 15px rgba(30, 136, 229, 0.3);
+}
+
+.review-nav-prev {
+    left: 10px;
+}
+
+.review-nav-next {
+    right: 10px;
+}
+
+.review-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+.review-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.review-dot:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: scale(1.2);
+}
+
+.review-dot.active {
+    background: var(--accent-blue);
+    width: 30px;
+    border-radius: 5px;
+}
+
+html[data-theme='light'] .review-nav-btn {
+    background: rgba(25, 118, 210, 0.1);
+    border-color: var(--light-accent);
+    color: var(--light-accent);
+}
+
+html[data-theme='light'] .review-nav-btn:hover {
+    background: var(--light-accent);
+    color: white;
+}
+
+html[data-theme='light'] .review-dot {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme='light'] .review-dot:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme='light'] .review-dot.active {
+    background: var(--light-accent);
+}
+
+@media (max-width: 768px) {
+    #reviewCarouselTrack {
+        padding: 40px 60px !important;
+    }
+    
+    .review-nav-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .review-nav-prev {
+        left: 5px;
+    }
+    
+    .review-nav-next {
+        right: 5px;
+    }
+}
+</style>
 {% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enhanced review carousel with indicators
+document.addEventListener('DOMContentLoaded', function(){
+    const track = document.querySelector('#reviewCarouselTrack');
+    if(!track) return;
+    
+    const items = track.querySelectorAll('.review-slide');
+    const dots = document.querySelectorAll('.review-dot');
+    const prevBtn = document.getElementById('reviewPrev');
+    const nextBtn = document.getElementById('reviewNext');
+    
+    let idx = 0;
+    let autoPlayInterval;
+    
+    function show(i){
+        items.forEach((el, j) => {
+            el.style.display = j === i ? 'block' : 'none';
+        });
+        
+        dots.forEach((dot, j) => {
+            if(j === i) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
+    
+    function next(){
+        idx = (idx + 1) % items.length;
+        show(idx);
+    }
+    
+    function prev(){
+        idx = (idx - 1 + items.length) % items.length;
+        show(idx);
+    }
+    
+    function startAutoPlay(){
+        stopAutoPlay();
+        autoPlayInterval = setInterval(next, 5000);
+    }
+    
+    function stopAutoPlay(){
+        if(autoPlayInterval){
+            clearInterval(autoPlayInterval);
+        }
+    }
+    
+    // Initialize
+    show(idx);
+    startAutoPlay();
+    
+    // Navigation buttons
+    nextBtn?.addEventListener('click', function(){
+        next();
+        stopAutoPlay();
+        startAutoPlay();
+    });
+    
+    prevBtn?.addEventListener('click', function(){
+        prev();
+        stopAutoPlay();
+        startAutoPlay();
+    });
+    
+    // Dot indicators
+    dots.forEach((dot, i) => {
+        dot.addEventListener('click', function(){
+            idx = i;
+            show(idx);
+            stopAutoPlay();
+            startAutoPlay();
+        });
+    });
+    
+    // Pause on hover
+    track.addEventListener('mouseenter', stopAutoPlay);
+    track.addEventListener('mouseleave', startAutoPlay);
+});
+</script>
 {% endblock %}

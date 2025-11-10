@@ -4,15 +4,20 @@ from . import views
 urlpatterns = [
     # Authentication
     path('register/', views.register_view, name='register'),
-    path('verify-otp/<int:user_id>/', views.verify_otp_view, name='verify_otp'),
-    path('resend-otp/<int:user_id>/', views.resend_otp_view, name='resend_otp'),
+    # Registration OTP (session-based, no user created yet)
+    path('verify-otp/', views.verify_otp_view, name='verify_otp'),
+    path('resend-otp/', views.resend_otp_view, name='resend_otp'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    # Debug email test endpoint (only works when DEBUG=True)
+    path('test-email/', views.test_email_view, name='test_email'),
+    path('email-debug/', views.email_config_view, name='email_debug'),
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
     path('reset-password/<int:user_id>/', views.reset_password_view, name='reset_password'),
     
     # Home
     path('', views.home_view, name='home'),
+    path('about/', views.about_view, name='about'),
     
     # Customer Routes
     path('fishes/', views.customer_fish_list_view, name='fish_list'),
@@ -22,9 +27,12 @@ urlpatterns = [
     path('update-cart/<int:cart_id>/', views.update_cart_view, name='update_cart'),
     path('remove-cart/<int:cart_id>/', views.remove_from_cart_view, name='remove_cart'),
     path('checkout/', views.checkout_view, name='checkout'),
+    path('apply-coupon/', views.apply_coupon_view, name='apply_coupon'),
+    path('remove-coupon/', views.remove_coupon_view, name='remove_coupon'),
     path('orders/', views.customer_orders_view, name='customer_orders'),
     path('order/<int:order_id>/', views.order_detail_view, name='order_detail'),
     path('order/<int:order_id>/cancel/', views.cancel_order_view, name='cancel_order'),
+    path('order/<int:order_id>/review/', views.submit_review_view, name='submit_review'),
     path('upi-payment/<int:order_id>/', views.upi_payment_view, name='upi_payment'),
     path('verify-upi/<int:order_id>/', views.verify_upi_payment, name='verify_upi_payment'),
     
@@ -61,12 +69,33 @@ urlpatterns = [
     path('store-admin/fish/<int:fish_id>/media/', views.admin_fish_media_view, name='admin_fish_media'),
     path('store-admin/fish/media/delete/<int:media_id>/', views.admin_delete_fish_media_view, name='admin_delete_fish_media'),
     path('store-admin/fish/media/<int:media_id>/edit/', views.admin_edit_fish_media_view, name='admin_edit_fish_media'),
+    # Services Management
+    path('store-admin/services/', views.admin_services_view, name='admin_services'),
+    path('store-admin/add-service/', views.admin_add_service_view, name='admin_add_service'),
+    path('store-admin/edit-service/<int:service_id>/', views.admin_edit_service_view, name='admin_edit_service'),
+    path('store-admin/delete-service/<int:service_id>/', views.admin_delete_service_view, name='admin_delete_service'),
+    # Contact Info Management
+    path('store-admin/contact/', views.admin_contact_view, name='admin_contact'),
+    path('store-admin/add-contact/', views.admin_add_contact_view, name='admin_add_contact'),
+    path('store-admin/edit-contact/<int:contact_id>/', views.admin_edit_contact_view, name='admin_edit_contact'),
+    # Review Management
+    path('store-admin/reviews/', views.admin_reviews_view, name='admin_reviews'),
+    path('store-admin/approve-review/<int:review_id>/', views.admin_approve_review, name='admin_approve_review'),
+    path('store-admin/reject-review/<int:review_id>/', views.admin_reject_review, name='admin_reject_review'),
     path('store-admin/orders/', views.admin_orders_view, name='admin_orders'),
+    path('store-admin/orders/ajax/', views.admin_orders_ajax_view, name='admin_orders_ajax'),
     path('store-admin/order/<int:order_id>/', views.admin_order_detail_view, name='admin_order_detail'),
     path('store-admin/users/', views.admin_users_view, name='admin_users'),
+    path('store-admin/toggle-favorite/<int:user_id>/', views.toggle_favorite_user_view, name='toggle_favorite_user'),
     path('store-admin/block-user/<int:user_id>/', views.block_user_view, name='block_user'),
     path('store-admin/unblock-user/<int:user_id>/', views.unblock_user_view, name='unblock_user'),
     path('store-admin/export-orders/', views.export_orders_excel_view, name='export_orders_excel'),
+    # Coupon Management
+    path('store-admin/coupons/', views.admin_coupons_view, name='admin_coupons'),
+    path('store-admin/add-coupon/', views.admin_add_coupon_view, name='admin_add_coupon'),
+    path('store-admin/edit-coupon/<int:coupon_id>/', views.admin_edit_coupon_view, name='admin_edit_coupon'),
+    path('store-admin/delete-coupon/<int:coupon_id>/', views.admin_delete_coupon_view, name='admin_delete_coupon'),
+    path('store-admin/toggle-coupon/<int:coupon_id>/', views.admin_toggle_coupon_view, name='admin_toggle_coupon'),
     
     # Profile
     path('profile/', views.profile_view, name='profile'),

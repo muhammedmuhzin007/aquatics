@@ -2,15 +2,15 @@
 
 {% block extra_css %}
 <style>
-    /* Scoped styles for user management page */
-    .user-management .card {
+    /* Scoped styles for user management page (dark mode only) */
+    html[data-theme='dark'] .user-management .card {
         background: var(--card-bg) !important;
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
     }
     
     /* Table styling */
-    .user-management .table>:not(caption)>*>* {
+    html[data-theme='dark'] .user-management .table>:not(caption)>*>*:not(.btn):not(.badge) {
         background: transparent !important;
         box-shadow: none !important;
         color: #FFFFFF !important;
@@ -18,7 +18,7 @@
     }
     
     /* Table headers */
-    .user-management thead th {
+    html[data-theme='dark'] .user-management thead th {
         background: rgba(25,40,60,0.65) !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
@@ -26,36 +26,63 @@
     }
     
     /* Table rows */
-    .user-management tbody tr {
+    html[data-theme='dark'] .user-management tbody tr {
         background: rgba(20,30,45,0.55) !important;
         transition: background 0.2s ease;
     }
     
-    .user-management tbody tr:nth-child(odd) {
+    html[data-theme='dark'] .user-management tbody tr:nth-child(odd) {
         background: rgba(25,40,60,0.55) !important;
     }
     
-    .user-management tbody tr:hover {
+    html[data-theme='dark'] .user-management tbody tr:hover {
         background: rgba(40,80,140,0.55) !important;
     }
     
     /* Table cells */
-    .user-management .table tbody td {
+    html[data-theme='dark'] .user-management .table tbody td {
         color: #FFFFFF !important;
     }
     
-    .user-management .table tbody td * {
+    html[data-theme='dark'] .user-management .table tbody td *:not(.btn):not(.badge) {
         color: #FFFFFF !important;
     }
     
-    .user-management .table tbody td strong {
+    html[data-theme='dark'] .user-management .table tbody td strong {
         color: #FFFFFF !important;
         font-weight: 700;
     }
     
     /* Override admin-text-black class */
-    .user-management .admin-text-black {
+    html[data-theme='dark'] .user-management .admin-text-black {
         color: #FFFFFF !important;
+    }
+    
+    /* Favorite heart icon styling */
+    .favorite-btn {
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .favorite-btn.active {
+        color: #FF1744;
+        text-shadow: 0 0 10px rgba(255, 23, 68, 0.5);
+    }
+    
+    .favorite-btn.inactive {
+        color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .favorite-btn:hover {
+        transform: scale(1.2);
+    }
+    
+    html[data-theme='light'] .favorite-btn.inactive {
+        color: rgba(0, 0, 0, 0.3);
     }
 </style>
 {% endblock %}
@@ -71,6 +98,7 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th class="admin-text-black">Favorite</th>
                             <th class="admin-text-black">Username</th>
                             <th class="admin-text-black">Email</th>
                             <th class="admin-text-black">Phone</th>
@@ -82,6 +110,13 @@
                     <tbody>
                         {% for user_obj in users %}
                         <tr>
+                            <td>
+                                <a href="{% url 'toggle_favorite_user' user_obj.id %}" 
+                                   class="favorite-btn {% if user_obj.is_favorite %}active{% else %}inactive{% endif %}"
+                                   title="{% if user_obj.is_favorite %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                                    <i class="{% if user_obj.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                                </a>
+                            </td>
                             <td><strong class="admin-text-black">{{ user_obj.username }}</strong></td>
                             <td class="admin-text-black">{{ user_obj.email }}</td>
                             <td class="admin-text-black">{{ user_obj.phone_number|default:"N/A" }}</td>

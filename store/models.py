@@ -18,6 +18,7 @@ class CustomUser(AbstractUser):
     address = models.TextField(blank=True, null=True)
     is_blocked = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
+    is_favorite = models.BooleanField(default=False)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -73,8 +74,10 @@ class Fish(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     size = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text='Size in inches')
     stock_quantity = models.IntegerField(default=0)
+    minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
     image = models.ImageField(upload_to='fishes/', blank=True, null=True)
     is_available = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False, help_text='If checked, this fish appears in Featured Fishes section')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -213,6 +216,9 @@ class Order(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders')
     order_number = models.CharField(max_length=20, unique=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    coupon = models.ForeignKey('Coupon', on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    final_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='card')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -244,4 +250,136 @@ class OrderItem(models.Model):
     
     def get_total(self):
         return self.price * self.quantity
+
+
+class Review(models.Model):
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='reviews', null=True, blank=True)
+    rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES)
+    comment = models.TextField(blank=True)
+    approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'order')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        num = getattr(self.order, 'order_number', 'N/A')
+        return f"Order {num} review by {self.user.username} ({self.rating}★)"
+
+
+class Service(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    icon = models.CharField(max_length=50, default='fas fa-fish', help_text='Font Awesome icon class (e.g., fas fa-fish)')
+    image = models.ImageField(upload_to='services/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0, help_text='Lower numbers appear first')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class ContactInfo(models.Model):
+    # Address
+    address_line1 = models.CharField(max_length=255, blank=True)
+    address_line2 = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+
+    # Phones & Emails
+    phone_primary = models.CharField(max_length=30, blank=True)
+    phone_secondary = models.CharField(max_length=30, blank=True)
+    email_support = models.EmailField(blank=True)
+    email_sales = models.EmailField(blank=True)
+
+    # Socials
+    whatsapp = models.CharField(max_length=50, blank=True, help_text='WhatsApp number with country code (e.g., +911234567890)')
+    facebook_url = models.URLField(blank=True)
+    instagram_url = models.URLField(blank=True)
+    twitter_url = models.URLField(blank=True)
+    youtube_url = models.URLField(blank=True)
+
+    # Map & Hours
+    map_embed_url = models.URLField(blank=True, help_text='Google Maps embed/share URL')
+    opening_hours = models.TextField(blank=True, help_text='One entry per line, e.g. Mon-Fri: 9:00 - 18:00')
+
+    # Meta
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Contact Information'
+        verbose_name_plural = 'Contact Information'
+
+    def __str__(self):
+        base = self.address_line1 or 'Contact Info'
+        return f"{base} ({self.city or ''})".strip()
+
+
+class Coupon(models.Model):
+    COUPON_TYPE_CHOICES = [
+        ('all', 'All Users'),
+        ('favorites', 'Favorite Users Only'),
+        ('normal', 'Normal Users Only'),
+    ]
+    
+    code = models.CharField(max_length=50, unique=True)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, help_text='Discount percentage (0-100)')
+    max_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Maximum discount amount in rupees')
+    min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Minimum order amount to use this coupon')
+    coupon_type = models.CharField(max_length=20, choices=COUPON_TYPE_CHOICES, default='all')
+    is_active = models.BooleanField(default=True)
+    show_in_suggestions = models.BooleanField(default=True, help_text='Show this coupon in checkout suggestions')
+    valid_from = models.DateTimeField()
+    valid_until = models.DateTimeField()
+    usage_limit = models.PositiveIntegerField(null=True, blank=True, help_text='Maximum number of times this coupon can be used (leave blank for unlimited)')
+    times_used = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='created_coupons')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} - {self.discount_percentage}% off ({self.get_coupon_type_display()})"
+    
+    def is_valid(self):
+        """Check if coupon is currently valid"""
+        now = timezone.now()
+        
+        if not self.is_active:
+            return False
+        
+        # Check if current time is within valid period
+        if self.valid_from and now < self.valid_from:
+            return False
+        
+        if self.valid_until and now > self.valid_until:
+            return False
+        
+        # Check usage limit
+        if self.usage_limit and self.times_used >= self.usage_limit:
+            return False
+        
+        return True
+    
+    def can_use(self, user):
+        if not self.is_valid():
+            return False
+        if self.coupon_type == 'favorites' and not user.is_favorite:
+            return False
+        if self.coupon_type == 'normal' and user.is_favorite:
+            return False
+        return True
 

@@ -1,0 +1,52 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+  <div class="container-fluid">
+    <h2 class="section-heading mb-4">{% if is_edit %}Edit Service{% else %}Add Service{% endif %}</h2>
+
+    <div class="card" style="max-width: 900px;">
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="row">
+            <div class="col-md-8">
+              <div class="mb-3">
+                <label class="form-label text-white">Title</label>
+                {{ form.title }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-white">Description</label>
+                {{ form.description }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-white">Font Awesome Icon</label>
+                {{ form.icon }}
+                <div class="form-text">Example: <code>fas fa-fish</code>, <code>fas fa-shipping-fast</code>, <code>fas fa-water</code></div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label text-white">Image</label>
+                {{ form.image }}
+              </div>
+              <div class="mb-3 form-check">
+                {{ form.is_active }}
+                <label class="form-check-label text-white ms-2">Active</label>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-white">Display Order</label>
+                {{ form.display_order }}
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end">
+            <a href="{% url 'admin_services' %}" class="btn btn-outline-secondary me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary">{% if is_edit %}Update{% else %}Create{% endif %}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

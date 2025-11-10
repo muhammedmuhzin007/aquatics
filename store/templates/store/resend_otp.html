@@ -9,7 +9,7 @@
                     <div class="card-body text-center" style="padding: 50px;">
                         <i class="fas fa-envelope-open fa-4x mb-4" style="color: var(--accent-light-blue);"></i>
                         <h2 class="text-white mb-2" style="font-weight: 700; font-size: 2rem;">Resend OTP</h2>
-                        <p class="text-gray mb-4">We'll send a new OTP to <strong>{{ user.email }}</strong></p>
+                        <p class="text-gray mb-4">We'll send a new OTP to <strong>{{ pending_email }}</strong></p>
                         
                         <form method="POST" class="mt-4">
                             {% csrf_token %}

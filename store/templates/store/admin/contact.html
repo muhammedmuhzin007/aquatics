@@ -1,0 +1,55 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<section class="section">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="section-heading">Contact Information</h2>
+      {% if contact %}
+        <a class="btn btn-primary" href="{% url 'admin_edit_contact' contact.id %}"><i class="fas fa-edit"></i> Edit</a>
+      {% else %}
+        <a class="btn btn-primary" href="{% url 'admin_add_contact' %}"><i class="fas fa-plus"></i> Add</a>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        {% if contact %}
+          <div class="row">
+            <div class="col-md-6">
+              <h5 class="text-white">Address</h5>
+              <p class="text-gray">
+                {{ contact.address_line1 }}<br>
+                {% if contact.address_line2 %}{{ contact.address_line2 }}<br>{% endif %}
+                {{ contact.city }}{% if contact.state %}, {{ contact.state }}{% endif %}<br>
+                {% if contact.postal_code %}{{ contact.postal_code }}<br>{% endif %}
+                {{ contact.country }}
+              </p>
+              <h5 class="text-white mt-4">Phones</h5>
+              <p class="text-gray">Primary: {{ contact.phone_primary }}</p>
+              {% if contact.phone_secondary %}<p class="text-gray">Secondary: {{ contact.phone_secondary }}</p>{% endif %}
+              <h5 class="text-white mt-4">Emails</h5>
+              <p class="text-gray">Support: {{ contact.email_support }}</p>
+              {% if contact.email_sales %}<p class="text-gray">Sales: {{ contact.email_sales }}</p>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <h5 class="text-white">Social</h5>
+              <ul class="text-gray">
+                {% if contact.whatsapp %}<li>WhatsApp: {{ contact.whatsapp }}</li>{% endif %}
+                {% if contact.facebook_url %}<li>Facebook: {{ contact.facebook_url }}</li>{% endif %}
+                {% if contact.instagram_url %}<li>Instagram: {{ contact.instagram_url }}</li>{% endif %}
+                {% if contact.twitter_url %}<li>Twitter: {{ contact.twitter_url }}</li>{% endif %}
+                {% if contact.youtube_url %}<li>YouTube: {{ contact.youtube_url }}</li>{% endif %}
+              </ul>
+              <h5 class="text-white mt-4">Opening Hours</h5>
+              <pre class="text-gray" style="white-space:pre-wrap; font-family:inherit;">{{ contact.opening_hours }}</pre>
+            </div>
+          </div>
+        {% else %}
+          <p class="mb-0 text-gray">No contact information found. Click Add to create it.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

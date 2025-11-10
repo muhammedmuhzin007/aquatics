@@ -2,15 +2,15 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<div class="section" style="min-height: calc(100vh - 300px); display: flex; align-items: center;">
+<div class="section">
     <div class="container-fluid">
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-body" style="padding: 50px;">
+                    <div class="card-body" style="padding: 40px;">
                         <div class="text-center mb-5">
                             <i class="fas fa-user-plus fa-4x mb-4" style="color: var(--accent-light-blue);"></i>
-                            <h2 class="text-white mb-2" style="font-weight: 700; font-size: 2rem;">Create Your Account</h2>
+                            <h2 class="section-heading" style="margin-bottom: .75rem;">Create Your Account</h2>
                             <p class="text-gray">Join the aquatic community</p>
                         </div>
                         
@@ -18,13 +18,13 @@
                             {% csrf_token %}
                             {{ form|crispy }}
                             
-                            <button type="submit" class="btn btn-primary w-100 mt-4" style="padding: 15px;">
+                            <button type="submit" class="btn btn-primary w-100 mt-4">
                                 <i class="fas fa-user-plus"></i> Register
                             </button>
                         </form>
                         
                         <div class="text-center mt-4">
-                            <p class="text-gray mb-0">Already have an account? <a href="{% url 'login' %}" class="text-white" style="text-decoration: none; font-weight: 500;">Login here</a></p>
+                            <p class="text-gray mb-0">Already have an account? <a href="{% url 'login' %}" class="link-underline-none">Login here</a></p>
                         </div>
                     </div>
                 </div>
@@ -34,22 +34,23 @@
 </div>
 
 <style>
-    .form-control, .form-select {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-white) !important;
+    /* Use global themed inputs; only extend minimal tweaks */
+    .register .form-control, .register .form-select { border-radius: 6px; }
+    .register .help-block { color: var(--text-gray) !important; }
+    html[data-theme='light'] .register a.link-underline-none { color: var(--light-accent); }
+    a.link-underline-none { color: var(--accent-light-blue); text-decoration: none; font-weight: 500; }
+    a.link-underline-none:hover { text-decoration: underline; }
+    /* Responsive spacing */
+    @media (max-width: 576px) {
+        .card-body { padding: 24px !important; }
     }
-    .form-control:focus, .form-select:focus {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border-color: var(--accent-blue) !important;
-        color: var(--text-white) !important;
-        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
-    }
-    .form-label {
-        color: var(--text-white) !important;
-    }
-    .help-block {
-        color: var(--text-gray) !important;
-    }
+    /* Light theme heading color */
+    html[data-theme='light'] .section-heading { color: var(--light-text); }
+    html[data-theme='light'] .text-gray { color: var(--light-text-soft) !important; }
+    /* Dark keeps defaults */
+    .section-heading { margin-bottom: 24px; }
+    /* Scope form container */
+    .register .card { overflow: hidden; }
+    .register .card .card-body { background: inherit !important; }
 </style>
 {% endblock %}

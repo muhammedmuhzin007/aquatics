@@ -12,7 +12,7 @@
                     {% csrf_token %}
                     {{ form|crispy }}
                     <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Breed
                         </button>
                         <a href="{% url 'staff_breeds' %}" class="btn btn-secondary">
@@ -26,21 +26,17 @@
 </section>
 
 <style>
-    /* Dark theme for inputs and the Category dropdown */
-    .form-control, .form-select, select {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-white) !important;
-    }
-    .form-control:focus, .form-select:focus, select:focus {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border-color: var(--accent-blue) !important;
-        color: var(--text-white) !important;
-        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
-    }
-    .form-label { color: var(--text-white) !important; }
-    /* Dropdown menu items in some browsers */
-    select option { background: #0f1928; color: #fff; }
+    /* Minimal page-specific tweaks - rely on global themed inputs */
+    .add-breed .card { overflow: hidden; }
+    .add-breed .form-control, .add-breed .form-select { border-radius: 6px; }
+    .add-breed .form-label { font-weight: 500; }
+    html[data-theme='light'] .add-breed .form-label { color: var(--light-text) !important; }
+    html[data-theme='light'] .add-breed .form-control::placeholder { color: var(--light-text-soft) !important; opacity:.7; }
+    html[data-theme='dark'] .add-breed .form-control::placeholder { color: rgba(255,255,255,0.6) !important; }
+    /* Ensure select options readable */
+    html[data-theme='dark'] .add-breed select option { background:#0f1928; color:#fff; }
+    html[data-theme='light'] .add-breed select option { background:#fff; color: var(--light-text); }
+    @media (max-width:576px){ .add-breed .card-body { padding:24px !important; } }
 </style>
 {% endblock %}
 

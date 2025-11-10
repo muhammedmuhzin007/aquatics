@@ -1,0 +1,235 @@
+{% extends 'store/base.html' %}
+
+{% block extra_css %}
+<style>
+    /* Dark theme styles for review moderation */
+    html[data-theme='dark'] .review-moderation .card { 
+        background: var(--card-bg) !important; 
+        border: 1px solid var(--border-color) !important; 
+    }
+    html[data-theme='dark'] .review-moderation .table { 
+        background: transparent !important; 
+    }
+    html[data-theme='dark'] .review-moderation .table>:not(caption)>*>*:not(.btn) {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #FFFFFF !important;
+    }
+    html[data-theme='dark'] .review-moderation thead th {
+        background: rgba(25,40,60,0.65) !important;
+        color: #FFFFFF !important;
+        border-color: var(--border-color) !important;
+        font-weight: 600 !important;
+    }
+    html[data-theme='dark'] .review-moderation tbody tr { 
+        background: rgba(20,30,45,0.55) !important; 
+        transition: background .18s ease; 
+    }
+    html[data-theme='dark'] .review-moderation tbody tr:nth-child(odd) { 
+        background: rgba(25,40,60,0.55) !important; 
+    }
+    html[data-theme='dark'] .review-moderation tbody tr:hover { 
+        background: rgba(40,80,140,0.55) !important; 
+    }
+    html[data-theme='dark'] .review-moderation td, 
+    html[data-theme='dark'] .review-moderation th { 
+        color: #FFFFFF !important; 
+        border-color: var(--border-color) !important; 
+    }
+    html[data-theme='dark'] .review-moderation .text-gray { 
+        color: rgba(255,255,255,0.85) !important; 
+    }
+    
+    /* Light theme styles for review moderation */
+    html[data-theme='light'] .review-moderation .card {
+        background: var(--light-card) !important;
+        border: 1px solid var(--light-border) !important;
+    }
+    html[data-theme='light'] .review-moderation .card-header {
+        background: var(--light-bg-alt) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .review-moderation .card-header h5 {
+        color: var(--light-text) !important;
+    }
+    html[data-theme='light'] .review-moderation .table {
+        background: var(--light-card) !important;
+    }
+    html[data-theme='light'] .review-moderation thead th {
+        background: var(--light-bg-alt) !important;
+        color: var(--light-text) !important;
+        border-color: var(--light-border) !important;
+        font-weight: 600 !important;
+    }
+    html[data-theme='light'] .review-moderation tbody tr {
+        background: var(--light-card) !important;
+        transition: background .18s ease;
+    }
+    html[data-theme='light'] .review-moderation tbody tr:nth-child(odd) {
+        background: var(--light-bg) !important;
+    }
+    html[data-theme='light'] .review-moderation tbody tr:hover {
+        background: rgba(25,118,210,0.08) !important;
+    }
+    html[data-theme='light'] .review-moderation td,
+    html[data-theme='light'] .review-moderation th {
+        color: var(--light-text) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .review-moderation .text-gray {
+        color: var(--light-text-soft) !important;
+    }
+    html[data-theme='light'] .review-moderation a {
+        color: var(--light-accent) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section review-moderation">
+  <div class="container-fluid">
+    <h2 class="section-heading mb-4">Review Moderation</h2>
+
+    <!-- Pending Reviews -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Pending Reviews ({{ pending_reviews.count }})</h5>
+        <span class="badge bg-warning text-dark">Awaiting Approval</span>
+      </div>
+      <div class="card-body">
+        {% if pending_reviews %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Order</th>
+                <th>Rating</th>
+                <th>Comment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for review in pending_reviews %}
+              <tr>
+                <td class="text-gray">{{ review.created_at|date:"M d, Y H:i" }}</td>
+                <td>{{ review.user.get_full_name|default:review.user.username }}</td>
+                <td class="text-gray">
+                  {% if review.order %}
+                  <a href="{% url 'admin_order_detail' review.order.id %}" class="text-decoration-none">
+                    {{ review.order.order_number }}
+                  </a>
+                  {% else %}
+                  N/A
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="text-warning">
+                    {% for i in "12345" %}
+                      {% if forloop.counter <= review.rating %}
+                        <i class="fas fa-star"></i>
+                      {% else %}
+                        <i class="far fa-star"></i>
+                      {% endif %}
+                    {% endfor %}
+                  </span>
+                </td>
+                <td class="text-gray" style="max-width: 300px;">
+                  {% if review.comment %}
+                    {{ review.comment|truncatewords:20 }}
+                  {% else %}
+                    <em class="text-muted">No comment</em>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'admin_approve_review' review.id %}" class="btn btn-success btn-sm me-1" title="Approve">
+                    <i class="fas fa-check"></i> Approve
+                  </a>
+                  <a href="{% url 'admin_reject_review' review.id %}" class="btn btn-danger btn-sm" 
+                     onclick="return confirm('Are you sure you want to reject and delete this review?')" title="Reject">
+                    <i class="fas fa-times"></i> Reject
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-gray mb-0">No pending reviews.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Approved Reviews -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Approved Reviews ({{ approved_reviews.count }})</h5>
+        <span class="badge bg-success">Live on Website</span>
+      </div>
+      <div class="card-body">
+        {% if approved_reviews %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Order</th>
+                <th>Rating</th>
+                <th>Comment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for review in approved_reviews %}
+              <tr>
+                <td class="text-gray">{{ review.created_at|date:"M d, Y H:i" }}</td>
+                <td>{{ review.user.get_full_name|default:review.user.username }}</td>
+                <td class="text-gray">
+                  {% if review.order %}
+                  <a href="{% url 'admin_order_detail' review.order.id %}" class="text-decoration-none">
+                    {{ review.order.order_number }}
+                  </a>
+                  {% else %}
+                  N/A
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="text-warning">
+                    {% for i in "12345" %}
+                      {% if forloop.counter <= review.rating %}
+                        <i class="fas fa-star"></i>
+                      {% else %}
+                        <i class="far fa-star"></i>
+                      {% endif %}
+                    {% endfor %}
+                  </span>
+                </td>
+                <td class="text-gray" style="max-width: 300px;">
+                  {% if review.comment %}
+                    {{ review.comment|truncatewords:20 }}
+                  {% else %}
+                    <em class="text-muted">No comment</em>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'admin_reject_review' review.id %}" class="btn btn-outline-danger btn-sm" 
+                     onclick="return confirm('Are you sure you want to remove this review?')" title="Remove">
+                    <i class="fas fa-trash"></i> Remove
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-gray mb-0">No approved reviews yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

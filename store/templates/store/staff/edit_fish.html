@@ -3,56 +3,99 @@
 
 {% block content %}
 <style>
-  /* Match input fields to website dark theme */
-  .fish-form-stable input.form-control,
-  .fish-form-stable select.form-select,
-  .fish-form-stable textarea.form-control,
-  .fish-form-stable input[type="file"],
-  .fish-form-stable input[type="number"],
-  .fish-form-stable input[type="checkbox"] {
-    background-color: rgba(15, 25, 40, 0.95) !important;
-    color: #FFFFFF !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  }
-  .fish-form-stable input.form-control:focus,
-  .fish-form-stable select.form-select:focus,
-  .fish-form-stable textarea.form-control:focus {
-    background-color: rgba(15, 25, 40, 0.95) !important;
-    color: #FFFFFF !important;
-    border-color: #1E88E5 !important;
-    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
-  }
-  .fish-form-stable input.form-control:valid,
-  .fish-form-stable select.form-select:valid,
-  .fish-form-stable textarea.form-control:valid,
-  .fish-form-stable input.form-control:invalid,
-  .fish-form-stable select.form-select:invalid,
-  .fish-form-stable textarea.form-control:invalid {
-    background-color: rgba(15, 25, 40, 0.95) !important;
-    color: #FFFFFF !important;
-  }
-  .fish-form-stable input.form-control::placeholder,
-  .fish-form-stable textarea.form-control::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
-  }
-  /* Autofill state override */
-  .fish-form-stable input:-webkit-autofill,
-  .fish-form-stable input:-webkit-autofill:hover,
-  .fish-form-stable input:-webkit-autofill:focus,
-  .fish-form-stable input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px rgba(15, 25, 40, 0.95) inset !important;
-    -webkit-text-fill-color: #FFFFFF !important;
-  }
+    /* Theme-aware input fields */
+        .fish-form-stable input.form-control,
+        .fish-form-stable select.form-select,
+        .fish-form-stable textarea.form-control,
+        .fish-form-stable input[type="file"],
+        .fish-form-stable input[type="number"] {
+        background: var(--card-bg) !important;
+        color: var(--text-white) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+        html[data-theme='light'] .fish-form-stable input.form-control,
+        html[data-theme='light'] .fish-form-stable select.form-select,
+        html[data-theme='light'] .fish-form-stable textarea.form-control,
+        html[data-theme='light'] .fish-form-stable input[type="file"],
+        html[data-theme='light'] .fish-form-stable input[type="number"] {
+        background: var(--light-surface) !important;
+        color: var(--light-text) !important;
+        border: 1px solid var(--light-border) !important;
+    }
+    .fish-form-stable input.form-control:focus,
+    .fish-form-stable select.form-select:focus,
+    .fish-form-stable textarea.form-control:focus {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: var(--text-white) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 0 0 3px rgba(30,136,229,0.15) !important;
+    }
+    html[data-theme='light'] .fish-form-stable input.form-control:focus,
+    html[data-theme='light'] .fish-form-stable select.form-select:focus,
+    html[data-theme='light'] .fish-form-stable textarea.form-control:focus {
+        background: #fff !important;
+        color: var(--light-text) !important;
+        border-color: var(--light-accent) !important;
+        box-shadow: 0 0 0 3px rgba(25,118,210,0.15) !important;
+    }
+        /* Checkboxes - rely on native controls and accent-color */
+        .fish-form-stable .form-check-input,
+        .fish-form-stable input[type="checkbox"] {
+            -webkit-appearance: auto !important;
+            appearance: auto !important;
+            background-color: transparent !important;
+            border: 1px solid var(--border-color) !important;
+            width: 1.1rem; height: 1.1rem;
+            cursor: pointer;
+            accent-color: var(--accent-blue);
+        }
+        html[data-theme='light'] .fish-form-stable .form-check-input,
+        html[data-theme='light'] .fish-form-stable input[type="checkbox"] {
+            border-color: var(--light-border) !important;
+            accent-color: var(--light-accent);
+        }
+        .fish-form-stable .form-check-input:focus,
+        .fish-form-stable input[type="checkbox"]:focus {
+            outline: 2px solid rgba(30,136,229,0.35);
+            outline-offset: 2px;
+        }
+    .fish-form-stable input.form-control::placeholder,
+    .fish-form-stable textarea.form-control::placeholder {
+        color: rgba(255,255,255,0.6) !important;
+    }
+    html[data-theme='light'] .fish-form-stable input.form-control::placeholder,
+    html[data-theme='light'] .fish-form-stable textarea.form-control::placeholder {
+        color: var(--light-text-soft) !important;
+        opacity: .7;
+    }
+    /* Autofill state override */
+    .fish-form-stable input:-webkit-autofill,
+    .fish-form-stable input:-webkit-autofill:hover,
+    .fish-form-stable input:-webkit-autofill:focus,
+    .fish-form-stable input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px var(--card-bg) inset !important;
+        -webkit-text-fill-color: var(--text-white) !important;
+    }
+    html[data-theme='light'] .fish-form-stable input:-webkit-autofill,
+    html[data-theme='light'] .fish-form-stable input:-webkit-autofill:hover,
+    html[data-theme='light'] .fish-form-stable input:-webkit-autofill:focus,
+    html[data-theme='light'] .fish-form-stable input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px var(--light-surface) inset !important;
+        -webkit-text-fill-color: var(--light-text) !important;
+    }
   .fish-form-stable .text-muted,
   .fish-form-stable .form-text {
     color: rgba(255, 255, 255, 0.7) !important;
   }
-  .fish-form-stable .form-label {
-    color: #000000 !important;
-  }
-  .fish-form-stable .form-check-label {
-    color: #000000 !important;
-  }
+    /* Theme-aware label colors */
+    .fish-form-stable .form-label,
+    .fish-form-stable .form-check-label {
+        color: var(--text-white) !important;
+    }
+    html[data-theme='light'] .fish-form-stable .form-label,
+    html[data-theme='light'] .fish-form-stable .form-check-label {
+        color: var(--light-text) !important;
+    }
   .fish-form-stable .input-group .btn {
     background-color: #1E88E5 !important;
     border-color: #1E88E5 !important;
@@ -65,7 +108,7 @@
 
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-7 col-xl-6 mx-auto">
-                <div class="card admin-card-light">
+                <div class="card">
                     <div class="card-header"><h5 class="text-white" style="margin:0;">Update Fish</h5></div>
                     <div class="card-body" style="padding: 40px;">
                         <form method="POST" enctype="multipart/form-data" id="fishForm" class="fish-form-stable">
@@ -103,7 +146,13 @@
                                     {{ form.stock_quantity|as_crispy_field }}
                                 </div>
                                 <div class="col-md-4 mb-3">
+                                    {{ form.minimum_order_quantity|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     {{ form.is_available|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.is_featured|as_crispy_field }}
                                 </div>
                             </div>
                             
@@ -112,10 +161,10 @@
                             </div>
                             
                             <div class="mt-4">
-                                <button type="submit" class="btn btn-dark w-100">
+                                <button type="submit" class="btn btn-primary w-100">
                                     <i class="fas fa-save"></i> Update Fish
                                 </button>
-                                <a href="{% url 'staff_fish_list' %}" class="btn w-100 mt-2" style="background-color: rgba(15, 25, 40, 0.95); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1);">
+                                <a href="{% url 'staff_fish_list' %}" class="btn btn-secondary w-100 mt-2">
                                     <i class="fas fa-times"></i> Cancel
                                 </a>
                             </div>
@@ -130,7 +179,7 @@
 <!-- Add Breed Modal -->
 <div class="modal fade" id="addBreedModal" tabindex="-1" aria-labelledby="addBreedModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content admin-card-light">
+        <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title text-white" id="addBreedModalLabel">Add New Breed</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -143,7 +192,7 @@
                     {{ breed_form.category|as_crispy_field }}
                     {{ breed_form.description|as_crispy_field }}
                     <div class="mt-3">
-                        <button type="submit" class="btn btn-dark w-100">
+                        <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-save"></i> Create Breed
                         </button>
                         <button type="button" class="btn btn-secondary w-100 mt-2" data-bs-dismiss="modal">Cancel</button>

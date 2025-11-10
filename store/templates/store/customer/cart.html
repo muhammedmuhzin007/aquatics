@@ -17,6 +17,86 @@
         .cart-table tbody tr:hover {
             background: rgba(30, 136, 229, 0.05) !important;
         }
+        /* Theme-aware quantity input: matches dark/light */
+        .cart-qty {
+            width: 80px;
+            display: inline-block;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-white);
+        }
+        html[data-theme='light'] .cart-qty { color: var(--light-text); }
+        .cart-qty:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(30,136,229,.12);
+        }
+        /* remove native spinners for a cleaner look */
+        .cart-qty::-webkit-outer-spin-button,
+        .cart-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .cart-qty[type=number] { -moz-appearance: textfield; }
+        
+        /* Mobile-friendly cart layout: convert table to cards on small screens */
+        @media (max-width: 768px) {
+            .cart-table thead { display: none; }
+            .cart-table tbody, .cart-table tr { display: block; width: 100%; }
+            .cart-table tr { 
+                margin-bottom: 20px; 
+                border: 1px solid var(--border-color); 
+                border-radius: 8px; 
+                overflow: hidden;
+                background: var(--card-bg);
+            }
+            .cart-table td { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center;
+                padding: 14px 16px; 
+                border-bottom: 1px solid var(--border-color);
+                text-align: right;
+            }
+            .cart-table td:last-child { border-bottom: 0; }
+            .cart-table td::before { 
+                content: attr(data-label); 
+                font-weight: 600; 
+                color: var(--text-white);
+                text-align: left;
+                flex: 0 0 100px;
+            }
+            html[data-theme='light'] .cart-table td::before { color: var(--light-text); }
+            
+            /* Fish cell spans full width with no label */
+            .cart-table td.td-fish { 
+                display: block; 
+                padding: 16px;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .cart-table td.td-fish::before { content: none; }
+            .cart-table td.td-fish .d-flex { flex-direction: row; gap: 12px; }
+            .cart-table td.td-fish img { 
+                width: 60px !important; 
+                height: 60px !important; 
+                margin-right: 12px !important; 
+            }
+            
+            /* Footer adjustments */
+            .cart-table tfoot tr { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center;
+                padding: 16px;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                background: var(--card-bg);
+            }
+            .cart-table tfoot th { border: 0 !important; }
+            .cart-table tfoot .price-badge { font-size: 1.3rem !important; }
+        }
+        
+        /* Center-align action buttons on small screens */
+        @media (max-width: 576px) {
+            .cart-actions { text-align: center !important; }
+            .cart-actions .btn { display: block; width: 100%; margin: 0 0 12px 0 !important; }
+        }
         </style>
 
         {% if cart_items %}
@@ -35,7 +115,7 @@
                     <tbody>
                         {% for item in cart_items %}
                         <tr>
-                            <td>
+                            <td class="td-fish">
                                 <div class="d-flex align-items-center">
                                     {% if item.fish.image %}
                                     <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" 
@@ -47,18 +127,21 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-white">{{ item.fish.price|rupees }}</td>
-                            <td>
+                            <td class="text-white" data-label="Price">{{ item.fish.price|rupees }}</td>
+                            <td data-label="Quantity">
                                 <form method="POST" action="{% url 'update_cart' item.id %}" class="d-inline">
                                     {% csrf_token %}
-                                    <input type="number" name="quantity" value="{{ item.quantity }}" 
-                                           min="1" max="{{ item.fish.stock_quantity }}" 
-                                           class="form-control form-control-sm" style="width: 80px; display: inline-block; background: var(--card-bg); color: var(--text-white); border: 1px solid var(--border-color);"
-                                           onchange="this.form.submit()">
+                     <input type="number" name="quantity" value="{{ item.quantity }}" 
+                         min="{{ item.fish.minimum_order_quantity }}" max="{{ item.fish.stock_quantity }}" 
+                         class="form-control form-control-sm cart-qty"
+                         onchange="this.form.submit()">
                                 </form>
+                                {% if item.fish.minimum_order_quantity > 1 %}
+                                <small class="text-muted d-block">Min: {{ item.fish.minimum_order_quantity }}</small>
+                                {% endif %}
                             </td>
-                            <td class="text-white"><strong>{{ item.get_total|rupees }}</strong></td>
-                            <td>
+                            <td class="text-white" data-label="Total"><strong>{{ item.get_total|rupees }}</strong></td>
+                            <td data-label="Remove">
                                 <a href="{% url 'remove_cart' item.id %}" class="btn btn-danger btn-sm" 
                                        data-confirm="Remove this item from cart?">
                                     <i class="fas fa-trash"></i>
@@ -76,7 +159,7 @@
                     </tfoot>
                 </table>
                 
-                <div class="text-end mt-4">
+                <div class="text-end mt-4 cart-actions">
                     <a href="{% url 'fish_list' %}" class="btn btn-secondary me-2">
                         <i class="fas fa-arrow-left"></i> Continue Shopping
                     </a>

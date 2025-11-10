@@ -1,24 +1,58 @@
 {% extends 'store/base.html' %}
 {% load crispy_forms_tags %}
 
+{% block extra_css %}
+<script>
+(function(){
+    try {
+        const t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') {
+            document.documentElement.setAttribute('data-theme', t);
+        }
+    } catch(e) {}
+})();
+</script>
+{% endblock %}
+
 {% block content %}
 <style>
-  .profile-form-stable input.form-control,
-  .profile-form-stable select.form-select,
-  .profile-form-stable textarea.form-control {
-    background-color: rgba(15, 25, 40, 0.95) !important;
-    color: #FFFFFF !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  }
-  .profile-form-stable input.form-control:focus,
-  .profile-form-stable select.form-select:focus,
-  .profile-form-stable textarea.form-control:focus {
-    background-color: rgba(15, 25, 40, 0.95) !important;
-    color: #FFFFFF !important;
-    border-color: #1E88E5 !important;
-    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
-  }
-    .profile-form-stable .form-label { color: #FFFFFF !important; }
+    /* Theme-aware inputs for profile form */
+    .profile-form-stable input.form-control,
+    .profile-form-stable select.form-select,
+    .profile-form-stable textarea.form-control {
+        background: var(--card-bg) !important; /* dark default */
+        color: var(--text-white) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px;
+    }
+    .profile-form-stable input.form-control::placeholder,
+    .profile-form-stable textarea.form-control::placeholder {
+        color: var(--text-gray) !important;
+        opacity: 0.8;
+    }
+    .profile-form-stable input.form-control:focus,
+    .profile-form-stable select.form-select:focus,
+    .profile-form-stable textarea.form-control:focus {
+        background: var(--card-bg) !important;
+        color: var(--text-white) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.15) !important;
+    }
+    .profile-form-stable .form-label { color: var(--text-white) !important; font-weight: 500; }
+    /* Light theme overrides */
+    html[data-theme='light'] .profile-form-stable input.form-control,
+    html[data-theme='light'] .profile-form-stable select.form-select,
+    html[data-theme='light'] .profile-form-stable textarea.form-control {
+        background: var(--light-surface) !important;
+        color: var(--light-text) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .profile-form-stable input.form-control::placeholder,
+    html[data-theme='light'] .profile-form-stable textarea.form-control::placeholder {
+        color: var(--light-text-soft) !important;
+        opacity: 0.7;
+    }
+    html[data-theme='light'] .profile-form-stable .form-label { color: var(--light-text) !important; }
 
         /* Rounded profile avatar */
         .profile-avatar {
@@ -41,7 +75,13 @@
 </style>
 <section class="section">
     <div class="container-fluid">
-        <h2 class="section-heading">Edit Profile</h2>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="section-heading m-0">Edit Profile</h2>
+            <button id="profileThemeToggle" class="btn btn-theme-toggle">
+                <i class="fas fa-moon me-2"></i>
+                <span class="label">Dark</span>
+            </button>
+        </div>
 
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6 col-xl-5">
@@ -68,7 +108,7 @@
                                 <button type="submit" class="btn btn-dark w-100">
                                     <i class="fas fa-save"></i> Save Changes
                                 </button>
-                                <a href="{% url 'profile' %}" class="btn w-100 mt-2" style="background-color: rgba(15, 25, 40, 0.95); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1);">
+                                <a href="{% url 'profile' %}" class="btn btn-secondary w-100 mt-2">
                                     <i class="fas fa-times"></i> Cancel
                                 </a>
                             </div>
@@ -110,6 +150,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 reader.readAsDataURL(this.files[0]);
             }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('profileThemeToggle');
+    const root = document.documentElement;
+    const labelEl = btn ? btn.querySelector('.label') : null;
+    const STORAGE_KEY = 'theme';
+
+    function currentTheme(){
+        return root.getAttribute('data-theme') || 'dark';
+    }
+    function setTheme(theme){
+        root.setAttribute('data-theme', theme);
+        try { localStorage.setItem(STORAGE_KEY, theme); } catch(e) {}
+        if (btn && labelEl){
+            const isLight = theme === 'light';
+            labelEl.textContent = isLight ? 'Light' : 'Dark';
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = isLight ? 'fas fa-sun me-2' : 'fas fa-moon me-2';
+        }
+    }
+    setTheme(currentTheme());
+    if (btn){
+        btn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            const nxt = currentTheme() === 'dark' ? 'light' : 'dark';
+            setTheme(nxt);
         });
     }
 });

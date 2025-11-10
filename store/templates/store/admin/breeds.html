@@ -2,15 +2,15 @@
 
 {% block extra_css %}
 <style>
-    /* Scoped styles for breeds management page */
-    .breeds-management .card {
+    /* Scoped styles for breeds management page (dark mode only) */
+    html[data-theme='dark'] .breeds-management .card {
         background: var(--card-bg) !important;
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
     }
     
     /* Table styling */
-    .breeds-management .table>:not(caption)>*>* {
+    html[data-theme='dark'] .breeds-management .table>:not(caption)>*>*:not(.btn):not(.badge) {
         background: transparent !important;
         box-shadow: none !important;
         color: #FFFFFF !important;
@@ -18,7 +18,7 @@
     }
     
     /* Table headers */
-    .breeds-management thead th {
+    html[data-theme='dark'] .breeds-management thead th {
         background: rgba(25,40,60,0.65) !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
@@ -26,39 +26,39 @@
     }
     
     /* Table rows */
-    .breeds-management tbody tr {
+    html[data-theme='dark'] .breeds-management tbody tr {
         background: rgba(20,30,45,0.55) !important;
         transition: background 0.2s ease;
     }
     
-    .breeds-management tbody tr:nth-child(odd) {
+    html[data-theme='dark'] .breeds-management tbody tr:nth-child(odd) {
         background: rgba(25,40,60,0.55) !important;
     }
     
-    .breeds-management tbody tr:hover {
+    html[data-theme='dark'] .breeds-management tbody tr:hover {
         background: rgba(40,80,140,0.55) !important;
     }
     
     /* Table cells */
-    .breeds-management .table tbody td {
+    html[data-theme='dark'] .breeds-management .table tbody td {
         color: #FFFFFF !important;
     }
     
-    .breeds-management .table tbody td * {
+    html[data-theme='dark'] .breeds-management .table tbody td *:not(.btn):not(.badge) {
         color: #FFFFFF !important;
     }
     
-    .breeds-management .table tbody td strong {
+    html[data-theme='dark'] .breeds-management .table tbody td strong {
         color: #FFFFFF !important;
         font-weight: 700;
     }
     
     /* Override text color classes */
-    .breeds-management .text-white {
+    html[data-theme='dark'] .breeds-management .text-white {
         color: #FFFFFF !important;
     }
     
-    .breeds-management .text-gray {
+    html[data-theme='dark'] .breeds-management .text-gray {
         color: #FFFFFF !important;
     }
 </style>

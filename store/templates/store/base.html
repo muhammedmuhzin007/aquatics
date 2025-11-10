@@ -7,6 +7,18 @@
     {% load static %}
     <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
     <link rel="alternate icon" href="{% static 'favicon.svg' %}">
+    <script>
+        // Set theme early: default to light if nothing stored
+        (function(){
+            try {
+                var saved = localStorage.getItem('theme');
+                var theme = saved ? saved : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch(e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -33,6 +45,12 @@
                     <a href="{% url 'cart' %}" class="top-nav-link">Cart</a>
                 {% endif %}
                 <div class="top-nav-icons">
+                    <!-- Global theme toggle (compact) -->
+                    <button type="button" class="nav-theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
+                        <span class="toggle-icon">
+                            <i class="fas fa-moon"></i>
+                        </span>
+                    </button>
                     <i class="fas fa-search"></i>
                     <a href="{% url 'profile' %}" style="color: inherit;"><i class="fas fa-user"></i></a>
                     {% if user.is_authenticated and user.role == 'customer' %}
@@ -111,6 +129,9 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'home' %}">Home</a>
                         </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'about' %}">About Us</a>
+                            </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'fish_list' %}">Fishes</a>
                         </li>
@@ -269,6 +290,38 @@
 
                     bsModal.show();
                 });
+
+                // Unified theme toggle logic (navbar + any page-level toggles)
+                (function(){
+                    const STORAGE_KEY = 'theme';
+                    const root = document.documentElement;
+                    function apply(theme){
+                        root.setAttribute('data-theme', theme);
+                        try { localStorage.setItem(STORAGE_KEY, theme); } catch(e) {}
+                        // Update all toggle icons
+                        document.querySelectorAll('[data-theme-toggle] i').forEach(icon => {
+                            icon.className = theme === 'light' ? 'fas fa-sun' : 'fas fa-moon';
+                        });
+                        // Update any profile/edit toggle labels if present
+                        document.querySelectorAll('#profileThemeToggle .label').forEach(label => {
+                            label.textContent = theme === 'light' ? 'Light' : 'Dark';
+                        });
+                        const profileIcon = document.querySelector('#profileThemeToggle i');
+                        if (profileIcon){
+                            profileIcon.className = theme === 'light' ? 'fas fa-sun me-2' : 'fas fa-moon me-2';
+                        }
+                    }
+                    // Initialize
+                    apply(root.getAttribute('data-theme') || 'light');
+                    // Bind click events
+                    document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
+                        btn.addEventListener('click', function(ev){
+                            ev.preventDefault();
+                            const current = root.getAttribute('data-theme') || 'light';
+                            apply(current === 'light' ? 'dark' : 'light');
+                        });
+                    });
+                })();
             });
         </script>
         {% block extra_js %}{% endblock %}

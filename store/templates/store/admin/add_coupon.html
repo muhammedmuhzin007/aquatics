@@ -1,0 +1,502 @@
+{% extends "store/base.html" %}
+
+{% block title %}{% if coupon %}Edit Coupon{% else %}Add Coupon{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-ticket-alt me-2"></i>
+                    {% if coupon %}Edit Coupon{% else %}Add New Coupon{% endif %}
+                </h2>
+                <a href="{% url 'admin_coupons' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Coupons
+                </a>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Form Card -->
+            <div class="card">
+                <div class="card-body p-4">
+                    <form method="post" id="couponForm">
+                        {% csrf_token %}
+                        
+                        <!-- Coupon Code -->
+                        <div class="mb-4">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">
+                                <i class="fas fa-tag me-2"></i>Coupon Code *
+                            </label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.code.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Unique code that customers will use. Use uppercase letters and numbers.
+                            </small>
+                        </div>
+
+                        <!-- Coupon Type -->
+                        <div class="mb-4">
+                            <label for="{{ form.coupon_type.id_for_label }}" class="form-label">
+                                <i class="fas fa-users me-2"></i>Coupon Type *
+                            </label>
+                            {{ form.coupon_type }}
+                            {% if form.coupon_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.coupon_type.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Select which users can use this coupon.
+                            </small>
+                        </div>
+
+                        <!-- Discount Settings -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.discount_percentage.id_for_label }}" class="form-label">
+                                    <i class="fas fa-percentage me-2"></i>Discount Percentage *
+                                </label>
+                                {{ form.discount_percentage }}
+                                {% if form.discount_percentage.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.discount_percentage.errors.0 }}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Value between 1 and 100
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.max_discount_amount.id_for_label }}" class="form-label">
+                                    <i class="fas fa-hand-holding-usd me-2"></i>Max Discount Amount
+                                </label>
+                                {{ form.max_discount_amount }}
+                                {% if form.max_discount_amount.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.max_discount_amount.errors.0 }}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Leave empty for no limit
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Order Requirements -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.min_order_amount.id_for_label }}" class="form-label">
+                                    <i class="fas fa-shopping-cart me-2"></i>Minimum Order Amount
+                                </label>
+                                {{ form.min_order_amount }}
+                                {% if form.min_order_amount.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.min_order_amount.errors.0 }}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Minimum cart value to use coupon
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.usage_limit.id_for_label }}" class="form-label">
+                                    <i class="fas fa-sync me-2"></i>Usage Limit
+                                </label>
+                                {{ form.usage_limit }}
+                                {% if form.usage_limit.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.usage_limit.errors.0 }}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Leave empty for unlimited usage
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Validity Period -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.valid_from.id_for_label }}" class="form-label">
+                                    <i class="fas fa-calendar-check me-2"></i>Valid From *
+                                </label>
+                                {{ form.valid_from }}
+                                {% if form.valid_from.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.valid_from.errors.0 }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.valid_until.id_for_label }}" class="form-label">
+                                    <i class="fas fa-calendar-times me-2"></i>Valid Until *
+                                </label>
+                                {{ form.valid_until }}
+                                {% if form.valid_until.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.valid_until.errors.0 }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Active Status -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    <i class="fas fa-toggle-on me-2"></i>Active
+                                </label>
+                            </div>
+                            {% if form.is_active.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.is_active.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Only active coupons can be used by customers
+                            </small>
+                        </div>
+
+                        <!-- Show in Suggestions -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.show_in_suggestions }}
+                                <label class="form-check-label" for="{{ form.show_in_suggestions.id_for_label }}">
+                                    <i class="fas fa-eye me-2"></i>Show in Checkout Suggestions
+                                </label>
+                            </div>
+                            {% if form.show_in_suggestions.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.show_in_suggestions.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Display this coupon in the suggestions list at checkout. If unchecked, the coupon will be hidden but still work when manually entered.
+                            </small>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {% if coupon %}Update Coupon{% else %}Create Coupon{% endif %}
+                            </button>
+                            <a href="{% url 'admin_coupons' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            {% if coupon %}
+                            <button type="button" class="btn btn-outline-primary ms-auto" id="generateCode">
+                                <i class="fas fa-random me-2"></i>Generate Code
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>Coupon Guidelines
+                    </h6>
+                    <ul class="mb-0">
+                        <li><strong>All Users:</strong> Coupon available to all registered users</li>
+                        <li><strong>Favorite Customers:</strong> Exclusive coupon for customers marked as favorites</li>
+                        <li><strong>Normal Users:</strong> Coupon only for non-favorite customers</li>
+                        <li>Coupon codes should be unique and easy to remember</li>
+                        <li>Set realistic discount percentages and limits</li>
+                        <li>Monitor usage regularly to prevent abuse</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme='light'] .card {
+    background: var(--light-card);
+    border-color: var(--light-border);
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 0.5rem;
+}
+
+html[data-theme='light'] .form-label {
+    color: var(--light-text);
+}
+
+.form-control, .form-select {
+    background: rgba(15, 25, 40, 0.6);
+    border: 2px solid var(--border-color);
+    color: var(--text-white);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 1rem;
+}
+
+html[data-theme='light'] .form-control,
+html[data-theme='light'] .form-select {
+    background: var(--light-surface);
+    border-color: var(--light-border);
+    color: var(--light-text);
+}
+
+.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    padding-right: 2.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    height: 50px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.form-select option {
+    background: rgba(15, 25, 40, 0.95);
+    color: var(--text-white);
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+html[data-theme='light'] .form-select option {
+    background: var(--light-surface);
+    color: var(--light-text);
+}
+
+.custom-select-icon {
+    position: relative;
+}
+
+.form-control:focus, .form-select:focus {
+    background: rgba(15, 25, 40, 0.8);
+    border-color: #667eea;
+    color: var(--text-white);
+    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25), 
+                0 4px 12px rgba(102, 126, 234, 0.15);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+html[data-theme='light'] .form-control:focus,
+html[data-theme='light'] .form-select:focus {
+    background: var(--light-surface);
+    color: var(--light-text);
+}
+
+.form-control:hover:not(:focus), .form-select:hover:not(:focus) {
+    border-color: rgba(102, 126, 234, 0.5);
+    transform: translateY(-1px);
+}
+
+.form-control:active, .form-select:active {
+    transform: translateY(0);
+}
+
+.form-check-input {
+    width: 3rem;
+    height: 1.5rem;
+    cursor: pointer;
+    background-color: var(--border-color);
+    border-color: var(--border-color);
+}
+
+.form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.form-check-label {
+    margin-left: 0.5rem;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary, .btn-outline-secondary {
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+}
+
+.btn-outline-primary {
+    border: 2px solid #667eea;
+    color: #667eea;
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    transform: translateY(-2px);
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-gray);
+}
+
+html[data-theme='light'] .form-text {
+    color: var(--light-text-soft);
+}
+
+input[type="datetime-local"] {
+    cursor: pointer;
+    color-scheme: dark;
+}
+
+html[data-theme='light'] input[type="datetime-local"] {
+    color-scheme: light;
+}
+
+/* Calendar picker styling for dark theme */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+html[data-theme='light'] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+    opacity: 0.6;
+}
+
+html[data-theme='light'] input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+.invalid-feedback {
+    color: #ff6b6b;
+}
+
+html[data-theme='light'] .invalid-feedback {
+    color: #d32f2f;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhance coupon type dropdown with icons
+    const couponTypeSelect = document.getElementById('{{ form.coupon_type.id_for_label }}');
+    if (couponTypeSelect) {
+        // Add icons to options
+        const options = couponTypeSelect.options;
+        for (let i = 0; i < options.length; i++) {
+            const value = options[i].value;
+            let icon = '';
+            if (value === 'all') {
+                icon = '👥 ';
+            } else if (value === 'favorites') {
+                icon = '❤️ ';
+            } else if (value === 'normal') {
+                icon = '👤 ';
+            }
+            if (icon && options[i].text.indexOf(icon) === -1) {
+                options[i].text = icon + options[i].text;
+            }
+        }
+    }
+    
+    // Generate random coupon code
+    const generateBtn = document.getElementById('generateCode');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < 8; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('{{ form.code.id_for_label }}').value = code;
+        });
+    }
+
+    // Auto-generate code on new coupon page
+    const codeInput = document.getElementById('{{ form.code.id_for_label }}');
+    {% if not coupon %}
+    if (codeInput && !codeInput.value) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 8; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        codeInput.value = code;
+    }
+    {% endif %}
+
+    // Form validation
+    const form = document.getElementById('couponForm');
+    form.addEventListener('submit', function(e) {
+        const validFrom = new Date(document.getElementById('{{ form.valid_from.id_for_label }}').value);
+        const validUntil = new Date(document.getElementById('{{ form.valid_until.id_for_label }}').value);
+        
+        if (validFrom >= validUntil) {
+            e.preventDefault();
+            alert('Valid Until date must be after Valid From date');
+            return false;
+        }
+
+        const discount = parseFloat(document.getElementById('{{ form.discount_percentage.id_for_label }}').value);
+        if (discount < 1 || discount > 100) {
+            e.preventDefault();
+            alert('Discount percentage must be between 1 and 100');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

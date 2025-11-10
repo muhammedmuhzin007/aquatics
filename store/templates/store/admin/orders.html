@@ -2,16 +2,20 @@
 {% load currency %}
 
 {% block extra_css %}
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+
 <style>
-    /* Scoped styles for orders management page */
-    .orders-management .card {
+    /* Scoped styles for orders management page (dark mode only) */
+    html[data-theme='dark'] .orders-management .card {
         background: var(--card-bg) !important;
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
     }
     
     /* Table styling */
-    .orders-management .table>:not(caption)>*>* {
+    html[data-theme='dark'] .orders-management .table>:not(caption)>*>*:not(.btn):not(.badge) {
         background: transparent !important;
         box-shadow: none !important;
         color: #FFFFFF !important;
@@ -19,7 +23,7 @@
     }
     
     /* Table headers */
-    .orders-management thead th {
+    html[data-theme='dark'] .orders-management thead th {
         background: rgba(25,40,60,0.65) !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
@@ -27,35 +31,35 @@
     }
     
     /* Table rows */
-    .orders-management tbody tr {
+    html[data-theme='dark'] .orders-management tbody tr {
         background: rgba(20,30,45,0.55) !important;
         transition: background 0.2s ease;
     }
     
-    .orders-management tbody tr:nth-child(odd) {
+    html[data-theme='dark'] .orders-management tbody tr:nth-child(odd) {
         background: rgba(25,40,60,0.55) !important;
     }
     
-    .orders-management tbody tr:hover {
+    html[data-theme='dark'] .orders-management tbody tr:hover {
         background: rgba(40,80,140,0.55) !important;
     }
     
     /* Table cells */
-    .orders-management .table tbody td {
+    html[data-theme='dark'] .orders-management .table tbody td {
         color: #FFFFFF !important;
     }
     
-    .orders-management .table tbody td * {
+    html[data-theme='dark'] .orders-management .table tbody td *:not(.btn):not(.badge) {
         color: #FFFFFF !important;
     }
     
-    .orders-management .table tbody td strong {
+    html[data-theme='dark'] .orders-management .table tbody td strong {
         color: #FFFFFF !important;
         font-weight: 700;
     }
     
     /* Override admin-text-black class */
-    .orders-management .admin-text-black {
+    html[data-theme='dark'] .orders-management .admin-text-black {
         color: #FFFFFF !important;
     }
     
@@ -79,8 +83,8 @@
         color: var(--text-white) !important;
     }
     
-    /* Enhanced Filter Card Styling */
-    .orders-management .filter-card {
+    /* Enhanced Filter Card Styling (dark) */
+    html[data-theme='dark'] .orders-management .filter-card {
         background: linear-gradient(135deg, rgba(20,30,50,0.95), rgba(30,45,70,0.95)) !important;
         border: 1px solid rgba(100,150,255,0.2) !important;
         box-shadow: 0 8px 32px rgba(0,100,255,0.2) !important;
@@ -88,13 +92,13 @@
         overflow: hidden;
     }
     
-    .orders-management .filter-card .card-header {
+    html[data-theme='dark'] .orders-management .filter-card .card-header {
         background: linear-gradient(135deg, rgba(30,136,229,0.2), rgba(21,101,192,0.2)) !important;
         border-bottom: 2px solid rgba(100,150,255,0.3) !important;
         padding: 1rem 1.5rem;
     }
     
-    .orders-management .filter-card .card-header h5 {
+    html[data-theme='dark'] .orders-management .filter-card .card-header h5 {
         color: #FFFFFF !important;
         font-weight: 600;
         margin: 0;
@@ -103,12 +107,12 @@
         gap: 0.5rem;
     }
     
-    .orders-management .filter-card .card-header h5 i {
+    html[data-theme='dark'] .orders-management .filter-card .card-header h5 i {
         color: var(--accent-blue);
         font-size: 1.2rem;
     }
     
-    .orders-management .filter-card .card-body {
+    html[data-theme='dark'] .orders-management .filter-card .card-body {
         padding: 1.5rem;
     }
     
@@ -117,7 +121,7 @@
         position: relative;
     }
     
-    .orders-management .filter-group .form-label {
+    html[data-theme='dark'] .orders-management .filter-group .form-label {
         font-weight: 500;
         font-size: 0.875rem;
         text-transform: uppercase;
@@ -129,32 +133,109 @@
         gap: 0.5rem;
     }
     
-    .orders-management .filter-group .form-label i {
+    html[data-theme='dark'] .orders-management .filter-group .form-label i {
         color: var(--accent-blue);
         font-size: 0.875rem;
     }
     
-    .orders-management .filter-group .form-control,
-    .orders-management .filter-group .form-select {
-        background: rgba(15,25,40,0.6) !important;
-        border: 1px solid rgba(100,150,255,0.25) !important;
-        border-radius: 8px;
-        padding: 0.625rem 1rem;
+    /* Redesigned inputs with subtle glass effect and animated border */
+    html[data-theme='dark'] .orders-management .filter-group .form-control,
+    html[data-theme='dark'] .orders-management .filter-group .form-select {
+        position: relative;
+        background: linear-gradient(145deg, rgba(18,28,45,0.65), rgba(30,48,78,0.55)) padding-box !important;
+        border: 1px solid rgba(120,170,255,0.25) !important;
+        border-radius: 12px;
+        padding: 0.75rem 1.1rem;
         color: #FFFFFF !important;
-        transition: all 0.3s ease;
+        transition: border-color .3s ease, background .3s ease, box-shadow .3s ease;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        font-size: .95rem;
+        letter-spacing: .4px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23A8D1FF' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 6.646a.5.5 0 0 1 .708 0L8 9.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.9rem center;
+        background-size: 16px 16px;
+        padding-right: 2.2rem;
     }
-    
-    .orders-management .filter-group .form-control:hover,
-    .orders-management .filter-group .form-select:hover {
-        border-color: rgba(100,150,255,0.4) !important;
-        background: rgba(20,30,45,0.7) !important;
+
+    html[data-theme='dark'] .orders-management .filter-group .form-control:hover,
+    html[data-theme='dark'] .orders-management .filter-group .form-select:hover {
+        border-color: rgba(150,200,255,0.55) !important;
+        background: linear-gradient(145deg, rgba(24,38,60,0.75), rgba(36,56,90,0.65)) padding-box !important;
     }
-    
-    .orders-management .filter-group .form-control:focus,
-    .orders-management .filter-group .form-select:focus {
-        background: rgba(25,35,50,0.8) !important;
+
+    html[data-theme='dark'] .orders-management .filter-group .form-control:focus,
+    html[data-theme='dark'] .orders-management .filter-group .form-select:focus {
+        background: linear-gradient(145deg, rgba(28,46,72,0.85), rgba(42,66,100,0.75)) padding-box !important;
         border-color: var(--accent-blue) !important;
-        box-shadow: 0 0 0 3px rgba(30,136,229,0.15) !important;
+        box-shadow: 0 0 0 2px rgba(30,136,229,0.4), 0 6px 18px -4px rgba(30,136,229,0.35) !important;
+    }
+
+    /* Dropdown option styling (supported in modern browsers) */
+    html[data-theme='dark'] .orders-management .filter-group select option {
+        background: #1c2e48;
+        color: #ffffff;
+    }
+    html[data-theme='dark'] .orders-management .filter-group select option:hover,
+    html[data-theme='dark'] .orders-management .filter-group select option:focus,
+    html[data-theme='dark'] .orders-management .filter-group select option:checked {
+        background: #25507e !important;
+        color: #ffffff !important;
+    }
+
+    /* Firefox specific focus ring clean-up */
+    html[data-theme='dark'] .orders-management .filter-group .form-select:-moz-focusring {
+        color: transparent;
+        text-shadow: 0 0 0 #ffffff;
+    }
+
+    /* Animated gradient border on focus using pseudo element */
+    html[data-theme='dark'] .orders-management .filter-group .form-control:focus::after,
+    html[data-theme='dark'] .orders-management .filter-group .form-select:focus::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        padding: 1px; /* thickness */
+        background: linear-gradient(135deg,#1E88E5,#6EC6FF,#1565C0,#90CAF9);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+                mask-composite: exclude;
+        animation: filterGlow 3s linear infinite;
+        pointer-events: none;
+    }
+
+    @keyframes filterGlow {
+        0% { filter: hue-rotate(0deg); }
+        100% { filter: hue-rotate(360deg); }
+    }
+
+    /* Placeholder styling */
+    html[data-theme='dark'] .orders-management .filter-group .form-control::placeholder {
+        color: rgba(255,255,255,0.45) !important;
+        font-weight: 400;
+    }
+
+    /* Compact date inputs override (native date pickers vary) */
+    html[data-theme='dark'] .orders-management input[type=date]::-webkit-calendar-picker-indicator {
+        filter: invert(0.8);
+        opacity: .8;
+        cursor: pointer;
+        transition: opacity .25s ease;
+    }
+    html[data-theme='dark'] .orders-management input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+    /* Label refinement */
+    html[data-theme='dark'] .orders-management .filter-group .form-label {
+        font-size: .75rem;
+        font-weight: 600;
+        letter-spacing: .08rem;
+        text-transform: uppercase;
+        opacity: .85;
     }
     
     /* Action Buttons */
@@ -177,36 +258,39 @@
         gap: 0.5rem;
     }
     
-    .orders-management .filter-actions .btn-filter {
+    html[data-theme='dark'] .orders-management .filter-actions .btn-filter {
         background: linear-gradient(135deg, #1E88E5, #1565C0) !important;
         box-shadow: 0 4px 12px rgba(30,136,229,0.3);
     }
     
-    .orders-management .filter-actions .btn-filter:hover {
+    html[data-theme='dark'] .orders-management .filter-actions .btn-filter:hover {
         background: linear-gradient(135deg, #1976D2, #0D47A1) !important;
         box-shadow: 0 6px 16px rgba(30,136,229,0.4);
         transform: translateY(-2px);
     }
     
-    .orders-management .filter-actions .btn-export {
-        background: linear-gradient(135deg, #43A047, #2E7D32) !important;
-        box-shadow: 0 4px 12px rgba(67,160,71,0.3);
+    /* Export to Excel button - dark mode (richer Excel green) */
+    html[data-theme='dark'] .orders-management .filter-actions .btn-export {
+        background: linear-gradient(135deg, #217346, #14532F) !important; /* Excel brand-inspired greens */
+        box-shadow: 0 4px 14px rgba(33,115,70,0.35);
+        border: 1px solid rgba(120,200,160,0.25) !important;
     }
     
-    .orders-management .filter-actions .btn-export:hover {
-        background: linear-gradient(135deg, #388E3C, #1B5E20) !important;
-        box-shadow: 0 6px 16px rgba(67,160,71,0.4);
-        transform: translateY(-2px);
+    html[data-theme='dark'] .orders-management .filter-actions .btn-export:hover {
+        background: linear-gradient(135deg, #2E8B57, #1D6F42) !important;
+        box-shadow: 0 6px 18px rgba(46,139,87,0.45);
+        transform: translateY(-3px);
+        border-color: rgba(120,200,160,0.4) !important;
     }
     
-    .orders-management .filter-actions .btn-reset {
+    html[data-theme='dark'] .orders-management .filter-actions .btn-reset {
         background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)) !important;
         border: 1px solid rgba(255,255,255,0.2) !important;
         color: #FFFFFF !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
-    .orders-management .filter-actions .btn-reset:hover {
+    html[data-theme='dark'] .orders-management .filter-actions .btn-reset:hover {
         background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08)) !important;
         border-color: rgba(255,255,255,0.3) !important;
         box-shadow: 0 6px 16px rgba(0,0,0,0.3);
@@ -218,28 +302,109 @@
     }
     
     /* Standalone Export Button */
-    .orders-management .btn-export {
-        background: linear-gradient(135deg, #43A047, #2E7D32) !important;
-        box-shadow: 0 4px 12px rgba(67,160,71,0.3);
+    html[data-theme='dark'] .orders-management .btn-export {
+        background: linear-gradient(135deg, #217346, #14532F) !important;
+        box-shadow: 0 4px 14px rgba(33,115,70,0.35);
         color: #FFFFFF !important;
         font-weight: 600;
         border-radius: 8px;
         transition: all 0.3s ease;
-        border: none;
+        border: 1px solid rgba(120,200,160,0.25) !important;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
     }
     
-    .orders-management .btn-export:hover {
-        background: linear-gradient(135deg, #388E3C, #1B5E20) !important;
-        box-shadow: 0 6px 16px rgba(67,160,71,0.4);
-        transform: translateY(-2px);
+    html[data-theme='dark'] .orders-management .btn-export:hover {
+        background: linear-gradient(135deg, #2E8B57, #1D6F42) !important;
+        box-shadow: 0 6px 18px rgba(46,139,87,0.45);
+        transform: translateY(-3px);
+        border-color: rgba(120,200,160,0.4) !important;
     }
     
-    .orders-management .btn-export i {
+    html[data-theme='dark'] .orders-management .btn-export i {
         font-size: 1rem;
+    }
+    /* Light mode export button styling */
+    html[data-theme='light'] .orders-management .btn-export,
+    html[data-theme='light'] .orders-management .filter-actions .btn-export {
+        background: linear-gradient(135deg, #2E7D32, #1B5E20) !important;
+        color: #fff !important;
+        border: 1px solid rgba(46,125,50,0.35) !important;
+        box-shadow: 0 4px 14px rgba(46,125,50,0.25);
+        font-weight: 600;
+    }
+    html[data-theme='light'] .orders-management .btn-export:hover,
+    html[data-theme='light'] .orders-management .filter-actions .btn-export:hover {
+        background: linear-gradient(135deg, #388E3C, #2E7D32) !important;
+        box-shadow: 0 6px 20px rgba(56,142,60,0.35);
+        transform: translateY(-3px);
+        border-color: rgba(56,142,60,0.55) !important;
+    }
+
+    /* Light mode variants for filters and reset button */
+    html[data-theme='light'] .orders-management .filter-card {
+        background: var(--light-card) !important;
+        border: 1px solid var(--light-border) !important;
+        box-shadow: 0 6px 20px rgba(25,118,210,0.15) !important;
+        border-radius: 12px !important;
+    }
+    html[data-theme='light'] .orders-management .filter-card .card-header {
+        background: rgba(25,118,210,0.06) !important;
+        border-bottom: 1px solid var(--light-border) !important;
+    }
+    html[data-theme='light'] .orders-management .filter-card .card-header h5 { color: var(--light-text) !important; }
+    html[data-theme='light'] .orders-management .filter-group .form-label { color: var(--light-text-soft) !important; }
+    html[data-theme='light'] .orders-management .filter-group .form-label i { color: var(--light-accent); }
+    html[data-theme='light'] .orders-management .filter-group .form-control,
+    html[data-theme='light'] .orders-management .filter-group .form-select {
+        background: var(--light-surface) !important;
+        border: 1px solid var(--light-border) !important;
+        color: var(--light-text) !important;
+        border-radius: 12px !important;
+    }
+    html[data-theme='light'] .orders-management .filter-group .form-control:hover,
+    html[data-theme='light'] .orders-management .filter-group .form-select:hover {
+        border-color: rgba(25,118,210,0.35) !important;
+        background: #fff !important;
+    }
+    html[data-theme='light'] .orders-management .filter-group .form-control:focus,
+    html[data-theme='light'] .orders-management .filter-group .form-select:focus {
+        border-color: var(--light-accent) !important;
+        box-shadow: 0 0 0 3px rgba(25,118,210,0.15) !important;
+        background: #fff !important;
+    }
+    html[data-theme='light'] .orders-management .filter-group .form-control::placeholder { color: var(--light-text-soft) !important; opacity: .7; }
+    html[data-theme='light'] .orders-management input[type=date]::-webkit-calendar-picker-indicator { filter: none; opacity: .55; }
+    html[data-theme='light'] .orders-management input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: .85; }
+
+    /* Reset button - light mode */
+    html[data-theme='light'] .orders-management .filter-actions .btn-reset {
+        background: transparent !important;
+        border: 1px solid var(--light-border) !important;
+        color: var(--light-text-soft) !important;
+        box-shadow: none !important;
+    }
+    html[data-theme='light'] .orders-management .filter-actions .btn-reset:hover {
+        background: #fff !important;
+        border-color: var(--light-accent) !important;
+        color: var(--light-text) !important;
+        box-shadow: 0 4px 16px rgba(25,118,210,0.18) !important;
+    }
+
+    /* Amount color emphasis */
+    html[data-theme='dark'] .orders-management .price-badge {
+        color: #A8D1FF !important;
+        border-color: rgba(100,150,255,0.45) !important;
+        background: rgba(30,136,229,0.10) !important;
+        font-weight: 700 !important;
+    }
+    html[data-theme='light'] .orders-management .price-badge {
+        color: var(--light-accent) !important;
+        border-color: rgba(25,118,210,0.35) !important;
+        background: rgba(25,118,210,0.08) !important;
+        font-weight: 700 !important;
     }
 </style>
 {% endblock %}
@@ -259,37 +424,32 @@
             <div class="card-body">
                 <form method="GET" class="row g-4">
                     <div class="col-lg-3 col-md-6 filter-group">
-                        <label class="form-label">
+                        <label class="form-label" for="searchOrders">
+                            <i class="fas fa-search"></i>
+                            Search Order/User
+                        </label>
+                        <input type="text" id="searchOrders" name="search" class="form-control" placeholder="Order number or username..." autocomplete="off">
+                    </div>
+                    <div class="col-lg-3 col-md-6 filter-group">
+                        <label class="form-label" for="id_status">
                             <i class="fas fa-tag"></i>
                             Order Status
                         </label>
                         {{ form.status }}
                     </div>
                     <div class="col-lg-3 col-md-6 filter-group">
-                        <label class="form-label">
+                        <label class="form-label" for="id_start_date">
                             <i class="fas fa-calendar-alt"></i>
                             Start Date
                         </label>
                         {{ form.start_date }}
                     </div>
                     <div class="col-lg-3 col-md-6 filter-group">
-                        <label class="form-label">
+                        <label class="form-label" for="id_end_date">
                             <i class="fas fa-calendar-check"></i>
                             End Date
                         </label>
                         {{ form.end_date }}
-                    </div>
-                    <div class="col-lg-3 col-md-6 filter-group d-flex align-items-end">
-                        <div class="filter-actions w-100">
-                            <button type="submit" class="btn btn-filter">
-                                <i class="fas fa-search"></i>
-                                Apply
-                            </button>
-                            <a href="{% url 'admin_orders' %}" class="btn btn-reset">
-                                <i class="fas fa-redo"></i>
-                                Reset
-                            </a>
-                        </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex justify-content-end">
@@ -303,49 +463,122 @@
             </div>
         </div>
 
-        {% if orders %}
-        <div class="card admin-card-light">
-            <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Order Number</th>
-                            <th>User</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in orders %}
-                        <tr>
-                            <td><strong class="admin-text-black">{{ order.order_number }}</strong></td>
-                            <td class="admin-text-black">{{ order.user.username }}</td>
-                            <td><span class="price-badge">{{ order.total_amount|rupees }}</span></td>
-                            <td>
-                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
-                                    {{ order.get_status_display }}
-                                </span>
-                            </td>
-                            <td class="admin-text-black">{{ order.created_at|date:"M d, Y h:i A" }}</td>
-                            <td>
-                                <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-eye"></i> View
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-shopping-bag"></i>
-            <h3>No orders found</h3>
-        </div>
-        {% endif %}
+        {% include 'store/admin/_orders_table.html' with orders=orders %}
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// AJAX filter and search for admin orders
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.querySelector('.orders-management form');
+    const ordersTable = document.querySelector('.orders-management .card.admin-card-light') || document.querySelector('.orders-management .empty-state');
+    const searchInput = document.getElementById('searchOrders');
+    const statusInput = document.getElementById('id_status');
+    const startDateInput = document.getElementById('id_start_date');
+    const endDateInput = document.getElementById('id_end_date');
+
+    // Prevent form submission
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+        });
+    }
+
+    function fetchOrders() {
+        const params = new URLSearchParams();
+        if (statusInput && statusInput.value) params.append('status', statusInput.value);
+        if (startDateInput && startDateInput.value) params.append('start_date', startDateInput.value);
+        if (endDateInput && endDateInput.value) params.append('end_date', endDateInput.value);
+        if (searchInput && searchInput.value) params.append('search', searchInput.value);
+
+        fetch(window.location.pathname + 'ajax/?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.html) {
+                const container = document.querySelector('.orders-management .card.admin-card-light') || document.querySelector('.orders-management .empty-state');
+                if (container) {
+                    container.outerHTML = data.html;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching orders:', error);
+        });
+    }
+
+    [statusInput, startDateInput, endDateInput, searchInput].forEach(input => {
+        if (input) {
+            input.addEventListener('change', fetchOrders);
+            input.addEventListener('input', fetchOrders);
+        }
+    });
+});
+</script>
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const opts = {
+            dateFormat: 'Y-m-d',
+            altInput: true,
+            altFormat: 'M j, Y',
+            allowInput: true,
+            // theme is applied via included dark.css; below are small color tweaks
+            onReady: function(selectedDates, dateStr, instance) {
+                try {
+                    const cal = instance.calendarContainer;
+                    if (cal) {
+                        cal.style.background = 'rgba(15,25,40,0.98)';
+                        cal.style.border = '1px solid rgba(100,150,255,0.25)';
+                    }
+                } catch (e) {}
+            }
+        };
+        flatpickr('#id_start_date', opts);
+        flatpickr('#id_end_date', opts);
+    });
+</script>
+<style>
+    /* Deep theme adjustments for flatpickr */
+    .flatpickr-calendar.dark {
+        background: rgba(15,25,40,0.98) !important;
+        border: 1px solid rgba(100,150,255,0.25) !important;
+        box-shadow: 0 12px 30px rgba(0,100,255,0.15) !important;
+    }
+    .flatpickr-calendar .flatpickr-months,
+    .flatpickr-calendar .flatpickr-weekdays {
+        background: rgba(20,30,50,0.9) !important;
+        border-bottom: 1px solid rgba(100,150,255,0.2) !important;
+    }
+    .flatpickr-current-month .cur-month,
+    .flatpickr-current-month .numInputWrapper input,
+    .flatpickr-weekday,
+    .flatpickr-day {
+        color: #FFFFFF !important;
+    }
+    .flatpickr-day:hover,
+    .flatpickr-day:focus {
+        background: rgba(30,136,229,0.25) !important;
+        border-color: rgba(30,136,229,0.35) !important;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange,
+    .flatpickr-day.selected:hover {
+        background: linear-gradient(135deg, #1E88E5, #1565C0) !important;
+        border-color: #1E88E5 !important;
+        color: #FFFFFF !important;
+    }
+    .flatpickr-time input,
+    .flatpickr-time .flatpickr-am-pm,
+    .numInputWrapper input {
+        background: rgba(20,30,50,0.8) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(100,150,255,0.25) !important;
+    }
+</style>
 {% endblock %}

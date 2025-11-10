@@ -1,16 +1,165 @@
 {% extends 'store/base.html' %}
 {% load currency %}
 
+{% block extra_css %}
+<style>
+    /* Dark theme styles for admin order details */
+    html[data-theme='dark'] .admin-order-details .card { 
+        background: var(--card-bg) !important; 
+        border: 1px solid var(--border-color) !important; 
+    }
+    html[data-theme='dark'] .admin-order-details .card-header {
+        background: rgba(30, 136, 229, 0.15) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .card-header h5 {
+        color: var(--text-white) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table { 
+        background: transparent !important; 
+    }
+    html[data-theme='dark'] .admin-order-details .table thead th {
+        background: rgba(25,40,60,0.65) !important;
+        color: var(--text-white) !important;
+        border-color: var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table tbody tr {
+        background: rgba(20,30,45,0.55) !important;
+        border-color: var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table tbody tr:nth-child(odd) {
+        background: rgba(25,40,60,0.55) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table tbody td {
+        background: transparent !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table tfoot tr {
+        background: rgba(30, 136, 229, 0.2) !important;
+        border-color: var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table tfoot th {
+        color: var(--text-white) !important;
+        background: transparent !important;
+        border-color: var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .table td,
+    html[data-theme='dark'] .admin-order-details .table th {
+        color: var(--text-white) !important;
+        border-color: var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .form-select {
+        background: var(--card-bg) !important;
+        color: var(--text-white) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .form-select option {
+        background: var(--card-bg) !important;
+        color: var(--text-white) !important;
+    }
+    html[data-theme='dark'] .admin-order-details hr {
+        border-color: var(--border-color) !important;
+        opacity: 0.3;
+    }
+    html[data-theme='dark'] .admin-order-details .info-label {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .info-value {
+        color: var(--text-white) !important;
+    }
+    html[data-theme='dark'] .admin-order-details .fish-description-row {
+        background: rgba(255,255,255,0.03) !important;
+    }
+    
+    /* Light theme styles for admin order details */
+    html[data-theme='light'] .admin-order-details .card {
+        background: var(--light-card) !important;
+        border: 1px solid var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .card-header {
+        background: var(--light-bg-alt) !important;
+        border-bottom: 1px solid var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .card-header h5 {
+        color: var(--light-text) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table {
+        background: var(--light-card) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table thead th {
+        background: var(--light-bg-alt) !important;
+        color: var(--light-text) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table tbody tr {
+        background: var(--light-card) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table tbody tr:nth-child(odd) {
+        background: var(--light-bg) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table tbody td {
+        background: transparent !important;
+    }
+    html[data-theme='light'] .admin-order-details .table tfoot tr {
+        background: var(--light-bg-alt) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table tfoot th {
+        color: var(--light-text) !important;
+        background: transparent !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .table td,
+    html[data-theme='light'] .admin-order-details .table th {
+        color: var(--light-text) !important;
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .form-select {
+        background: var(--light-card) !important;
+        color: var(--light-text) !important;
+        border: 1px solid var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .form-select option {
+        background: var(--light-card) !important;
+        color: var(--light-text) !important;
+    }
+    html[data-theme='light'] .admin-order-details hr {
+        border-color: var(--light-border) !important;
+    }
+    html[data-theme='light'] .admin-order-details .info-label {
+        color: var(--light-text-soft) !important;
+    }
+    html[data-theme='light'] .admin-order-details .info-value {
+        color: var(--light-text) !important;
+    }
+    html[data-theme='light'] .admin-order-details .fish-description-row {
+        background: rgba(0,0,0,0.02) !important;
+    }
+    
+    /* Total amount section */
+    html[data-theme='dark'] .admin-order-details .total-amount-box {
+        background: rgba(30,136,229,0.15) !important;
+        border: 1px solid rgba(30,136,229,0.3) !important;
+        border-radius: 8px;
+    }
+    html[data-theme='light'] .admin-order-details .total-amount-box {
+        background: rgba(30,136,229,0.08) !important;
+        border: 1px solid rgba(30,136,229,0.2) !important;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<section class="section">
+<section class="section admin-order-details">
     <div class="container-fluid">
         <h2 class="section-heading">Order Details</h2>
 
         <div class="row">
             <div class="col-md-8 mb-4">
-                <div class="card admin-card-light mb-4">
+                <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="text-white">Order #{{ order.order_number }}</h5>
+                        <h5>Order #{{ order.order_number }}</h5>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -36,14 +185,14 @@
                                                  style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 15px; border: 1px solid var(--border-color);">
                                             {% endif %}
                                             <div>
-                                                <strong class="admin-text-black">{{ item.fish.name }}</strong><br>
-                                                <small class="admin-text-black">Breed: {{ item.fish.breed.name }}</small>
+                                                <strong class="info-value">{{ item.fish.name }}</strong><br>
+                                                <small class="info-label">Breed: {{ item.fish.breed.name }}</small>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="admin-text-black">{{ item.fish.category.name }}</td>
-                                    <td class="admin-text-black">{{ item.fish.size|default:"-" }} {% if item.fish.size %}inches{% endif %}</td>
-                                    <td class="admin-text-black">
+                                    <td class="info-value">{{ item.fish.category.name }}</td>
+                                    <td class="info-value">{{ item.fish.size|default:"-" }} {% if item.fish.size %}inches{% endif %}</td>
+                                    <td class="info-value">
                                         {{ item.fish.stock_quantity }}
                                         {% if item.fish.is_available %}
                                             <span class="badge bg-success badge-sm">Available</span>
@@ -51,24 +200,24 @@
                                             <span class="badge bg-danger badge-sm">Unavailable</span>
                                         {% endif %}
                                     </td>
-                                    <td class="admin-text-black">{{ item.quantity }}</td>
-                                    <td class="admin-text-black">{{ item.price|rupees }}</td>
-                                    <td class="admin-text-black"><strong>{{ item.get_total|rupees }}</strong></td>
+                                    <td class="info-value">{{ item.quantity }}</td>
+                                    <td class="info-value">{{ item.price|rupees }}</td>
+                                    <td class="info-value"><strong>{{ item.get_total|rupees }}</strong></td>
                                 </tr>
                                 <tr class="fish-description-row">
-                                    <td colspan="7" style="background: rgba(255,255,255,0.02); border-top: none; padding: 12px 16px;">
+                                    <td colspan="7" style="border-top: none; padding: 12px 16px;">
                                         <div class="mb-2">
-                                            <small class="text-muted"><strong>Description:</strong></small>
-                                            <div class="admin-text-black" style="font-size: 0.9rem;">{{ item.fish.description }}</div>
+                                            <small class="info-label"><strong>Description:</strong></small>
+                                            <div class="info-value" style="font-size: 0.9rem;">{{ item.fish.description }}</div>
                                         </div>
                                         <div class="d-flex gap-4 flex-wrap">
                                             <div>
-                                                <small class="text-muted"><strong>Created:</strong></small>
-                                                <div class="admin-text-black" style="font-size: 0.85rem;">{{ item.fish.created_at|date:"M d, Y h:i A" }}</div>
+                                                <small class="info-label"><strong>Created:</strong></small>
+                                                <div class="info-value" style="font-size: 0.85rem;">{{ item.fish.created_at|date:"M d, Y h:i A" }}</div>
                                             </div>
                                             <div>
-                                                <small class="text-muted"><strong>Last Updated:</strong></small>
-                                                <div class="admin-text-black" style="font-size: 0.85rem;">{{ item.fish.updated_at|date:"M d, Y h:i A" }}</div>
+                                                <small class="info-label"><strong>Last Updated:</strong></small>
+                                                <div class="info-value" style="font-size: 0.85rem;">{{ item.fish.updated_at|date:"M d, Y h:i A" }}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -77,8 +226,8 @@
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <th colspan="6" class="text-end admin-text-black">Total Amount:</th>
-                                    <th class="admin-text-black"><strong>{{ order.total_amount|rupees }}</strong></th>
+                                    <th colspan="6" class="text-end info-value">Total Amount:</th>
+                                    <th class="info-value"><strong>{{ order.total_amount|rupees }}</strong></th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -88,12 +237,12 @@
             </div>
             
             <div class="col-md-4 mb-4">
-                <div class="card admin-card-light mb-4">
+                <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="text-white">Order Information</h5>
+                        <h5>Order Information</h5>
                     </div>
                     <div class="card-body">
-                        <p class="mb-3"><strong class="admin-text-black">Status:</strong><br>
+                        <p class="mb-3"><strong class="info-value">Status:</strong><br>
                         <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% else %}info{% endif %}">
                             {{ order.get_status_display }}
                         </span></p>
@@ -101,30 +250,30 @@
                         <!-- Update Order Status Form -->
                         <form method="POST" class="mb-3">
                             {% csrf_token %}
-                            <label class="form-label admin-text-black"><strong>Update Status:</strong></label>
-                            <select name="status" class="form-select mb-2" style="background: var(--card-bg); color: var(--text-white); border: 1px solid var(--border-color);">
+                            <label class="form-label info-value"><strong>Update Status:</strong></label>
+                            <select name="status" class="form-select mb-2">
                                 <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
                                 <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
                                 <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
                                 <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
                                 <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                             </select>
-                            <button type="submit" class="btn btn-dark w-100">
+                            <button type="submit" class="btn btn-primary w-100">
                                 <i class="fas fa-save"></i> Update Status
                             </button>
                         </form>
                         
-                        <hr style="border-color: rgba(255,255,255,0.1);">
+                        <hr>
                         
-                        <p class="mb-3"><strong class="admin-text-black">Order Number:</strong><br><span class="admin-text-black">{{ order.order_number }}</span></p>
-                        <p class="mb-3"><strong class="admin-text-black">Order Date:</strong><br><span class="admin-text-black">{{ order.created_at|date:"M d, Y h:i A" }}</span></p>
-                        <p class="mb-3"><strong class="admin-text-black">Last Updated:</strong><br><span class="admin-text-black">{{ order.updated_at|date:"M d, Y h:i A" }}</span></p>
+                        <p class="mb-3"><strong class="info-value">Order Number:</strong><br><span class="info-value">{{ order.order_number }}</span></p>
+                        <p class="mb-3"><strong class="info-value">Order Date:</strong><br><span class="info-value">{{ order.created_at|date:"M d, Y h:i A" }}</span></p>
+                        <p class="mb-3"><strong class="info-value">Last Updated:</strong><br><span class="info-value">{{ order.updated_at|date:"M d, Y h:i A" }}</span></p>
                         
-                        <hr style="border-color: rgba(255,255,255,0.1);">
+                        <hr>
                         
-                        <h6 class="admin-text-black mb-3">Payment Information</h6>
-                        <p class="mb-2"><strong class="admin-text-black">Payment Method:</strong><br>
-                        <span class="admin-text-black">
+                        <h6 class="info-value mb-3">Payment Information</h6>
+                        <p class="mb-2"><strong class="info-value">Payment Method:</strong><br>
+                        <span class="info-value">
                                 {% if order.payment_method == 'card' %}
                                 <i class="fas fa-credit-card me-1"></i> Credit/Debit Card
                             {% elif order.payment_method == 'upi' %}
@@ -135,35 +284,35 @@
                                 <i class="fas fa-wallet me-1"></i> Digital Wallet
                             {% endif %}
                         </span></p>
-                        <p class="mb-2"><strong class="admin-text-black">Payment Status:</strong><br>
+                        <p class="mb-2"><strong class="info-value">Payment Status:</strong><br>
                         <span class="badge bg-{% if order.payment_status == 'paid' %}success{% elif order.payment_status == 'pending' %}warning{% elif order.payment_status == 'failed' %}danger{% else %}secondary{% endif %}">
                             {{ order.get_payment_status_display }}
                         </span></p>
                         {% if order.transaction_id %}
-                        <p class="mb-3"><strong class="admin-text-black">Transaction ID:</strong><br>
-                        <span class="admin-text-black" style="font-family: monospace; font-size: 0.9rem;">{{ order.transaction_id }}</span></p>
+                        <p class="mb-3"><strong class="info-value">Transaction ID:</strong><br>
+                        <span class="info-value" style="font-family: monospace; font-size: 0.9rem;">{{ order.transaction_id }}</span></p>
                         {% endif %}
                         
-                        <hr style="border-color: rgba(255,255,255,0.1);">
+                        <hr>
                         
-                        <h6 class="admin-text-black mb-3">Customer Information</h6>
-                        <p class="mb-2"><strong class="admin-text-black">Name:</strong><br><span class="admin-text-black">{{ order.user.get_full_name|default:order.user.username }}</span></p>
-                        <p class="mb-2"><strong class="admin-text-black">Username:</strong><br><span class="admin-text-black">{{ order.user.username }}</span></p>
-                        <p class="mb-2"><strong class="admin-text-black">Email:</strong><br><span class="admin-text-black">{{ order.user.email }}</span></p>
-                        <p class="mb-2"><strong class="admin-text-black">Customer Phone:</strong><br><span class="admin-text-black">{{ order.user.phone_number|default:"-" }}</span></p>
-                        <p class="mb-3"><strong class="admin-text-black">Customer Address:</strong><br><span class="admin-text-black" style="white-space: pre-line;">{{ order.user.address|default:"-" }}</span></p>
+                        <h6 class="info-value mb-3">Customer Information</h6>
+                        <p class="mb-2"><strong class="info-value">Name:</strong><br><span class="info-value">{{ order.user.get_full_name|default:order.user.username }}</span></p>
+                        <p class="mb-2"><strong class="info-value">Username:</strong><br><span class="info-value">{{ order.user.username }}</span></p>
+                        <p class="mb-2"><strong class="info-value">Email:</strong><br><span class="info-value">{{ order.user.email }}</span></p>
+                        <p class="mb-2"><strong class="info-value">Customer Phone:</strong><br><span class="info-value">{{ order.user.phone_number|default:"-" }}</span></p>
+                        <p class="mb-3"><strong class="info-value">Customer Address:</strong><br><span class="info-value" style="white-space: pre-line;">{{ order.user.address|default:"-" }}</span></p>
                         
-                        <hr style="border-color: rgba(255,255,255,0.1);">
+                        <hr>
                         
-                        <h6 class="admin-text-black mb-3">Shipping Information</h6>
-                        <p class="mb-2"><strong class="admin-text-black">Shipping Address:</strong><br><span class="admin-text-black" style="white-space: pre-line;">{{ order.shipping_address }}</span></p>
-                        <p class="mb-3"><strong class="admin-text-black">Shipping Phone:</strong><br><span class="admin-text-black">{{ order.phone_number }}</span></p>
+                        <h6 class="info-value mb-3">Shipping Information</h6>
+                        <p class="mb-2"><strong class="info-value">Shipping Address:</strong><br><span class="info-value" style="white-space: pre-line;">{{ order.shipping_address }}</span></p>
+                        <p class="mb-3"><strong class="info-value">Shipping Phone:</strong><br><span class="info-value">{{ order.phone_number }}</span></p>
                         
-                        <hr style="border-color: rgba(255,255,255,0.1);">
+                        <hr>
                         
-                        <div class="d-flex justify-content-between align-items-center p-3" style="background: rgba(30,136,229,0.1); border-radius: 8px;">
-                            <strong class="admin-text-black">Total Amount:</strong>
-                            <h4 class="mb-0 admin-text-black">{{ order.total_amount|rupees }}</h4>
+                        <div class="d-flex justify-content-between align-items-center p-3 total-amount-box">
+                            <strong class="info-value">Total Amount:</strong>
+                            <h4 class="mb-0 info-value">{{ order.total_amount|rupees }}</h4>
                         </div>
                     </div>
                 </div>

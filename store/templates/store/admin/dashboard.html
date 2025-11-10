@@ -10,46 +10,47 @@
         margin-bottom: 2rem;
     }
     
-    /* Dark theme for recent orders table */
-    .admin-dashboard .card { 
+    /* Dark theme styles for recent orders table (scoped to dark mode only) */
+    html[data-theme='dark'] .admin-dashboard .card { 
         background: var(--card-bg) !important; 
         border: 1px solid var(--border-color) !important; 
     }
-    .admin-dashboard .table { 
+    html[data-theme='dark'] .admin-dashboard .table { 
         background: transparent !important; 
     }
-    .admin-dashboard .table>:not(caption)>*>* {
+    /* Keep table cells transparent, but don't strip backgrounds from buttons */
+    html[data-theme='dark'] .admin-dashboard .table>:not(caption)>*>*:not(.btn) {
         background: transparent !important;
         box-shadow: none !important;
         color: #FFFFFF !important;
     }
-    .admin-dashboard thead th {
+    html[data-theme='dark'] .admin-dashboard thead th {
         background: rgba(25,40,60,0.65) !important;
         color: #FFFFFF !important;
         border-color: var(--border-color) !important;
         font-weight: 600 !important;
     }
-    .admin-dashboard tbody tr { 
+    html[data-theme='dark'] .admin-dashboard tbody tr { 
         background: rgba(20,30,45,0.55) !important; 
         transition: background .18s ease; 
     }
-    .admin-dashboard tbody tr:nth-child(odd) { 
+    html[data-theme='dark'] .admin-dashboard tbody tr:nth-child(odd) { 
         background: rgba(25,40,60,0.55) !important; 
     }
-    .admin-dashboard tbody tr:hover { 
+    html[data-theme='dark'] .admin-dashboard tbody tr:hover { 
         background: rgba(40,80,140,0.55) !important; 
     }
-    .admin-dashboard td, .admin-dashboard th { 
+    html[data-theme='dark'] .admin-dashboard td, html[data-theme='dark'] .admin-dashboard th { 
         color: #FFFFFF !important; 
         border-color: var(--border-color) !important; 
     }
-    .admin-dashboard .text-gray { 
+    html[data-theme='dark'] .admin-dashboard .text-gray { 
         color: rgba(255,255,255,0.85) !important; 
     }
-    .admin-dashboard .text-white { 
+    html[data-theme='dark'] .admin-dashboard .text-white { 
         color: #FFFFFF !important; 
     }
-    .admin-dashboard .badge { 
+    html[data-theme='dark'] .admin-dashboard .badge { 
         box-shadow: 0 0 0 1px rgba(0,0,0,0.25); 
     }
 </style>

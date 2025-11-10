@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser, Category, Breed, Fish, Order
+from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon
 from .models import FishMedia
 
 
@@ -40,15 +40,19 @@ class BreedForm(forms.ModelForm):
 class FishForm(forms.ModelForm):
     class Meta:
         model = Fish
-        fields = ['name', 'category', 'breed', 'description', 'price', 'size', 'stock_quantity', 'image', 'is_available']
+        fields = ['name', 'category', 'breed', 'description', 'price', 'size', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_available', 'is_featured']
         widgets = {
             'size': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'placeholder': 'e.g., 4.5'}),
+            'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'placeholder': 'e.g., 1'}),
         }
         labels = {
             'size': 'Size (inches)',
+            'minimum_order_quantity': 'Minimum Order Quantity',
+            'is_featured': 'Featured',
         }
         help_texts = {
             'size': 'Enter size in inches',
+            'minimum_order_quantity': 'Minimum quantity required per order',
         }
     
     def __init__(self, *args, **kwargs):
@@ -75,9 +79,19 @@ class OrderFilterForm(forms.Form):
         ('cancelled', 'Cancelled'),
     ]
     
-    status = forms.ChoiceField(choices=STATUS_CHOICES, required=False)
-    start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    start_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control datepicker', 'placeholder': 'YYYY-MM-DD', 'autocomplete': 'off'})
+    )
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control datepicker', 'placeholder': 'YYYY-MM-DD', 'autocomplete': 'off'})
+    )
 
 class FishMediaForm(forms.ModelForm):
     class Meta:
@@ -137,3 +151,100 @@ class ChangePasswordForm(forms.Form):
             self.user.save()
         return self.user
 
+
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model = Review
+        fields = ['rating', 'comment']
+        widgets = {
+            'rating': forms.Select(attrs={'class': 'form-select'}),
+            'comment': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Share your experience (optional)'}),
+        }
+        labels = {
+            'rating': 'Rating (1-5 Stars)',
+            'comment': 'Review Comment',
+        }
+
+
+class ServiceForm(forms.ModelForm):
+    class Meta:
+        model = Service
+        fields = ['title', 'description', 'icon', 'image', 'is_active', 'display_order']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Service title'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Describe the service'}),
+            'icon': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. fas fa-fish'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+        }
+        labels = {
+            'icon': 'Font Awesome Icon',
+            'is_active': 'Active',
+            'display_order': 'Order',
+        }
+
+
+class ContactInfoForm(forms.ModelForm):
+    class Meta:
+        model = ContactInfo
+        fields = [
+            'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country',
+            'phone_primary', 'phone_secondary', 'email_support', 'email_sales',
+            'whatsapp', 'facebook_url', 'instagram_url', 'twitter_url', 'youtube_url',
+            'map_embed_url', 'opening_hours'
+        ]
+        widgets = {
+            'address_line1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address line 1'}),
+            'address_line2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address line 2'}),
+            'city': forms.TextInput(attrs={'class': 'form-control'}),
+            'state': forms.TextInput(attrs={'class': 'form-control'}),
+            'postal_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'country': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone_primary': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+91 12345 67890'}),
+            'phone_secondary': forms.TextInput(attrs={'class': 'form-control'}),
+            'email_support': forms.EmailInput(attrs={'class': 'form-control'}),
+            'email_sales': forms.EmailInput(attrs={'class': 'form-control'}),
+            'whatsapp': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+911234567890'}),
+            'facebook_url': forms.URLInput(attrs={'class': 'form-control'}),
+            'instagram_url': forms.URLInput(attrs={'class': 'form-control'}),
+            'twitter_url': forms.URLInput(attrs={'class': 'form-control'}),
+            'youtube_url': forms.URLInput(attrs={'class': 'form-control'}),
+            'map_embed_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://www.google.com/maps/embed?...'}),
+            'opening_hours': forms.Textarea(attrs={'class': 'form-control', 'rows': 6, 'placeholder': 'Mon–Fri: 09:00–18:00\nSat: 10:00–14:00'}),
+        }
+        labels = {
+            'map_embed_url': 'Google Maps Embed URL',
+            'opening_hours': 'Opening Hours',
+        }
+
+
+class CouponForm(forms.ModelForm):
+    class Meta:
+        model = Coupon
+        fields = ['code', 'discount_percentage', 'max_discount_amount', 'min_order_amount', 
+                  'coupon_type', 'is_active', 'show_in_suggestions', 'valid_from', 'valid_until', 'usage_limit']
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., SAVE20', 'style': 'text-transform: uppercase;'}),
+            'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'max': '100'}),
+            'max_discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Optional'}),
+            'min_order_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'coupon_type': forms.Select(attrs={'class': 'form-select custom-select-icon'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_in_suggestions': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'valid_from': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'valid_until': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'usage_limit': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'placeholder': 'Leave blank for unlimited'}),
+        }
+        labels = {
+            'code': 'Coupon Code',
+            'discount_percentage': 'Discount Percentage (%)',
+            'max_discount_amount': 'Maximum Discount Amount (₹)',
+            'min_order_amount': 'Minimum Order Amount (₹)',
+            'coupon_type': 'User Type',
+            'is_active': 'Active',
+            'show_in_suggestions': 'Show in Checkout Suggestions',
+            'valid_from': 'Valid From',
+            'valid_until': 'Valid Until',
+            'usage_limit': 'Usage Limit',
+        }

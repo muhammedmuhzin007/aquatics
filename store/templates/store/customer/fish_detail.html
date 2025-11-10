@@ -46,8 +46,11 @@
                             <div class="row mb-4">
                                 <div class="col-md-4">
                                     <label class="form-label">Quantity</label>
-                                    <input type="number" class="form-control" name="quantity" value="1" 
-                                           min="1" max="{{ fish.stock_quantity }}" required>
+                                    <input type="number" class="form-control" name="quantity" value="{{ fish.minimum_order_quantity }}" 
+                                           min="{{ fish.minimum_order_quantity }}" max="{{ fish.stock_quantity }}" required>
+                                    {% if fish.minimum_order_quantity > 1 %}
+                                    <small class="text-muted">Minimum order: {{ fish.minimum_order_quantity }} units</small>
+                                    {% endif %}
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-success btn-lg">

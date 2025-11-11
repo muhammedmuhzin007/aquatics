@@ -1,0 +1,136 @@
+{% extends 'store/base.html' %}
+
+{% block extra_css %}
+<style>
+/* Custom styling for fish dropdown - Dark Theme */
+.fish-dropdown {
+    background: linear-gradient(135deg, rgba(25,118,210,0.15), rgba(13,71,161,0.08));
+    border: 2px solid rgba(25,118,210,0.4);
+    color: #E3F2FD;
+    padding: 10px 15px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.fish-dropdown option {
+    background: #1a1a2e;
+    color: #E3F2FD;
+    padding: 10px;
+}
+
+.fish-dropdown:focus {
+    background: linear-gradient(135deg, rgba(25,118,210,0.25), rgba(13,71,161,0.15));
+    border-color: rgba(25,118,210,0.8);
+    box-shadow: 0 0 0 0.25rem rgba(25,118,210,0.3), 
+                0 0 20px rgba(25,118,210,0.4);
+    outline: none;
+}
+
+.fish-dropdown:hover {
+    border-color: rgba(25,118,210,0.6);
+    box-shadow: 0 2px 12px rgba(25,118,210,0.3);
+}
+
+/* Light theme adjustments */
+html[data-theme='light'] .fish-dropdown {
+    background: linear-gradient(135deg, rgba(25,118,210,0.08), rgba(66,165,245,0.05));
+    border: 2px solid rgba(25,118,210,0.3);
+    color: #1565C0;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.1);
+}
+
+html[data-theme='light'] .fish-dropdown option {
+    background: #FFFFFF;
+    color: #1565C0;
+}
+
+html[data-theme='light'] .fish-dropdown:focus {
+    background: linear-gradient(135deg, rgba(25,118,210,0.15), rgba(66,165,245,0.1));
+    border-color: rgba(25,118,210,0.6);
+    box-shadow: 0 0 0 0.25rem rgba(25,118,210,0.2), 
+                0 0 20px rgba(25,118,210,0.25);
+}
+
+html[data-theme='light'] .fish-dropdown:hover {
+    border-color: rgba(25,118,210,0.5);
+    box-shadow: 0 2px 12px rgba(25,118,210,0.2);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container-fluid">
+    <h2 class="section-heading">{% if offer %}Edit Limited Offer{% else %}Add Limited Offer{% endif %}</h2>
+
+    <div class="card">
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Title</label>
+              {{ form.title }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Discount Highlight</label>
+              {{ form.discount_text }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Details</label>
+              {{ form.description }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Banner Image</label>
+              {{ form.image }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Background Color</label>
+              {{ form.bg_color }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Select Fish (Optional)</label>
+              <div>
+                <select name="{{ form.fish.name }}" id="{{ form.fish.id_for_label }}" class="form-select fish-dropdown">
+                  <option value="">-- No specific fish (general offer) --</option>
+                  {% for fish in form.fish.field.queryset %}
+                    <option value="{{ fish.id }}" {% if form.fish.value == fish.id|stringformat:"s" %}selected{% endif %}>
+                      {{ fish.name }} - {{ fish.breed.name }} ({{ fish.category.name }})
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <small class="form-text text-muted d-block mt-1">
+                <i class="fas fa-info-circle me-1"></i>
+                Select a specific fish to redirect users when they click this banner. If not selected, users will be redirected to the fish list page.
+              </small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Starts At</label>
+              {{ form.start_time }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ends At</label>
+              {{ form.end_time }}
+            </div>
+            <div class="col-md-6 form-check form-switch">
+              {{ form.is_active }}
+              <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+            </div>
+            <div class="col-md-6 form-check form-switch">
+              {{ form.show_on_homepage }}
+              <label class="form-check-label" for="{{ form.show_on_homepage.id_for_label }}">Show on Landing Page</label>
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2">
+            <button class="btn btn-primary" type="submit"><i class="fas fa-save me-2"></i>{% if offer %}Update{% else %}Create{% endif %}</button>
+            <a href="{% url 'admin_limited_offers' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

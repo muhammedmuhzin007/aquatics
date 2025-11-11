@@ -3,7 +3,12 @@
 {% if fishes %}
 <div class="fish-grid">
     {% for fish in fishes %}
-    <div class="card">
+    <div class="card" style="position: relative;">
+        {% if fish.limited_offers.exists %}
+        <div class="deal-badge">
+            <i class="fas fa-bolt"></i> DEAL
+        </div>
+        {% endif %}
         {% if fish.image %}
         <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
         {% else %}

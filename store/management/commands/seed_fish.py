@@ -90,7 +90,8 @@ class Command(BaseCommand):
         draw.text((x, y), title, fill=(255, 255, 255), font=font)
 
         # Add a subtle watermark-like label
-        sub = "AquaFish Store"
+        from django.conf import settings
+        sub = getattr(settings, 'SITE_NAME', 'Fishy Friend Aquatics')
         sub_font = font
         try:
             sub_font = ImageFont.truetype("arial.ttf", 24)

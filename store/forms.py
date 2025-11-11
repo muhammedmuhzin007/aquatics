@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon
+from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon, LimitedOffer
 from .models import FishMedia
 
 
@@ -248,3 +248,40 @@ class CouponForm(forms.ModelForm):
             'valid_until': 'Valid Until',
             'usage_limit': 'Usage Limit',
         }
+
+class LimitedOfferForm(forms.ModelForm):
+    start_time = forms.DateTimeField(widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}))
+    end_time = forms.DateTimeField(widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}))
+    class Meta:
+        model = LimitedOffer
+        fields = ['title', 'description', 'discount_text', 'image', 'bg_color', 'fish', 'start_time', 'end_time', 'is_active', 'show_on_homepage']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'discount_text': forms.TextInput(attrs={'class': 'form-control'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'bg_color': forms.TextInput(attrs={'class': 'form-control form-control-color', 'type': 'color'}),
+            'fish': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_on_homepage': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'title': 'Offer Title',
+            'description': 'Details',
+            'discount_text': 'Discount Highlight',
+            'image': 'Banner Image (optional)',
+            'bg_color': 'Background Color (fallback)',
+            'fish': 'Select Fish (optional)',
+            'start_time': 'Starts At',
+            'end_time': 'Ends At',
+            'is_active': 'Active',
+            'show_on_homepage': 'Show on Landing Page',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Customize fish choices to show name and breed
+        if 'fish' in self.fields:
+            self.fields['fish'].queryset = Fish.objects.select_related('breed', 'category').filter(is_available=True)
+            self.fields['fish'].label_from_instance = lambda obj: f"{obj.name} - {obj.breed.name} ({obj.category.name})"
+            self.fields['fish'].empty_label = "-- No specific fish (general offer) --"

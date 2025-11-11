@@ -437,6 +437,25 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
 }
 
+/* Hero Carousel Slides */
+.hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
+}
+
+.hero-slide.active {
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+}
+
 .hero-image {
     position: absolute;
     top: 0;
@@ -444,7 +463,7 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.3;
+    opacity: 1;
     z-index: 1;
 }
 
@@ -465,6 +484,7 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     text-transform: uppercase;
     letter-spacing: 3px;
     line-height: 1.2;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
 .hero-subtitle {
@@ -473,6 +493,107 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     font-weight: 300;
     max-width: 700px;
     margin: 0 auto;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Hero Navigation Arrows */
+.hero-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    font-size: 1.2rem;
+    backdrop-filter: blur(8px);
+    outline: none;
+}
+
+.hero-nav:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.hero-nav-prev {
+    left: 30px;
+}
+
+.hero-nav-next {
+    right: 30px;
+}
+
+/* Hero Indicators */
+.hero-indicators {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 10;
+}
+
+.hero-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.hero-dot:hover {
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(1.2);
+}
+
+.hero-dot.active {
+    background: white;
+    width: 35px;
+    border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 500px;
+    }
+    
+    .hero-slide {
+        min-height: 500px;
+    }
+    
+    .hero-title {
+        font-size: 3rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+    
+    .hero-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .hero-nav-prev {
+        left: 15px;
+    }
+    
+    .hero-nav-next {
+        right: 15px;
+    }
 }
 
 /* Section Headings */
@@ -821,6 +942,90 @@ html[data-theme='light'] .btn-theme-toggle:hover {
     display: inline-block;
     font-weight: 500;
     border: 1px solid rgba(30, 136, 229, 0.3);
+}
+
+/* Deal Badge on Fish Cards */
+.deal-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.5);
+    animation: dealPulse 2s ease-in-out infinite;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.deal-badge i {
+    margin-right: 4px;
+    animation: boltBlink 1.5s ease-in-out infinite;
+}
+
+/* Larger Deal Badge for Detail Page */
+.deal-badge-large {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    z-index: 10;
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+    animation: dealPulse 2s ease-in-out infinite;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.deal-badge-large i {
+    margin-right: 6px;
+    animation: boltBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes dealPulse {
+    0%, 100% { 
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.5);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 6px 24px rgba(255, 107, 107, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes boltBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Light theme deal badges */
+html[data-theme='light'] .deal-badge,
+html[data-theme='light'] .deal-badge-large {
+    background: linear-gradient(135deg, #F44336, #FF6F00);
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+@keyframes dealPulseLarge {
+    0%, 100% { 
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.9);
+        transform: scale(1.05);
+    }
+}
+
+.deal-badge-large {
+    animation: dealPulseLarge 2s ease-in-out infinite;
 }
 
 /* Dashboard Cards */

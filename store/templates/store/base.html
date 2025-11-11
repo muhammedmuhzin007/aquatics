@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AquaFish Store - Underwater Paradise{% endblock %}</title>
+    <title>{% block title %}{{ SITE_NAME }} - Underwater Paradise{% endblock %}</title>
     {% load static %}
     <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
     <link rel="alternate icon" href="{% static 'favicon.svg' %}">
@@ -31,7 +31,7 @@
             <div class="top-nav-left">
                 <div class="top-nav-logo">
                     <i class="fas fa-fish"></i>
-                    <span>AquaFish Store | Landing Page</span>
+                    <span>{{ SITE_NAME }} | Landing Page</span>
                 </div>
             </div>
             <div class="top-nav-right">
@@ -71,7 +71,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark aquatic-nav">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'home' %}">
-                <i class="fas fa-fish"></i> AquaFish Store
+                <i class="fas fa-fish"></i> {{ SITE_NAME }}
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="border-color: rgba(255,255,255,0.3);">
                 <span class="navbar-toggler-icon"></span>
@@ -187,7 +187,7 @@
                     </div>
                 </div>
                 <div class="col-md-12">
-                    <p class="mb-0" style="color: var(--text-gray);">&copy; 2024 AquaFish Store. Dive into the aquatic world!</p>
+                    <p class="mb-0" style="color: var(--text-gray);">&copy; 2024 {{ SITE_NAME }}. Dive into the aquatic world!</p>
                 </div>
             </div>
         </div>

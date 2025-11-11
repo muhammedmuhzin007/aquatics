@@ -1,76 +1,910 @@
 {% extends 'store/base.html' %}
 {% load currency %}
 
+{% block extra_css %}
+<style>
+/* Reduce space between Limited Offers heading and banner */
+.limited-offers-banner {
+    margin-top: -100px !important;
+}
+/* Limited Offers Banner Styling - Large Image Banner with Carousel */
+.limited-offers-banner {
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.offer-banner-carousel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    min-height: 400px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    border: 2px solid rgba(25,118,210,0.3);
+    transition: all 0.4s ease;
+    animation: bannerGlow 3s ease-in-out infinite;
+}
+
+.offer-banner-carousel:hover {
+    border-color: rgba(25,118,210,0.8);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 
+                0 0 30px rgba(25,118,210,0.6),
+                0 0 60px rgba(25,118,210,0.4);
+    animation: none;
+}
+
+.offer-banner-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.95) translateX(50px);
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                visibility 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+}
+
+.offer-banner-item.active {
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+    transform: scale(1) translateX(0);
+}
+
+.offer-banner-item.slide-out-left {
+    transform: scale(0.95) translateX(-50px);
+    opacity: 0;
+}
+
+.offer-banner-item.slide-in-right {
+    transform: scale(0.95) translateX(50px);
+    opacity: 0;
+}
+
+.offer-banner-item:hover {
+    text-decoration: none;
+}
+
+.offer-banner-item:focus {
+    outline: none;
+}
+
+.offer-banner-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transform: scale(1.1);
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.offer-banner-item.active .offer-banner-bg {
+    transform: scale(1);
+}
+
+.offer-banner-item:hover .offer-banner-bg {
+    transform: scale(1.05);
+}
+
+.offer-banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 100%);
+    z-index: 1;
+}
+
+.offer-banner-content {
+    position: relative;
+    z-index: 2;
+    padding: 48px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: white;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s,
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+}
+
+.offer-banner-item.active .offer-banner-content {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.offer-banner-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.offer-banner-badge {
+    background: rgba(239,83,80,0.95);
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(239,83,80,0.4);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(239,83,80,0.4); }
+    50% { box-shadow: 0 6px 24px rgba(239,83,80,0.6); }
+}
+
+@keyframes bannerGlow {
+    0%, 100% { 
+        border-color: rgba(25,118,210,0.3);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15), 
+                    0 0 20px rgba(25,118,210,0.3);
+    }
+    50% { 
+        border-color: rgba(25,118,210,0.5);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15), 
+                    0 0 40px rgba(25,118,210,0.5);
+    }
+}
+
+@keyframes boltBlink {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.3;
+        transform: scale(0.9);
+    }
+}
+
+.offer-banner-top .fa-bolt {
+    animation: boltBlink 1.5s ease-in-out infinite;
+    display: inline-block;
+}
+
+.offer-banner-title {
+    font-size: 3rem;
+    font-weight: 900;
+    margin-bottom: 16px;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    line-height: 1.2;
+}
+
+.offer-banner-discount {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #FFD600;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.offer-banner-description {
+    font-size: 1.1rem;
+    margin-bottom: 24px;
+    opacity: 0.95;
+    line-height: 1.6;
+    max-width: 600px;
+}
+
+.offer-banner-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.offer-banner-end-date {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.offer-progress-container {
+    margin-top: 24px;
+    background: rgba(255,255,255,0.2);
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.offer-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #FFD600, #FF6B6B);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 12px rgba(255,214,0,0.6);
+}
+
+/* Compact banner for multiple offers */
+.offer-banner-compact {
+    min-height: 250px;
+}
+
+.offer-banner-compact .offer-banner-title {
+    font-size: 2rem;
+}
+
+.offer-banner-compact .offer-banner-discount {
+    font-size: 1.5rem;
+}
+
+.offer-banner-compact .offer-banner-content {
+    padding: 32px;
+}
+
+/* Fallback solid color backgrounds */
+.offer-banner-solid {
+    background: linear-gradient(135deg, #1976D2 0%, #0D47A1 100%);
+}
+
+/* Carousel Navigation Arrows */
+.offer-carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    font-size: 1.2rem;
+    backdrop-filter: blur(8px);
+    outline: none;
+}
+
+.offer-carousel-nav:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.offer-carousel-nav:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+}
+
+.offer-carousel-prev {
+    left: 20px;
+}
+
+.offer-carousel-next {
+    right: 20px;
+}
+
+/* Carousel Indicators */
+.offer-carousel-indicators {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+}
+
+.offer-carousel-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.offer-carousel-dot:hover {
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(1.2);
+}
+
+.offer-carousel-dot.active {
+    background: white;
+    width: 30px;
+    border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+    .offer-banner-item,
+    .offer-banner-carousel {
+        min-height: 300px;
+    }
+    
+    .offer-banner-title {
+        font-size: 2rem;
+    }
+    
+    .offer-banner-discount {
+        font-size: 1.5rem;
+    }
+    
+    .offer-banner-content {
+        padding: 32px 24px;
+    }
+    
+    .offer-carousel-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .offer-carousel-prev {
+        left: 10px;
+    }
+    
+    .offer-carousel-next {
+        right: 10px;
+    }
+}
+
+/* Light theme refinements */
+.limited-offers {
+    background: linear-gradient(145deg, rgba(30,40,60,0.9), rgba(15,25,45,0.95));
+    border: 2px solid transparent;
+    border-image: linear-gradient(135deg, rgba(30,136,229,0.3), rgba(100,181,246,0.2)) 1;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(30,136,229,0.1);
+    animation: borderGlow 3s ease-in-out infinite;
+}
+
+@keyframes borderGlow {
+    0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 20px rgba(30,136,229,0.1); }
+    50% { box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 30px rgba(30,136,229,0.2); }
+}
+
+.limited-offers .lo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, rgba(30,136,229,0.18), rgba(30,136,229,0.08));
+    border-bottom: 1px solid rgba(30,136,229,0.2);
+    backdrop-filter: blur(10px);
+}
+
+.limited-offers .lo-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    color: var(--text-white);
+    font-weight: 700;
+    font-size: 1.3rem;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.limited-offers .lo-title i {
+    animation: pulse 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(255,193,7,0.6));
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.limited-offers .lo-body { padding: 20px; }
+
+/* Enhanced Offer Cards */
+.limited-offer-card {
+    overflow: hidden;
+    border-radius: 14px;
+    border: 2px solid rgba(30,136,229,0.2) !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(30,136,229,0.1);
+    position: relative;
+    min-height: 240px;
+}
+
+.limited-offer-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(30,136,229,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.limited-offer-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(30,136,229,0.5) !important;
+    box-shadow: 0 12px 40px rgba(30,136,229,0.35), 0 0 0 1px rgba(30,136,229,0.3);
+}
+
+.limited-offer-card:hover::before {
+    opacity: 1;
+}
+
+.limited-offer-card .overlay-top {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+    z-index: 1;
+}
+
+.limited-offer-card .time-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
+    border-radius: 999px;
+    padding: 8px 14px !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 16px rgba(239,83,80,0.4);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(239,83,80,0.4); }
+    50% { box-shadow: 0 6px 24px rgba(239,83,80,0.6); }
+}
+
+.limited-offer-card .card-body {
+    position: relative;
+    z-index: 2;
+    padding: 24px !important;
+}
+
+.limited-offer-card .card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.limited-offer-card .text-info {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    background: linear-gradient(135deg, #64B5F6, #42A5F5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.limited-offer-card .time-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 6px;
+    background: rgba(255,255,255,0.2);
+    z-index: 2;
+    overflow: hidden;
+}
+
+.limited-offer-card .time-progress::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.limited-offer-card .time-progress .bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #FF6B6B, #FFC107, #42A5F5);
+    background-size: 200% 100%;
+    animation: gradientFlow 3s ease infinite;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(66,165,245,0.6);
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes gradientFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .limited-offers .lo-title {
+        font-size: 1.1rem;
+    }
+    
+    .limited-offer-card {
+        min-height: 200px;
+    }
+    
+    .limited-offer-card .card-body {
+        padding: 18px !important;
+    }
+}
+
+/* Light theme refinements */
+html[data-theme='light'] .limited-offers {
+    background: linear-gradient(145deg, #FFFFFF, #F5F9FF);
+    border-image: linear-gradient(135deg, rgba(25,118,210,0.3), rgba(66,165,245,0.2)) 1;
+    box-shadow: 0 8px 32px rgba(25,118,210,0.15), 0 0 0 1px rgba(25,118,210,0.1);
+}
+
+html[data-theme='light'] .limited-offers .lo-header {
+    background: linear-gradient(135deg, rgba(25,118,210,0.12), rgba(25,118,210,0.06));
+    border-bottom-color: rgba(25,118,210,0.15);
+}
+
+html[data-theme='light'] .limited-offers .lo-title {
+    color: var(--light-text);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+html[data-theme='light'] .limited-offer-card {
+    border-color: rgba(25,118,210,0.25) !important;
+    box-shadow: 0 4px 20px rgba(25,118,210,0.12), 0 0 0 1px rgba(25,118,210,0.08);
+}
+
+html[data-theme='light'] .limited-offer-card:hover {
+    border-color: rgba(25,118,210,0.5) !important;
+    box-shadow: 0 12px 40px rgba(25,118,210,0.25), 0 0 0 1px rgba(25,118,210,0.3);
+}
+
+html[data-theme='light'] .limited-offer-card .overlay-top {
+    background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0.4));
+}
+
+/* Categories Carousel Styling */
+
+.categories-carousel-container {
+    position: relative;
+    padding: 0 80px;
+    margin-top: 30px;
+    overflow: hidden;
+}
+
+.categories-carousel-track {
+    display: flex;
+    gap: 30px;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+    will-change: transform;
+}
+
+.category-carousel-item {
+    min-width: 0;
+    flex: 0 0 calc(100%/3 - 20px);
+    transition: opacity 0.3s, box-shadow 0.3s;
+}
+
+@media (max-width: 1200px) {
+    .category-carousel-item {
+        flex: 0 0 calc(50% - 15px);
+    }
+}
+@media (max-width: 768px) {
+    .categories-carousel-container {
+        padding: 0 60px;
+    }
+    .category-carousel-item {
+        flex: 0 0 100%;
+    }
+}
+
+.category-carousel-item .card {
+    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.category-carousel-item .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(30,136,229,0.3);
+}
+
+.category-carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(30, 136, 229, 0.15);
+    border: 2px solid var(--accent-blue);
+    color: var(--accent-blue);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    font-size: 1.2rem;
+    backdrop-filter: blur(8px);
+}
+
+.category-carousel-nav:hover {
+    background: var(--accent-blue);
+    color: white;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 15px rgba(30, 136, 229, 0.3);
+}
+
+.category-carousel-prev {
+    left: 10px;
+}
+
+.category-carousel-next {
+    right: 10px;
+}
+
+/* Light theme */
+html[data-theme='light'] .category-carousel-nav {
+    background: rgba(25, 118, 210, 0.1);
+    border-color: var(--light-accent);
+    color: var(--light-accent);
+}
+
+html[data-theme='light'] .category-carousel-nav:hover {
+    background: var(--light-accent);
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .categories-carousel-track {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .categories-carousel-container {
+        padding: 0 60px;
+    }
+    
+    .categories-carousel-track {
+        grid-template-columns: 1fr;
+    }
+    
+    .category-carousel-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .category-carousel-prev {
+        left: 5px;
+    }
+    
+    .category-carousel-next {
+        right: 5px;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- Hero Section -->
+<!-- Hero Section with Carousel -->
 <div class="hero-section">
-    {% if first_category and first_category.image %}
-    <img src="{{ first_category.image.url }}" alt="Aquatic Fish" class="hero-image">
-    {% endif %}
-    <div class="hero-content">
-        <h1 class="hero-title">AQUAFISH STORE</h1>
-        <p class="hero-subtitle">The largest collection of beautiful aquatic fishes. Discover rare breeds and exotic species from around the world.</p>
-        {% if user.is_authenticated and user.role == 'customer' %}
-            <a href="{% url 'fish_list' %}" class="btn btn-primary btn-lg mt-4">
-                <i class="fas fa-fish"></i> Explore Collection
-            </a>
-        {% elif not user.is_authenticated %}
-            <div class="mt-4">
-                <a href="{% url 'register' %}" class="btn btn-primary btn-lg btn-register">
-                    <i class="fas fa-user-plus"></i> Get Started
-                </a>
-                <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
-                    <i class="fas fa-eye"></i> Browse Fishes
-                </a>
-            </div>
+    {% load static %}
+    
+    <!-- Hero Slide 1 -->
+    <div class="hero-slide active">
+        {% if categories.0.image %}
+        <img src="{{ categories.0.image.url }}" alt="Aquatic Fish" class="hero-image">
+        {% else %}
+        <img src="{% static 'images/hero-betta-fish.png' %}" alt="Aquatic Fish" class="hero-image">
         {% endif %}
+        <div class="hero-content">
+            <h1 class="hero-title">{{ SITE_NAME|upper }}</h1>
+            <p class="hero-subtitle">The largest collection of beautiful aquatic fishes. Discover rare breeds and exotic species from around the world.</p>
+            {% if user.is_authenticated and user.role == 'customer' %}
+                
+            {% elif not user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-lg btn-register">
+                        <i class="fas fa-user-plus"></i> Get Started
+                    </a>
+                    <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
+                        <i class="fas fa-eye"></i> Browse Fishes
+                    </a>
+                </div>
+            {% endif %}
+        </div>
     </div>
+    
+    <!-- Hero Slide 2 -->
+    <div class="hero-slide">
+        {% if categories.1.image %}
+        <img src="{{ categories.1.image.url }}" alt="Aquatic Fish" class="hero-image">
+        {% else %}
+        <img src="{% static 'images/image1.png' %}" alt="Aquatic Fish" class="hero-image">
+        {% endif %}
+        <div class="hero-content">
+            <h1 class="hero-title">{{ SITE_NAME|upper }}</h1>
+            <p class="hero-subtitle">Premium quality fish from trusted breeders. Each fish is carefully selected for health, beauty, and vitality.</p>
+            {% if user.is_authenticated and user.role == 'customer' %}
+                
+            {% elif not user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-lg btn-register">
+                        <i class="fas fa-user-plus"></i> Get Started
+                    </a>
+                    <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
+                        <i class="fas fa-eye"></i> Browse Fishes
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Hero Slide 3 -->
+    <div class="hero-slide">
+        {% if categories.2.image %}
+        <img src="{{ categories.2.image.url }}" alt="Aquatic Fish" class="hero-image">
+        {% else %}
+        <img src="{% static 'images/image.png' %}" alt="Aquatic Fish" class="hero-image">
+        {% endif %}
+        <div class="hero-content">
+            <h1 class="hero-title">{{ SITE_NAME|upper }}</h1>
+            <p class="hero-subtitle">Transform your aquarium into a masterpiece. Browse our exclusive collection of vibrant, exotic aquatic species.</p>
+            {% if user.is_authenticated and user.role == 'customer' %}
+                
+            {% elif not user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-lg btn-register">
+                        <i class="fas fa-user-plus"></i> Get Started
+                    </a>
+                    <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
+                        <i class="fas fa-eye"></i> Browse Fishes
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Navigation Arrows -->
+    <button class="hero-nav hero-nav-prev" id="heroPrev" aria-label="Previous slide">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+    <button class="hero-nav hero-nav-next" id="heroNext" aria-label="Next slide">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+    
+    <!-- Indicator Dots -->
+    
 </div>
 
 <!-- About Section -->
-{% if categories %}
 <section class="section">
     <div class="container-fluid">
-        <h2 class="section-heading">01 ABOUT OUR COLLECTION</h2>
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <p class="text-gray" style="font-size: 0.95rem; line-height: 1.8;">
-                    Welcome to AquaFish Store, your premier destination for premium aquatic fishes. We specialize in providing the finest selection of exotic and rare fish species, carefully curated from trusted breeders worldwide.
-                </p>
-            </div>
-            <div class="col-md-6 mb-4">
-                <p class="text-gray" style="font-size: 0.95rem; line-height: 1.8;">
-                    Our collection features hundreds of species across multiple categories and breeds. Each fish is carefully selected, ensuring quality, health, and beauty. Whether you're a seasoned aquarist or just beginning your journey, we have something special for everyone.
-                </p>
-            </div>
-        </div>
+        <h2 class="section-heading">Limited Offers</h2>
     </div>
 </section>
-{% endif %}
+        {% if limited_offers %}
+        <section class="limited-offers-banner">
+            <div class="container-fluid">
+                <div class="offer-banner-carousel">
+                    {% for offer in limited_offers %}
+                    <a href="{% if offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}" class="offer-banner-item {% if forloop.first %}active{% endif %}" data-start-time="{{ offer.start_time|date:'c' }}" data-end-time="{{ offer.end_time|date:'c' }}">
+                        {% if offer.fish and offer.fish.image %}
+                        <div class="offer-banner-bg" style="background-image: url('{{ offer.fish.image.url }}');"></div>
+                        <div class="offer-banner-overlay"></div>
+                        {% elif offer.image %}
+                        <div class="offer-banner-bg" style="background-image: url('{{ offer.image.url }}');"></div>
+                        <div class="offer-banner-overlay"></div>
+                        {% elif offer.bg_color %}
+                        <div class="offer-banner-bg" style="background: {{ offer.bg_color }};"></div>
+                        <div class="offer-banner-overlay"></div>
+                        {% else %}
+                        <div class="offer-banner-bg offer-banner-solid"></div>
+                        <div class="offer-banner-overlay"></div>
+                        {% endif %}
+                        
+                        <div class="offer-banner-content">
+                            <div class="offer-banner-top">
+                                <div>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="fas fa-bolt text-warning me-2" style="font-size: 1.5rem;"></i>
+                                        <span style="font-size: 1rem; font-weight: 600; opacity: 0.9;">LIMITED TIME OFFER</span>
+                                    </div>
+                                    <h2 class="offer-banner-title">{{ offer.title }}</h2>
+                                    <div class="offer-banner-discount">{{ offer.discount_text }}</div>
+                                    {% if offer.description %}
+                                    <p class="offer-banner-description">{{ offer.description }}</p>
+                                    {% endif %}
+                                    {% if offer.fish %}
+                                    <p class="offer-banner-fish-info" style="font-size: 1rem; margin-top: 12px; opacity: 0.9;">
+                                        <i class="fas fa-fish me-2"></i>{{ offer.fish.name }} - {{ offer.fish.breed.name }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                                <div class="offer-banner-badge">
+                                    <i class="far fa-clock"></i>
+                                    <span class="countdown-banner" data-end-time="{{ offer.end_time|date:'c' }}">--:--:--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="offer-banner-footer">
+                                <div class="offer-banner-end-date">
+                                    <i class="far fa-calendar-alt me-2"></i>
+                                    Ends {{ offer.end_time|date:"M d, Y g:i A" }}
+                                </div>
+                            </div>
+                            
+                            <div class="offer-progress-container">
+                                <div class="offer-progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                    
+                    <!-- Navigation Arrows (only show if more than 1 offer) -->
+                    {% if limited_offers|length > 1 %}
+                    <button class="offer-carousel-nav offer-carousel-prev" id="offerCarouselPrev" aria-label="Previous offer">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="offer-carousel-nav offer-carousel-next" id="offerCarouselNext" aria-label="Next offer">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    
+                    <!-- Indicator Dots -->
+                    <div class="offer-carousel-indicators" id="offerCarouselIndicators">
+                        {% for offer in limited_offers %}
+                        <span class="offer-carousel-dot {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}"></span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
 
 <!-- Categories Section -->
 {% if categories %}
-<section class="section" style="background: var(--darker-bg);">
+<section class="section categories-section" style="background: var(--darker-bg);">
     <div class="container-fluid">
         <h2 class="section-heading">Categories</h2>
-        <div class="row">
-            {% for category in categories|slice:":6" %}
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    {% if category.image %}
-                    <img src="{{ category.image.url }}" class="card-img-top" alt="{{ category.name }}">
-                    {% else %}
-                    <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
-                    </div>
-                    {% endif %}
-                    <div class="card-body">
-                        <h5 class="card-title">{{ category.name }}</h5>
-                        <p class="card-text">{{ category.description|truncatewords:20 }}</p>
+        <div class="categories-carousel-container">
+            <div class="categories-carousel-track">
+                {% for category in categories %}
+                <div class="category-carousel-item">
+                    <div class="card category-card">
+                        {% if category.image %}
+                        <img src="{{ category.image.url }}" class="card-img-top" alt="{{ category.name }}">
+                        {% else %}
+                        <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ category.name }}</h5>
+                            <p class="card-text">{{ category.description|truncatewords:20 }}</p>
+                        </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            
+            <!-- Navigation Buttons -->
+            <button class="category-carousel-nav category-carousel-prev" id="categoryPrev" aria-label="Previous categories">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="category-carousel-nav category-carousel-next" id="categoryNext" aria-label="Next categories">
+                <i class="fas fa-chevron-right"></i>
+            </button>
         </div>
     </div>
 </section>
@@ -139,7 +973,7 @@
                         <!-- Review Comment -->
                         <div class="mb-4" style="position: relative;">
                             <i class="fas fa-quote-left" style="position: absolute; left: -30px; top: -10px; font-size: 2rem; color: var(--accent-blue); opacity: 0.3;"></i>
-                            <p class="text-white" style="max-width: 700px; font-size: 1.1rem; line-height: 1.9; font-weight: 300; padding: 0 20px;">
+                            <p class="text-white" style="max-width: 700px; font-size: 1.1rem; line-height: 1.9; font-weight: 300; padding: 0 20px; word-break: break-word; white-space: pre-line;">
                                 {{ r.comment|default:'Great experience! Highly recommended.' }}
                             </p>
                             <i class="fas fa-quote-right" style="position: absolute; right: -30px; bottom: -10px; font-size: 2rem; color: var(--accent-blue); opacity: 0.3;"></i>
@@ -172,11 +1006,7 @@
             </button>
             
             <!-- Indicator Dots -->
-            <div id="reviewIndicators" class="review-indicators">
-                {% for r in reviews %}
-                <span class="review-dot" data-index="{{ forloop.counter0 }}"></span>
-                {% endfor %}
-            </div>
+
         </div>
     </div>
 </section>
@@ -304,13 +1134,97 @@ html[data-theme='light'] .review-dot.active {
 
 {% block extra_js %}
 <script>
-// Enhanced review carousel with indicators
+// Hero Carousel
 document.addEventListener('DOMContentLoaded', function(){
+    const heroSlides = document.querySelectorAll('.hero-slide');
+    const heroDots = document.querySelectorAll('.hero-dot');
+    const heroPrevBtn = document.getElementById('heroPrev');
+    const heroNextBtn = document.getElementById('heroNext');
+    
+    let heroIdx = 0;
+    let heroAutoPlayInterval;
+    
+    function showHeroSlide(i){
+        heroSlides.forEach((slide, j) => {
+            if(j === i) {
+                slide.classList.add('active');
+            } else {
+                slide.classList.remove('active');
+            }
+        });
+        
+        heroDots.forEach((dot, j) => {
+            if(j === i) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
+    
+    function nextHeroSlide(){
+        heroIdx = (heroIdx + 1) % heroSlides.length;
+        showHeroSlide(heroIdx);
+    }
+    
+    function prevHeroSlide(){
+        heroIdx = (heroIdx - 1 + heroSlides.length) % heroSlides.length;
+        showHeroSlide(heroIdx);
+    }
+    
+    function startHeroAutoPlay(){
+        stopHeroAutoPlay();
+        heroAutoPlayInterval = setInterval(nextHeroSlide, 5000);
+    }
+    
+    function stopHeroAutoPlay(){
+        if(heroAutoPlayInterval){
+            clearInterval(heroAutoPlayInterval);
+        }
+    }
+    
+    // Initialize hero carousel
+    if(heroSlides.length > 0){
+        showHeroSlide(heroIdx);
+        startHeroAutoPlay();
+        
+        // Navigation buttons
+        heroNextBtn?.addEventListener('click', function(){
+            nextHeroSlide();
+            stopHeroAutoPlay();
+            startHeroAutoPlay();
+        });
+        
+        heroPrevBtn?.addEventListener('click', function(){
+            prevHeroSlide();
+            stopHeroAutoPlay();
+            startHeroAutoPlay();
+        });
+        
+        // Dot indicators
+        heroDots.forEach((dot, i) => {
+            dot.addEventListener('click', function(){
+                heroIdx = i;
+                showHeroSlide(heroIdx);
+                stopHeroAutoPlay();
+                startHeroAutoPlay();
+            });
+        });
+        
+        // Pause on hover
+        const heroSection = document.querySelector('.hero-section');
+        if(heroSection){
+            heroSection.addEventListener('mouseenter', stopHeroAutoPlay);
+            heroSection.addEventListener('mouseleave', startHeroAutoPlay);
+        }
+    }
+    
+    // Enhanced review carousel with indicators
     const track = document.querySelector('#reviewCarouselTrack');
     if(!track) return;
     
     const items = track.querySelectorAll('.review-slide');
-    const dots = document.querySelectorAll('.review-dot');
+
     const prevBtn = document.getElementById('reviewPrev');
     const nextBtn = document.getElementById('reviewNext');
     
@@ -382,6 +1296,281 @@ document.addEventListener('DOMContentLoaded', function(){
     // Pause on hover
     track.addEventListener('mouseenter', stopAutoPlay);
     track.addEventListener('mouseleave', startAutoPlay);
+    
+    // Offer Banner Carousel
+    const offerBanners = document.querySelectorAll('.offer-banner-item');
+    const offerDots = document.querySelectorAll('.offer-carousel-dot');
+    const offerPrevBtn = document.getElementById('offerCarouselPrev');
+    const offerNextBtn = document.getElementById('offerCarouselNext');
+    
+    let offerIdx = 0;
+    let offerAutoPlayInterval;
+    
+    function showOfferBanner(i){
+        offerBanners.forEach((banner, j) => {
+            if(j === i) {
+                banner.classList.add('active');
+            } else {
+                banner.classList.remove('active');
+            }
+        });
+        
+        offerDots.forEach((dot, j) => {
+            if(j === i) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
+    
+    function nextOfferBanner(){
+        offerIdx = (offerIdx + 1) % offerBanners.length;
+        showOfferBanner(offerIdx);
+    }
+    
+    function prevOfferBanner(){
+        offerIdx = (offerIdx - 1 + offerBanners.length) % offerBanners.length;
+        showOfferBanner(offerIdx);
+    }
+    
+    function startOfferAutoPlay(){
+        stopOfferAutoPlay();
+        if(offerBanners.length > 1){
+            offerAutoPlayInterval = setInterval(nextOfferBanner, 5000);
+        }
+    }
+    
+    function stopOfferAutoPlay(){
+        if(offerAutoPlayInterval){
+            clearInterval(offerAutoPlayInterval);
+        }
+    }
+    
+    // Initialize offer carousel
+    if(offerBanners.length > 0){
+        showOfferBanner(offerIdx);
+        startOfferAutoPlay();
+        
+        // Navigation buttons
+        offerNextBtn?.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            nextOfferBanner();
+            stopOfferAutoPlay();
+            startOfferAutoPlay();
+        });
+        
+        offerPrevBtn?.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            prevOfferBanner();
+            stopOfferAutoPlay();
+            startOfferAutoPlay();
+        });
+        
+        // Dot indicators
+        offerDots.forEach((dot, i) => {
+            dot.addEventListener('click', function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                offerIdx = i;
+                showOfferBanner(offerIdx);
+                stopOfferAutoPlay();
+                startOfferAutoPlay();
+            });
+        });
+        
+        // Pause on hover
+        const offerCarousel = document.querySelector('.offer-banner-carousel');
+        if(offerCarousel){
+            offerCarousel.addEventListener('mouseenter', stopOfferAutoPlay);
+            offerCarousel.addEventListener('mouseleave', startOfferAutoPlay);
+        }
+    }
+    
+    // Limited Offers Banner: countdown + progress bars
+    function fmt(n){ return n.toString().padStart(2,'0'); }
+    function updateOfferBanners(){
+        const banners = document.querySelectorAll('.offer-banner-item');
+        const now = Date.now();
+        banners.forEach(banner => {
+            const startStr = banner.getAttribute('data-start-time');
+            const endStr = banner.getAttribute('data-end-time');
+            const start = new Date(startStr).getTime();
+            const end = new Date(endStr).getTime();
+            const countdown = banner.querySelector('.countdown-banner');
+            const progressBar = banner.querySelector('.offer-progress-bar');
+            if (!isFinite(start) || !isFinite(end) || !countdown || !progressBar) return;
+
+            // Countdown with days/hours/minutes format
+            if (now < start) {
+                let untilStart = Math.floor((start - now)/1000);
+                if (untilStart > 0) {
+                    let d = Math.floor(untilStart/86400); untilStart%=86400;
+                    let h = Math.floor(untilStart/3600); untilStart%=3600;
+                    let m = Math.floor(untilStart/60);
+                    countdown.textContent = d>0 ? `Starts in ${d}d ${fmt(h)}h ${fmt(m)}m` : `Starts in ${fmt(h)}h ${fmt(m)}m`;
+                    progressBar.style.width = '0%';
+                    return;
+                }
+            }
+            
+            let diff = Math.floor((end - now)/1000);
+            if (isNaN(diff) || diff <= 0) {
+                countdown.textContent = 'Expired';
+                progressBar.style.width = '100%';
+            } else {
+                let d = Math.floor(diff/86400); diff%=86400;
+                let h = Math.floor(diff/3600); diff%=3600;
+                let m = Math.floor(diff/60);
+                countdown.textContent = d>0 ? `${d}d ${fmt(h)}h ${fmt(m)}m` : `${fmt(h)}h ${fmt(m)}m`;
+            }
+
+            // Progress bar
+            const total = Math.max(1, end - start);
+            const elapsed = Math.min(Math.max(0, now - start), total);
+            const pct = Math.round((elapsed/total)*100);
+            progressBar.style.width = `${pct}%`;
+        });
+    }
+    updateOfferBanners();
+    setInterval(updateOfferBanners, 1000);
+
+    // Categories Carousel: Card Switch 1 at a Time
+    const categoryItems = document.querySelectorAll('.category-carousel-item');
+    const categoryTrack = document.querySelector('.categories-carousel-track');
+    const categoryPrevBtn = document.getElementById('categoryPrev');
+    const categoryNextBtn = document.getElementById('categoryNext');
+
+    function getItemsPerPage() {
+    if(window.innerWidth > 1200) return 3;
+    if(window.innerWidth > 768) return 2;
+    return 1;
+    }
+
+    if(categoryItems.length > 0 && categoryTrack){
+        let categoryStartIndex = 0;
+        let itemsPerPage = getItemsPerPage();
+        let isAnimating = false;
+        let autoPlayInterval = null;
+
+        // Infinite carousel setup
+        let realItems = Array.from(categoryItems);
+        let totalSets = Math.ceil(realItems.length / itemsPerPage);
+        let clonesPrepended = [];
+        let clonesAppended = [];
+
+        function setupClones() {
+            // Remove old clones
+            clonesPrepended.forEach(node => node.remove());
+            clonesAppended.forEach(node => node.remove());
+            clonesPrepended = [];
+            clonesAppended = [];
+            // Prepend last card
+            let lastIdx = realItems.length-1;
+            let clonePrev = realItems[lastIdx].cloneNode(true);
+            clonePrev.classList.add('category-clone');
+            categoryTrack.insertBefore(clonePrev, categoryTrack.firstChild);
+            clonesPrepended.push(clonePrev);
+            // Append first card
+            let cloneNext = realItems[0].cloneNode(true);
+            cloneNext.classList.add('category-clone');
+            categoryTrack.appendChild(cloneNext);
+            clonesAppended.push(cloneNext);
+        }
+
+        function getTotalSets() {
+            return Math.ceil(realItems.length / itemsPerPage);
+        }
+
+        function updateCategoryTransform(animate = true) {
+            if(isAnimating) return;
+            if(animate) {
+                isAnimating = true;
+                categoryTrack.style.transition = 'transform 0.5s cubic-bezier(0.4,0,0.2,1)';
+            } else {
+                categoryTrack.style.transition = 'none';
+            }
+            const itemWidth = realItems[0].offsetWidth + 30; // 30px gap
+            // Offset by clones (always 1 clone at each end)
+            const offset = (categoryStartIndex + 1) * itemWidth;
+            categoryTrack.style.transform = `translateX(-${offset}px)`;
+            if(animate) {
+                setTimeout(() => {
+                    // If at clone, jump to real
+                    if(categoryStartIndex < 0) {
+                        categoryTrack.style.transition = 'none';
+                        categoryStartIndex = realItems.length - 1;
+                        const realOffset = (categoryStartIndex + 1) * itemWidth;
+                        categoryTrack.style.transform = `translateX(-${realOffset}px)`;
+                    } else if(categoryStartIndex >= realItems.length) {
+                        categoryTrack.style.transition = 'none';
+                        categoryStartIndex = 0;
+                        const realOffset = (categoryStartIndex + 1) * itemWidth;
+                        categoryTrack.style.transform = `translateX(-${realOffset}px)`;
+                    }
+                    isAnimating = false;
+                }, 500);
+            }
+        }
+
+        categoryPrevBtn?.addEventListener('click', function(){
+            if(isAnimating) return;
+            itemsPerPage = getItemsPerPage();
+            totalSets = getTotalSets();
+            categoryStartIndex -= 1;
+            updateCategoryTransform(true);
+        });
+
+        categoryNextBtn?.addEventListener('click', function(){
+            if(isAnimating) return;
+            itemsPerPage = getItemsPerPage();
+            totalSets = getTotalSets();
+            categoryStartIndex += 1;
+            updateCategoryTransform(true);
+        });
+
+        // Auto-play
+        function startAutoPlay() {
+            stopAutoPlay();
+            autoPlayInterval = setInterval(() => {
+                if(isAnimating) return;
+                categoryNextBtn.click();
+            }, 5000);
+        }
+        function stopAutoPlay() {
+            if(autoPlayInterval) clearInterval(autoPlayInterval);
+        }
+        // Pause on hover
+        const carouselContainer = document.querySelector('.categories-carousel-container');
+        if(carouselContainer) {
+            carouselContainer.addEventListener('mouseenter', stopAutoPlay);
+            carouselContainer.addEventListener('mouseleave', startAutoPlay);
+        }
+
+        // Initialize
+    setupClones();
+    // Start at first real set
+    categoryStartIndex = 0;
+    updateCategoryTransform(false);
+    startAutoPlay();
+
+        // Responsive: recalculate on resize
+        let resizeTimer;
+        window.addEventListener('resize', function(){
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                itemsPerPage = getItemsPerPage();
+                totalSets = getTotalSets();
+                setupClones();
+                if(categoryStartIndex > realItems.length - itemsPerPage){
+                    categoryStartIndex = 0;
+                }
+                updateCategoryTransform(false);
+            }, 250);
+        });
+    }
 });
 </script>
 {% endblock %}

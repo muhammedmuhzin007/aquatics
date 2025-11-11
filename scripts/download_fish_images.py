@@ -15,7 +15,7 @@ import time
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "aquafish_store.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "fishy_friend_aquatics.settings")
 django.setup()
 
 from store.models import Fish  # noqa: E402

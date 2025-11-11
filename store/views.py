@@ -1,3 +1,4 @@
+from .models import CustomUser, Category, Breed, Fish, Order, OrderItem, Review, Service, ContactInfo, Coupon, LimitedOffer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -18,7 +19,8 @@ from .models import (
 )
 from .forms import (
     CustomUserCreationForm, StaffCreateForm, CategoryForm, BreedForm, FishForm, FishMediaForm,
-    ProfileEditForm, OrderFilterForm, ChangePasswordForm, ReviewForm, ServiceForm, ContactInfoForm, CouponForm
+    ProfileEditForm, OrderFilterForm, ChangePasswordForm, ReviewForm, ServiceForm, ContactInfoForm, CouponForm,
+    LimitedOfferForm
 )
 from urllib.parse import quote_plus
 from datetime import timedelta
@@ -71,7 +73,7 @@ def register_view(request):
 
             # Send OTP email
             send_mail(
-                'Email Verification OTP - AquaFish Store',
+                f'Email Verification OTP - {settings.SITE_NAME}',
                 f"Your OTP for email verification is: {otp_code}\n\nThis OTP will expire in 5 minutes.",
                 settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
                 [data['email']],
@@ -172,7 +174,7 @@ def resend_otp_view(request):
         request.session['pending_registration_time'] = timezone.now().isoformat()
 
         send_mail(
-            'Email Verification OTP - AquaFish Store',
+            f'Email Verification OTP - {settings.SITE_NAME}',
             f"Your OTP for email verification is: {otp_code}\n\nThis OTP will expire in 5 minutes.",
             settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
             [pending.get('email')],
@@ -239,8 +241,8 @@ def test_email_view(request):
         return HttpResponse("Provide ?to=email@example.com or login with an email.", status=400)
     try:
         send_mail(
-            'AquaFish Store - Test Email',
-            'This is a test email from AquaFish Store. If you received this, SMTP is configured correctly.',
+            f'{settings.SITE_NAME} - Test Email',
+            f'This is a test email from {settings.SITE_NAME}. If you received this, SMTP is configured correctly.',
             settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.local',
             [to_addr],
             fail_silently=False,
@@ -306,7 +308,7 @@ def forgot_password_view(request):
             OTP.objects.create(user=user, otp_code=otp_code)
             
             send_mail(
-                'Password Reset OTP - AquaFish Store',
+                f'Password Reset OTP - {settings.SITE_NAME}',
                 f'Your OTP for password reset is: {otp_code}\n\nThis OTP will expire in 5 minutes.',
                 settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
                 [user.email],
@@ -355,6 +357,14 @@ def reset_password_view(request, user_id):
 def home_view(request):
     categories = Category.objects.all()[:6]
     fishes = Fish.objects.filter(is_available=True, is_featured=True)[:8]
+    # Limited offers currently active and marked to show on homepage
+    now = timezone.now()
+    limited_offers = LimitedOffer.objects.filter(
+        is_active=True,
+        show_on_homepage=True,
+        start_time__lte=now,
+        end_time__gte=now,
+    ).order_by('end_time')[:4]
     first_category = Category.objects.first() if Category.objects.exists() else None
     reviews = (Review.objects.filter(approved=True)
                .select_related('order', 'user')
@@ -363,8 +373,59 @@ def home_view(request):
         'categories': categories, 
         'fishes': fishes,
         'first_category': first_category,
-        'reviews': reviews
+        'reviews': reviews,
+        'limited_offers': list(limited_offers),
     })
+
+@login_required
+@user_passes_test(is_admin)
+def admin_limited_offers_view(request):
+    offers = LimitedOffer.objects.all().order_by('-created_at')
+    return render(request, 'store/admin/limited_offers.html', {'offers': offers})
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_limited_offer_view(request):
+    if request.method == 'POST':
+        form = LimitedOfferForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Limited offer created successfully.')
+            return redirect('admin_limited_offers')
+    else:
+        form = LimitedOfferForm()
+    return render(request, 'store/admin/add_limited_offer.html', {'form': form})
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_limited_offer_view(request, offer_id):
+    offer = get_object_or_404(LimitedOffer, id=offer_id)
+    if request.method == 'POST':
+        form = LimitedOfferForm(request.POST, instance=offer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Limited offer updated successfully.')
+            return redirect('admin_limited_offers')
+    else:
+        form = LimitedOfferForm(instance=offer)
+    return render(request, 'store/admin/add_limited_offer.html', {'form': form, 'offer': offer})
+
+@login_required
+@user_passes_test(is_admin)
+def admin_toggle_limited_offer_view(request, offer_id):
+    offer = get_object_or_404(LimitedOffer, id=offer_id)
+    offer.is_active = not offer.is_active
+    offer.save(update_fields=['is_active'])
+    messages.success(request, f"Offer {'activated' if offer.is_active else 'deactivated'} successfully.")
+    return redirect('admin_limited_offers')
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_limited_offer_view(request, offer_id):
+    offer = get_object_or_404(LimitedOffer, id=offer_id)
+    offer.delete()
+    messages.success(request, 'Offer deleted successfully.')
+    return redirect('admin_limited_offers')
 
 
 def about_view(request):
@@ -899,7 +960,7 @@ def upi_payment_view(request, order_id):
     # Generate UPI payment string
     # Format: upi://pay?pa=UPI_ID&pn=MERCHANT_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&cu=INR
     upi_id = "muhzinmuhammed4@oksbi"  # Replace with your actual UPI ID
-    merchant_name = "AquaFish Store"
+    merchant_name = settings.SITE_NAME
     amount = str(order.total_amount)
     transaction_note = f"Order {order.order_number}"
     
@@ -1346,15 +1407,15 @@ def add_staff_view(request):
                 reset_path = reverse('reset_password', kwargs={'user_id': user.id})
                 reset_url = request.build_absolute_uri(reset_path)
                 send_mail(
-                    'You have been added as Staff - AquaFish Store',
+                    f'You have been added as Staff - {settings.SITE_NAME}',
                     (
                         f"Hello {user.username},\n\n"
-                        "You've been added as staff to AquaFish Store.\n\n"
+                        f"You've been added as staff to {settings.SITE_NAME}.\n\n"
                         "To securely set your password, use the OTP below within 5 minutes and visit this link:\n"
                         f"{reset_url}\n\n"
                         f"OTP: {otp_code}\n\n"
                         "If you didn't expect this email, please ignore it.\n\n"
-                        "Thanks,\nAquaFish Store"
+                        f"Thanks,\n{settings.SITE_NAME}"
                     ),
                     settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
                     [user.email],

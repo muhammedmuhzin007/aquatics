@@ -21,8 +21,17 @@
             <div class="col-md-7 mb-4">
                 <div class="card" style="height: 100%;">
                     <div class="card-body" style="padding: 40px;">
-                        <span class="category-badge">{{ fish.category.name }}</span>
-                        <span class="badge bg-secondary ms-2">{{ fish.breed.name }}</span>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="d-flex align-items-center flex-wrap gap-2">
+                                <span class="category-badge">{{ fish.category.name }}</span>
+                                <span class="badge bg-secondary">{{ fish.breed.name }}</span>
+                            </div>
+                            {% if fish.limited_offers.exists %}
+                            <span class="badge" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53); font-size: 0.9rem; padding: 8px 16px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,107,107,0.4); animation: dealPulse 2s ease-in-out infinite;">
+                                <i class="fas fa-bolt" style="animation: boltBlink 1.5s ease-in-out infinite;"></i> DEAL
+                            </span>
+                            {% endif %}
+                        </div>
                         <h1 class="text-white mt-3 mb-3" style="font-size: 2.5rem; font-weight: 700;">{{ fish.name }}</h1>
                         <div class="mb-4">
                             <span class="price-badge" style="font-size: 2rem;">{{ fish.price|rupees }}</span>

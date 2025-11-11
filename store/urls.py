@@ -96,6 +96,12 @@ urlpatterns = [
     path('store-admin/edit-coupon/<int:coupon_id>/', views.admin_edit_coupon_view, name='admin_edit_coupon'),
     path('store-admin/delete-coupon/<int:coupon_id>/', views.admin_delete_coupon_view, name='admin_delete_coupon'),
     path('store-admin/toggle-coupon/<int:coupon_id>/', views.admin_toggle_coupon_view, name='admin_toggle_coupon'),
+        # Limited Offers (admin)
+        path('store-admin/limited-offers/', views.admin_limited_offers_view, name='admin_limited_offers'),
+        path('store-admin/limited-offers/add/', views.admin_add_limited_offer_view, name='admin_add_limited_offer'),
+        path('store-admin/limited-offers/<int:offer_id>/edit/', views.admin_edit_limited_offer_view, name='admin_edit_limited_offer'),
+        path('store-admin/limited-offers/<int:offer_id>/toggle/', views.admin_toggle_limited_offer_view, name='admin_toggle_limited_offer'),
+        path('store-admin/limited-offers/<int:offer_id>/delete/', views.admin_delete_limited_offer_view, name='admin_delete_limited_offer'),
     
     # Profile
     path('profile/', views.profile_view, name='profile'),

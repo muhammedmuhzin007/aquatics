@@ -348,6 +348,45 @@ class Coupon(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+class LimitedOffer(models.Model):
+    """Time-bound marketing offer displayed on landing page with countdown."""
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    discount_text = models.CharField(max_length=80, help_text="Short highlight like 'Save 25%' or 'Flat ₹500 Off'")
+    image = models.ImageField(upload_to='offers/', null=True, blank=True, help_text='Optional banner image for the card background')
+    bg_color = models.CharField(max_length=7, blank=True, help_text="Optional hex color (e.g. #1e90ff) used when no image")
+    fish = models.ForeignKey(Fish, on_delete=models.SET_NULL, null=True, blank=True, related_name='limited_offers', help_text='Optional: Select a fish to redirect users when they click the banner')
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    show_on_homepage = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['end_time']
+
+    def __str__(self):
+        return f"{self.title} ({self.discount_text})"
+
+    def is_current(self):
+        now = timezone.now()
+        return self.is_active and self.start_time <= now <= self.end_time
+
+    def remaining_seconds(self):
+        now = timezone.now()
+        if self.end_time > now:
+            return int((self.end_time - now).total_seconds())
+        return 0
+    
+    def get_redirect_url(self):
+        """Get the URL to redirect when banner is clicked"""
+        if self.fish:
+            from django.urls import reverse
+            return reverse('fish_detail', args=[self.fish.id])
+        from django.urls import reverse
+        return reverse('fish_list')
+
     class Meta:
         ordering = ['-created_at']
 

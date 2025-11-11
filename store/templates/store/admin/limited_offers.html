@@ -1,0 +1,147 @@
+{% extends 'store/base.html' %}
+{% load currency %}
+
+{% block extra_css %}
+<style>
+  /* Scoped styles for Limited Offers admin page */
+  html[data-theme='dark'] .limited-offers-admin .card {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 0 20px rgba(0,100,200,0.15) !important;
+  }
+
+  /* Table refinements (dark scope) */
+  html[data-theme='dark'] .limited-offers-admin .table>:not(caption)>*>*:not(.btn):not(.badge) {
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255,255,255,0.1) !important;
+  }
+  html[data-theme='dark'] .limited-offers-admin thead th {
+    background: rgba(25,40,60,0.65) !important;
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid rgba(255,255,255,0.15) !important;
+  }
+  html[data-theme='dark'] .limited-offers-admin tbody tr {
+    background: rgba(20,30,45,0.55) !important;
+    transition: background 0.2s ease;
+  }
+  html[data-theme='dark'] .limited-offers-admin tbody tr:nth-child(odd) {
+    background: rgba(25,40,60,0.55) !important;
+  }
+  html[data-theme='dark'] .limited-offers-admin tbody tr:hover {
+    background: rgba(40,80,140,0.55) !important;
+  }
+  html[data-theme='dark'] .limited-offers-admin .table tbody td {
+    color: #FFFFFF !important;
+  }
+
+  /* Preview visuals */
+  .offer-preview-img {
+    width: 56px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  .offer-color-swatch {
+    display: inline-block;
+    width: 36px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  }
+
+  /* Buttons spacing */
+  .limited-offers-admin .btn-group .btn { margin-right: 6px; }
+  .limited-offers-admin .btn-group .btn:last-child { margin-right: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section limited-offers-admin">
+  <div class="container-fluid">
+    <h2 class="section-heading m-0 mb-3">Limited Offers</h2>
+
+    <div class="card admin-card-light">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 admin-text-black">All Limited Offers</h5>
+        <a href="{% url 'admin_add_limited_offer' %}" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus"></i> Add Offer
+        </a>
+      </div>
+      <div class="card-body">
+        {% if offers %}
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th class="admin-text-black">Preview</th>
+                <th class="admin-text-black">Title</th>
+                <th class="admin-text-black">Discount</th>
+                <th class="admin-text-black">Start</th>
+                <th class="admin-text-black">End</th>
+                <th class="admin-text-black">Status</th>
+                <th class="admin-text-black">Show on Home</th>
+                <th class="admin-text-black">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for offer in offers %}
+              <tr>
+                <td>
+                  {% if offer.image %}
+                    <img src="{{ offer.image.url }}" alt="Preview image" class="offer-preview-img"/>
+                  {% elif offer.bg_color %}
+                    <span class="offer-color-swatch" style="background: {{ offer.bg_color }};"></span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td><strong class="admin-text-black">{{ offer.title }}</strong></td>
+                <td>{{ offer.discount_text }}</td>
+                <td>{{ offer.start_time|date:"d M Y, g:i A" }}</td>
+                <td>{{ offer.end_time|date:"d M Y, g:i A" }}</td>
+                <td>
+                  {% if offer.is_active %}
+                  <span class="badge bg-success">Active</span>
+                  {% else %}
+                  <span class="badge bg-secondary">Inactive</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if offer.show_on_homepage %}
+                  <span class="badge bg-info">Yes</span>
+                  {% else %}
+                  <span class="badge bg-secondary">No</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <a href="{% url 'admin_edit_limited_offer' offer.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'admin_toggle_limited_offer' offer.id %}" class="btn btn-sm btn-outline-warning" title="Toggle Active">
+                      <i class="fas fa-power-off"></i>
+                    </a>
+                    <a href="{% url 'admin_delete_limited_offer' offer.id %}" class="btn btn-sm btn-outline-danger" title="Delete" data-confirm="Delete this offer?">
+                      <i class="fas fa-trash"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-gray mb-0">No limited offers yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -58,6 +58,14 @@ DEFAULT_DESCRIPTION = "High-quality healthy specimen. Suitable for both beginner
 class Command(BaseCommand):
     help = "Seed the database with sample categories, breeds, and 30 fish records. Safe to run multiple times. Also assigns placeholder images where missing."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--count',
+            type=int,
+            default=None,
+            help='Total number of fish records to ensure in the database (default: uses built-in list size).',
+        )
+
     def _make_placeholder(self, text: str, category: str) -> bytes:
         """Create a simple placeholder image with the fish name; return image bytes (JPEG)."""
         # Pick a background color based on category for some variety
@@ -127,18 +135,71 @@ class Command(BaseCommand):
                     breed_objs[(cat_name, breed_name)] = breed_obj
 
             # Seed fish
-            for data in FISH_DATA:
+            # Determine if a target count was requested
+            target_count = options.get('count')
+            existing_count = Fish.objects.count()
+            base_list = list(FISH_DATA)
+
+            if target_count is None:
+                # default: create from provided static list only
+                to_create_list = base_list
+            else:
+                # build a list of fish data up to target_count
+                to_create_list = list(base_list)
+                # If target_count is larger than base list, generate additional variants
+                idx = 1
+                while len(to_create_list) + existing_count < target_count:
+                    # pick random category and breed
+                    cat_name = random.choice(list(CATEGORIES.keys()))
+                    breed_name = random.choice(CATEGORIES[cat_name])
+                    name = f"{breed_name} Variant {idx}"
+                    price = f"{round(random.uniform(2.0, 120.0), 2)}"
+                    stock = random.randint(5, 200)
+                    size = random.choice(["small", "medium", "large", "xlarge"]) if isinstance(FISH_DATA[0]['size'], str) else round(random.uniform(1.0, 12.0), 2)
+                    to_create_list.append({
+                        "name": name,
+                        "category": cat_name,
+                        "breed": breed_name,
+                        "size": size,
+                        "price": price,
+                        "stock": stock,
+                    })
+                    idx += 1
+
+            for data in to_create_list:
                 cat_obj = category_objs[data["category"]]
                 breed_obj = breed_objs[(data["category"], data["breed"])]
+                # ensure unique name by appending a suffix if necessary
+                base_name = data["name"]
+                name = base_name
+                suffix = 1
+                while Fish.objects.filter(name=name, breed=breed_obj).exists():
+                    name = f"{base_name} #{suffix}"
+                    suffix += 1
+
+                # Normalize size: model expects a decimal (inches). Map common labels to approximate values.
+                size_val = data.get("size")
+                if isinstance(size_val, str):
+                    size_map = {
+                        "small": Decimal('2.00'),
+                        "medium": Decimal('4.00'),
+                        "large": Decimal('8.00'),
+                        "xlarge": Decimal('15.00'),
+                    }
+                    size_norm = size_map.get(size_val.lower(), None)
+                else:
+                    # numeric already
+                    size_norm = size_val
+
                 fish_obj, fish_created = Fish.objects.get_or_create(
-                    name=data["name"],
+                    name=name,
                     breed=breed_obj,
                     defaults={
                         "category": cat_obj,
                         "description": DEFAULT_DESCRIPTION,
-                        "price": Decimal(data["price"]),
-                        "size": data["size"],
-                        "stock_quantity": data["stock"],
+                        "price": Decimal(str(data.get("price", "0.00"))),
+                        "size": size_norm,
+                        "stock_quantity": data.get("stock", 0),
                         "is_available": True,
                     }
                 )

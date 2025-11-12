@@ -860,12 +860,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
                         <i class="fas fa-chevron-right"></i>
                     </button>
                     
-                    <!-- Indicator Dots -->
-                    <div class="offer-carousel-indicators" id="offerCarouselIndicators">
-                        {% for offer in limited_offers %}
-                        <span class="offer-carousel-dot {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}"></span>
-                        {% endfor %}
-                    </div>
+                    <!-- Indicator Dots removed: UI simplified by hiding the small dots -->
                     {% endif %}
                 </div>
             </div>
@@ -874,7 +869,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
 
 <!-- Categories Section -->
 {% if categories %}
-<section class="section categories-section" style="background: var(--darker-bg);">
+<section class="section categories-section">
     <div class="container-fluid">
         <h2 class="section-heading">Categories</h2>
         <div class="categories-carousel-container">
@@ -915,35 +910,65 @@ html[data-theme='light'] .category-carousel-nav:hover {
 <section class="section">
     <div class="container-fluid">
         <h2 class="section-heading">Featured Fishes</h2>
-        <div class="fish-grid">
-            {% for fish in fishes %}
-            <div class="card">
-                {% if fish.image %}
-                <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
-                {% else %}
-                <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
-                </div>
-                {% endif %}
-                <div class="card-body">
-                    <span class="category-badge">{{ fish.category.name }}</span>
-                    <h5 class="card-title mt-2">{{ fish.name }}</h5>
-                    <p class="card-text">{{ fish.description|truncatewords:15 }}</p>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <span class="price-badge">{{ fish.price|rupees }}</span>
-                        {% if user.is_authenticated and user.role == 'customer' %}
-                            <a href="{% url 'fish_detail' fish.id %}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                        {% elif not user.is_authenticated %}
-                            <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-eye"></i> View
-                            </a>
+
+        <style>
+        /* Featured carousel: horizontal track + cards */
+        .featured-carousel-container { position: relative; overflow: hidden; padding: 10px 0; }
+        .featured-carousel-track { display: flex; gap: 24px; transition: transform 0.5s cubic-bezier(0.4,0,0.2,1); will-change: transform; align-items: stretch; }
+        .featured-item { flex: 0 0 auto; width: calc(25% - 18px); }
+        .featured-item .card { height: 100%; }
+
+        @media (max-width: 1200px) { .featured-item { width: calc(33.333% - 16px); } }
+        @media (max-width: 768px)  { .featured-item { width: calc(50% - 12px); } }
+        @media (max-width: 576px)  { .featured-item { width: calc(100% - 8px); } }
+
+        .featured-carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15); color: var(--text-white); width: 44px; height: 44px; border-radius: 50%; display:flex; align-items:center; justify-content:center; z-index: 10; cursor:pointer; }
+        .featured-carousel-nav:hover { transform: translateY(-50%) scale(1.05); background: rgba(255,255,255,0.18); }
+        .featured-prev { left: 8px; }
+        .featured-next { right: 8px; }
+        </style>
+
+        <div class="featured-carousel-container">
+            <div class="featured-carousel-track">
+                {% for fish in fishes %}
+                <div class="featured-item">
+                    <div class="card">
+                        {% if fish.image %}
+                        <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
+                        {% else %}
+                        <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
+                        </div>
                         {% endif %}
+                        <div class="card-body">
+                            <span class="category-badge">{{ fish.category.name }}</span>
+                            <h5 class="card-title mt-2">{{ fish.name }}</h5>
+                            <p class="card-text">{{ fish.description|truncatewords:15 }}</p>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="price-badge">{{ fish.price|rupees }}</span>
+                                {% if user.is_authenticated and user.role == 'customer' %}
+                                    <a href="{% url 'fish_detail' fish.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                {% elif not user.is_authenticated %}
+                                    <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+
+            <!-- Nav -->
+            <button class="featured-carousel-nav featured-prev" id="featuredPrev" aria-label="Previous featured">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="featured-carousel-nav featured-next" id="featuredNext" aria-label="Next featured">
+                <i class="fas fa-chevron-right"></i>
+            </button>
         </div>
     </div>
 </section>
@@ -1224,12 +1249,13 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!track) return;
     
     const items = track.querySelectorAll('.review-slide');
+    const dots = document.querySelectorAll('.review-dot');
 
     const prevBtn = document.getElementById('reviewPrev');
     const nextBtn = document.getElementById('reviewNext');
     
     let idx = 0;
-    let autoPlayInterval;
+    let reviewAutoPlayInterval;
     
     function show(i){
         items.forEach((el, j) => {
@@ -1257,12 +1283,12 @@ document.addEventListener('DOMContentLoaded', function(){
     
     function startAutoPlay(){
         stopAutoPlay();
-        autoPlayInterval = setInterval(next, 5000);
+        reviewAutoPlayInterval = setInterval(next, 5000);
     }
     
     function stopAutoPlay(){
-        if(autoPlayInterval){
-            clearInterval(autoPlayInterval);
+        if(reviewAutoPlayInterval){
+            clearInterval(reviewAutoPlayInterval);
         }
     }
     
@@ -1283,15 +1309,17 @@ document.addEventListener('DOMContentLoaded', function(){
         startAutoPlay();
     });
     
-    // Dot indicators
-    dots.forEach((dot, i) => {
-        dot.addEventListener('click', function(){
-            idx = i;
-            show(idx);
-            stopAutoPlay();
-            startAutoPlay();
+    // Dot indicators (if any)
+    if(dots && dots.length){
+        dots.forEach((dot, i) => {
+            dot.addEventListener('click', function(){
+                idx = i;
+                show(idx);
+                stopAutoPlay();
+                startAutoPlay();
+            });
         });
-    });
+    }
     
     // Pause on hover
     track.addEventListener('mouseenter', stopAutoPlay);
@@ -1437,29 +1465,29 @@ document.addEventListener('DOMContentLoaded', function(){
     updateOfferBanners();
     setInterval(updateOfferBanners, 1000);
 
-    // Categories Carousel: Card Switch 1 at a Time
+    // Categories Carousel: Card Switch 1 at a Time (infinite looping)
     const categoryItems = document.querySelectorAll('.category-carousel-item');
     const categoryTrack = document.querySelector('.categories-carousel-track');
     const categoryPrevBtn = document.getElementById('categoryPrev');
     const categoryNextBtn = document.getElementById('categoryNext');
 
     function getItemsPerPage() {
-    if(window.innerWidth > 1200) return 3;
-    if(window.innerWidth > 768) return 2;
-    return 1;
+        if(window.innerWidth > 1200) return 3;
+        if(window.innerWidth > 768) return 2;
+        return 1;
     }
 
     if(categoryItems.length > 0 && categoryTrack){
-        let categoryStartIndex = 0;
+        let categoryStartIndex = 0; // index into realItems
         let itemsPerPage = getItemsPerPage();
         let isAnimating = false;
-        let autoPlayInterval = null;
+        let categoryAutoPlayInterval = null;
 
-        // Infinite carousel setup
-        let realItems = Array.from(categoryItems);
-        let totalSets = Math.ceil(realItems.length / itemsPerPage);
+        // Real (original) items
+        const realItems = Array.from(categoryItems);
         let clonesPrepended = [];
         let clonesAppended = [];
+        const GAP = 30; // px gap used in CSS
 
         function setupClones() {
             // Remove old clones
@@ -1467,49 +1495,67 @@ document.addEventListener('DOMContentLoaded', function(){
             clonesAppended.forEach(node => node.remove());
             clonesPrepended = [];
             clonesAppended = [];
-            // Prepend last card
-            let lastIdx = realItems.length-1;
-            let clonePrev = realItems[lastIdx].cloneNode(true);
-            clonePrev.classList.add('category-clone');
-            categoryTrack.insertBefore(clonePrev, categoryTrack.firstChild);
-            clonesPrepended.push(clonePrev);
-            // Append first card
-            let cloneNext = realItems[0].cloneNode(true);
-            cloneNext.classList.add('category-clone');
-            categoryTrack.appendChild(cloneNext);
-            clonesAppended.push(cloneNext);
+
+            itemsPerPage = getItemsPerPage();
+            // Clone last N items and prepend (in order)
+            for(let i = realItems.length - itemsPerPage; i < realItems.length; i++){
+                const idx = (i + realItems.length) % realItems.length;
+                const clone = realItems[idx].cloneNode(true);
+                clone.classList.add('category-clone');
+                categoryTrack.insertBefore(clone, categoryTrack.firstChild);
+                clonesPrepended.push(clone);
+            }
+
+            // Clone first N items and append (in order)
+            for(let i = 0; i < itemsPerPage; i++){
+                const clone = realItems[i].cloneNode(true);
+                clone.classList.add('category-clone');
+                categoryTrack.appendChild(clone);
+                clonesAppended.push(clone);
+            }
         }
 
-        function getTotalSets() {
-            return Math.ceil(realItems.length / itemsPerPage);
+        function getItemWidth(){
+            const first = realItems[0];
+            if(!first) return 0;
+            return first.offsetWidth + GAP;
         }
 
-        function updateCategoryTransform(animate = true) {
+        function updateCategoryTransform(animate = true){
             if(isAnimating) return;
+            const itemWidth = getItemWidth();
+            if(itemWidth === 0) return;
+
+            const cloneCount = clonesPrepended.length;
+            const offset = (categoryStartIndex + cloneCount) * itemWidth;
+
             if(animate) {
                 isAnimating = true;
                 categoryTrack.style.transition = 'transform 0.5s cubic-bezier(0.4,0,0.2,1)';
             } else {
                 categoryTrack.style.transition = 'none';
             }
-            const itemWidth = realItems[0].offsetWidth + 30; // 30px gap
-            // Offset by clones (always 1 clone at each end)
-            const offset = (categoryStartIndex + 1) * itemWidth;
+
             categoryTrack.style.transform = `translateX(-${offset}px)`;
-            if(animate) {
+
+            if(animate){
                 setTimeout(() => {
-                    // If at clone, jump to real
-                    if(categoryStartIndex < 0) {
+                    // If we've moved into prepended clones (index < 0)
+                    if(categoryStartIndex < 0){
                         categoryTrack.style.transition = 'none';
                         categoryStartIndex = realItems.length - 1;
-                        const realOffset = (categoryStartIndex + 1) * itemWidth;
-                        categoryTrack.style.transform = `translateX(-${realOffset}px)`;
-                    } else if(categoryStartIndex >= realItems.length) {
-                        categoryTrack.style.transition = 'none';
-                        categoryStartIndex = 0;
-                        const realOffset = (categoryStartIndex + 1) * itemWidth;
+                        const realOffset = (categoryStartIndex + cloneCount) * itemWidth;
                         categoryTrack.style.transform = `translateX(-${realOffset}px)`;
                     }
+
+                    // If we've moved into appended clones (index >= real length)
+                    if(categoryStartIndex >= realItems.length){
+                        categoryTrack.style.transition = 'none';
+                        categoryStartIndex = 0;
+                        const realOffset = (categoryStartIndex + cloneCount) * itemWidth;
+                        categoryTrack.style.transform = `translateX(-${realOffset}px)`;
+                    }
+
                     isAnimating = false;
                 }, 500);
             }
@@ -1518,7 +1564,6 @@ document.addEventListener('DOMContentLoaded', function(){
         categoryPrevBtn?.addEventListener('click', function(){
             if(isAnimating) return;
             itemsPerPage = getItemsPerPage();
-            totalSets = getTotalSets();
             categoryStartIndex -= 1;
             updateCategoryTransform(true);
         });
@@ -1526,45 +1571,45 @@ document.addEventListener('DOMContentLoaded', function(){
         categoryNextBtn?.addEventListener('click', function(){
             if(isAnimating) return;
             itemsPerPage = getItemsPerPage();
-            totalSets = getTotalSets();
             categoryStartIndex += 1;
             updateCategoryTransform(true);
         });
 
         // Auto-play
-        function startAutoPlay() {
+        function startAutoPlay(){
             stopAutoPlay();
-            autoPlayInterval = setInterval(() => {
+            categoryAutoPlayInterval = setInterval(() => {
                 if(isAnimating) return;
-                categoryNextBtn.click();
+                categoryNextBtn?.click();
             }, 5000);
         }
-        function stopAutoPlay() {
-            if(autoPlayInterval) clearInterval(autoPlayInterval);
+        function stopAutoPlay(){
+            if(categoryAutoPlayInterval) clearInterval(categoryAutoPlayInterval);
         }
+
         // Pause on hover
         const carouselContainer = document.querySelector('.categories-carousel-container');
-        if(carouselContainer) {
+        if(carouselContainer){
             carouselContainer.addEventListener('mouseenter', stopAutoPlay);
             carouselContainer.addEventListener('mouseleave', startAutoPlay);
         }
 
         // Initialize
-    setupClones();
-    // Start at first real set
-    categoryStartIndex = 0;
-    updateCategoryTransform(false);
-    startAutoPlay();
+        setupClones();
+        // Start at first real item
+        categoryStartIndex = 0;
+        updateCategoryTransform(false);
+        startAutoPlay();
 
         // Responsive: recalculate on resize
         let resizeTimer;
         window.addEventListener('resize', function(){
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => {
-                itemsPerPage = getItemsPerPage();
-                totalSets = getTotalSets();
+                // Remove existing clones and rebuild for new itemsPerPage
                 setupClones();
-                if(categoryStartIndex > realItems.length - itemsPerPage){
+                // Ensure index is within bounds
+                if(categoryStartIndex > realItems.length - 1){
                     categoryStartIndex = 0;
                 }
                 updateCategoryTransform(false);
@@ -1572,5 +1617,115 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 });
+
+    // Featured fishes carousel (infinite loop with clones)
+    (function(){
+        const track = document.querySelector('.featured-carousel-track');
+        const items = track ? Array.from(track.children) : [];
+        const prev = document.getElementById('featuredPrev');
+        const next = document.getElementById('featuredNext');
+        if(!track || items.length === 0) return;
+
+        const GAP = 24; // matches CSS gap
+        let itemsPerPage = () => {
+            if(window.innerWidth > 1200) return 4;
+            if(window.innerWidth > 768) return 3;
+            if(window.innerWidth > 576) return 2;
+            return 1;
+        };
+
+        let realItems = items;
+        let clonesBefore = [];
+        let clonesAfter = [];
+        let index = 0; // index into realItems
+        let isAnimating = false;
+        let autoInterval = null;
+
+        function getItemWidth(){
+            const el = realItems[0];
+            if(!el) return 0;
+            return el.offsetWidth + GAP;
+        }
+
+        function buildClones(){
+            // remove existing clones
+            clonesBefore.forEach(c=>c.remove()); clonesAfter.forEach(c=>c.remove()); clonesBefore=[]; clonesAfter=[];
+            const n = itemsPerPage();
+            for(let i = realItems.length - n; i < realItems.length; i++){
+                const idx = (i + realItems.length) % realItems.length;
+                const clone = realItems[idx].cloneNode(true);
+                clone.classList.add('featured-clone');
+                track.insertBefore(clone, track.firstChild);
+                clonesBefore.push(clone);
+            }
+            for(let i = 0; i < n; i++){
+                const clone = realItems[i].cloneNode(true);
+                clone.classList.add('featured-clone');
+                track.appendChild(clone);
+                clonesAfter.push(clone);
+            }
+        }
+
+        function updateTransform(animate=true){
+            if(isAnimating) return;
+            const w = getItemWidth();
+            if(w === 0) return;
+            const offset = (index + clonesBefore.length) * w;
+            if(animate){
+                isAnimating = true;
+                track.style.transition = 'transform 0.45s cubic-bezier(0.4,0,0.2,1)';
+            } else {
+                track.style.transition = 'none';
+            }
+            track.style.transform = `translateX(-${offset}px)`;
+            if(animate){
+                setTimeout(()=>{
+                    // if we walked into clones at the end
+                    if(index >= realItems.length){
+                        track.style.transition = 'none';
+                        index = 0;
+                        const realOffset = (index + clonesBefore.length) * w;
+                        track.style.transform = `translateX(-${realOffset}px)`;
+                    }
+                    // if we walked into clones at the start
+                    if(index < 0){
+                        track.style.transition = 'none';
+                        index = realItems.length - 1;
+                        const realOffset = (index + clonesBefore.length) * w;
+                        track.style.transform = `translateX(-${realOffset}px)`;
+                    }
+                    isAnimating = false;
+                }, 480);
+            }
+        }
+
+        prev?.addEventListener('click', function(){ if(isAnimating) return; index -= 1; updateTransform(true); restartAuto(); });
+        next?.addEventListener('click', function(){ if(isAnimating) return; index += 1; updateTransform(true); restartAuto(); });
+
+        function startAuto(){ stopAuto(); if(realItems.length > 1) autoInterval = setInterval(()=>{ if(!isAnimating) { index += 1; updateTransform(true); } }, 4500); }
+        function stopAuto(){ if(autoInterval){ clearInterval(autoInterval); autoInterval = null; } }
+        function restartAuto(){ stopAuto(); startAuto(); }
+
+        // Pause on hover
+        const container = document.querySelector('.featured-carousel-container');
+        if(container){ container.addEventListener('mouseenter', stopAuto); container.addEventListener('mouseleave', startAuto); }
+
+        // init
+        buildClones();
+        index = 0;
+        // force a layout to pick up widths
+        setTimeout(()=> updateTransform(false), 50);
+        startAuto();
+
+        // responsive rebuild
+        let t;
+        window.addEventListener('resize', ()=>{
+            clearTimeout(t); t = setTimeout(()=>{
+                // remove clones then rebuild
+                buildClones();
+                updateTransform(false);
+            }, 250);
+        });
+    })();
 </script>
 {% endblock %}

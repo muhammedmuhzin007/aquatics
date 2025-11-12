@@ -1419,3 +1419,27 @@ html[data-theme='light'] .navbar .dropdown-item i {
 html[data-theme='light'] .navbar .dropdown-divider {
     border-color: var(--light-border);
 }
+
+/* Categories Section - rounded container + theme-aware background */
+.categories-section {
+    border-radius: 16px;
+    overflow: hidden; /* ensures children don't bleed outside rounded corners */
+    padding: 40px 0; /* vertical spacing inside the rounded panel */
+    background: var(--category-bg, var(--card-bg));
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+/* Light mode: use the light surface/card colors for better contrast */
+html[data-theme='light'] .categories-section {
+    background: var(--light-card);
+    border-color: var(--light-border);
+    box-shadow: 0 8px 20px rgba(26,35,50,0.06);
+    color: var(--light-text);
+}
+
+/* Small tweak: inner carousel container spacing when inside rounded panel */
+.categories-section .categories-carousel-container {
+    padding: 0 40px;
+}
+

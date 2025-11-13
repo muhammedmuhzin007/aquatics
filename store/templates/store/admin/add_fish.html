@@ -2,65 +2,16 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<style>
-    /* Match input fields to website dark theme */
-    .fish-form-stable input.form-control,
-    .fish-form-stable select.form-select,
-    .fish-form-stable textarea.form-control,
-    .fish-form-stable input[type="file"],
-    .fish-form-stable input[type="number"],
-    .fish-form-stable input[type="checkbox"] {
-        background-color: rgba(15, 25, 40, 0.95) !important;
-        color: #FFFFFF !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    .fish-form-stable input.form-control:focus,
-    .fish-form-stable select.form-select:focus,
-    .fish-form-stable textarea.form-control:focus {
-        background-color: rgba(15, 25, 40, 0.95) !important;
-        color: #FFFFFF !important;
-        border-color: #1E88E5 !important;
-        box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
-    }
-    .fish-form-stable input.form-control:valid,
-    .fish-form-stable select.form-select:valid,
-    .fish-form-stable textarea.form-control:valid,
-    .fish-form-stable input.form-control:invalid,
-    .fish-form-stable select.form-select:invalid,
-    .fish-form-stable textarea.form-control:invalid {
-        background-color: rgba(15, 25, 40, 0.95) !important;
-        color: #FFFFFF !important;
-    }
-    .fish-form-stable input.form-control::placeholder,
-    .fish-form-stable textarea.form-control::placeholder {
-        color: rgba(255, 255, 255, 0.5) !important;
-    }
-    .fish-form-stable input:-webkit-autofill,
-    .fish-form-stable input:-webkit-autofill:hover,
-    .fish-form-stable input:-webkit-autofill:focus,
-    .fish-form-stable input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px rgba(15, 25, 40, 0.95) inset !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-    }
-    .fish-form-stable .text-muted,
-    .fish-form-stable .form-text { color: rgba(255,255,255,0.7) !important; }
-    .fish-form-stable .form-label { color: #000000 !important; }
-    .fish-form-stable .form-check-label { color: #000000 !important; }
-    .fish-form-stable .input-group .btn {
-        background-color: #1E88E5 !important;
-        border-color: #1E88E5 !important;
-        color: #FFFFFF !important;
-    }
-</style>
+{# Use global theme styles from static/css/style.css instead of inline rules #}
 <section class="section">
     <div class="container-fluid">
         <h2 class="section-heading">Add Fish</h2>
 
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-7 col-xl-6 mx-auto">
-                <div class="card admin-card-light">
-                    <div class="card-header"><h5 class="text-white" style="margin:0;">Add Fish</h5></div>
-                    <div class="card-body" style="padding: 40px;">
+                <div class="card">
+                    <div class="card-header"><h5 class="mb-0">Add Fish</h5></div>
+                    <div class="card-body">
                         <form method="POST" enctype="multipart/form-data" id="fishForm" class="fish-form-stable">
                             {% csrf_token %}
                             <div class="row">
@@ -116,7 +67,7 @@
                                 <button type="submit" class="btn btn-dark w-100">
                                     <i class="fas fa-save"></i> Save Fish
                                 </button>
-                                <a href="{% url 'admin_fishes' %}" class="btn w-100 mt-2" style="background-color: rgba(15, 25, 40, 0.95); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1);">
+                                <a href="{% url 'admin_fishes' %}" class="btn btn-outline-secondary w-100 mt-2">
                                     <i class="fas fa-times"></i> Cancel
                                 </a>
                             </div>
@@ -131,9 +82,9 @@
 <!-- Add Breed Modal -->
 <div class="modal fade" id="addBreedModal" tabindex="-1" aria-labelledby="addBreedModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content admin-card-light">
+        <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-white" id="addBreedModalLabel">Add New Breed</h5>
+                <h5 class="modal-title mb-0" id="addBreedModalLabel">Add New Breed</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -198,43 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Error creating breed. Please try again.');
         });
     });
-});
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const breedForm = document.getElementById('breedForm');
-    const breedSelect = document.querySelector('#id_breed');
-    if (breedForm && breedSelect) {
-        breedForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(breedForm);
-            formData.append('create_breed', '1');
-            fetch(window.location.href, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    const option = document.createElement('option');
-                    option.value = data.breed_id;
-                    option.textContent = data.breed_name;
-                    option.selected = true;
-                    breedSelect.appendChild(option);
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('addBreedModal'));
-                    modal.hide();
-                    alert('Breed created successfully! Selected in the form.');
-                    breedForm.reset();
-                }
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                alert('Error creating breed. Please try again.');
-            });
-        });
-    }
 });
 </script>
 {% endblock %}

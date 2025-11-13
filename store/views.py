@@ -1389,41 +1389,36 @@ def admin_staff_list_view(request):
 @user_passes_test(is_admin)
 def add_staff_view(request):
     if request.method == 'POST':
-        # Use a passwordless staff creation form; password will be set via OTP reset flow
+        # Staff creation with admin-provided password (password fields are on the form)
         form = StaffCreateForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.role = 'staff'
             user.email_verified = True
             user.is_active = True
-            # Do not set a password from admin input; require secure setup via OTP
-            user.set_unusable_password()
+            # Set the password provided by the admin
+            password = form.cleaned_data.get('password1')
+            if password:
+                user.set_password(password)
+            else:
+                user.set_unusable_password()
             user.save()
-            # Security: do not email passwords. Send OTP-based password setup email instead.
+            # Send a simple welcome email (do not include passwords in email)
             try:
-                otp_code = OTP.generate_otp()
-                OTP.objects.create(user=user, otp_code=otp_code)
-                # Build absolute URL to reset password page
-                reset_path = reverse('reset_password', kwargs={'user_id': user.id})
-                reset_url = request.build_absolute_uri(reset_path)
                 send_mail(
                     f'You have been added as Staff - {settings.SITE_NAME}',
                     (
                         f"Hello {user.username},\n\n"
                         f"You've been added as staff to {settings.SITE_NAME}.\n\n"
-                        "To securely set your password, use the OTP below within 5 minutes and visit this link:\n"
-                        f"{reset_url}\n\n"
-                        f"OTP: {otp_code}\n\n"
-                        "If you didn't expect this email, please ignore it.\n\n"
+                        "You can now login using your account credentials. If you did not set a password, please use the password reset flow.\n\n"
                         f"Thanks,\n{settings.SITE_NAME}"
                     ),
                     settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
                     [user.email],
                     fail_silently=False,
                 )
-                messages.success(request, 'Staff member added and invite email sent successfully.')
+                messages.success(request, 'Staff member added and notification email sent successfully.')
             except Exception as e:
-                # If email sending fails, still keep the account, but notify admin
                 messages.warning(request, f'Staff member added, but failed to send email: {e}')
             return redirect('admin_staff_list')
     else:

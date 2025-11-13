@@ -15,14 +15,43 @@ class CustomUserCreationForm(UserCreationForm):
 
 
 class StaffCreateForm(forms.ModelForm):
-    """Staff creation form without password fields. Password will be set via OTP/reset flow."""
+    """Staff creation form.
+
+    Replaced first_name/last_name with password fields so admin can set an initial
+    password when creating staff. Passwords are validated for match and basic
+    strength (min length).
+    """
     email = forms.EmailField(required=True)
     phone_number = forms.CharField(max_length=15, required=False)
     address = forms.CharField(widget=forms.Textarea, required=False)
 
+    # Password fields (not model fields) — admin-entered initial password
+    password1 = forms.CharField(
+        label='Password',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter password'}),
+        required=True
+    )
+    password2 = forms.CharField(
+        label='Confirm password',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm password'}),
+        required=True
+    )
+
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'phone_number', 'address', 'first_name', 'last_name')
+        # do not include password1/password2 in Meta.fields (not model fields)
+        fields = ('username', 'email', 'phone_number', 'address')
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('password1')
+        p2 = cleaned.get('password2')
+        if p1 and p2 and p1 != p2:
+            self.add_error('password2', 'Passwords do not match.')
+        # Basic length check
+        if p1 and len(p1) < 8:
+            self.add_error('password1', 'Password must be at least 8 characters long.')
+        return cleaned
 
 
 class CategoryForm(forms.ModelForm):

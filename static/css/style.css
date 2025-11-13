@@ -1339,6 +1339,21 @@ html[data-theme='light'] .deal-badge-large {
     padding: 0 !important;
 }
 
+/* Soft admin card variant (used by Add Staff page) */
+.admin-card-soft {
+    background: #F7FAFF !important; /* soft, slightly bluish off-white */
+    color: #0b1220 !important;
+    border: 1px solid rgba(11,18,32,0.06) !important;
+    box-shadow: 0 6px 20px rgba(11,18,32,0.04);
+}
+.admin-card-soft .card-body {
+    background: transparent !important;
+}
+.admin-card-soft .card-header {
+    background: transparent !important;
+}
+
+
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }

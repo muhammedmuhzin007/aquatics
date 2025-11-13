@@ -22,10 +22,17 @@ urlpatterns = [
     # Customer Routes
     path('fishes/', views.customer_fish_list_view, name='fish_list'),
     path('fish/<int:fish_id>/', views.fish_detail_view, name='fish_detail'),
+    # Accessories (customer)
+    path('accessories/', views.customer_accessories_view, name='accessories'),
+    path('accessory/<int:accessory_id>/', views.accessory_detail_view, name='accessory_detail'),
+    path('accessory/add-to-cart/<int:accessory_id>/', views.add_accessory_to_cart_view, name='add_accessory_to_cart'),
+    path('accessories/add/', views.accessories_add_view, name='accessories_add'),
     path('cart/', views.cart_view, name='cart'),
     path('add-to-cart/<int:fish_id>/', views.add_to_cart_view, name='add_to_cart'),
     path('update-cart/<int:cart_id>/', views.update_cart_view, name='update_cart'),
     path('remove-cart/<int:cart_id>/', views.remove_from_cart_view, name='remove_cart'),
+    path('update-accessory-cart/<int:accessory_cart_id>/', views.update_accessory_cart_view, name='update_accessory_cart'),
+    path('remove-accessory-cart/<int:accessory_cart_id>/', views.remove_accessory_cart_view, name='remove_accessory_cart'),
     path('checkout/', views.checkout_view, name='checkout'),
     path('apply-coupon/', views.apply_coupon_view, name='apply_coupon'),
     path('remove-coupon/', views.remove_coupon_view, name='remove_coupon'),
@@ -51,6 +58,11 @@ urlpatterns = [
     path('staff/fish/<int:fish_id>/media/', views.staff_fish_media_view, name='staff_fish_media'),
     path('staff/fish/media/delete/<int:media_id>/', views.staff_delete_fish_media_view, name='staff_delete_fish_media'),
     path('staff/fish/media/<int:media_id>/edit/', views.staff_edit_fish_media_view, name='staff_edit_fish_media'),
+    # Accessories (staff)
+    path('staff/accessories/', views.staff_accessories_view, name='staff_accessories'),
+    path('staff/add-accessory/', views.add_accessory_view, name='add_accessory'),
+    path('staff/edit-accessory/<int:accessory_id>/', views.edit_accessory_view, name='edit_accessory'),
+    path('staff/delete-accessory/<int:accessory_id>/', views.delete_accessory_view, name='delete_accessory'),
     
     # Admin Routes (using store-admin prefix to avoid conflict with Django admin)
     path('store-admin/dashboard/', views.admin_dashboard_view, name='admin_dashboard'),
@@ -69,6 +81,11 @@ urlpatterns = [
     path('store-admin/fish/<int:fish_id>/media/', views.admin_fish_media_view, name='admin_fish_media'),
     path('store-admin/fish/media/delete/<int:media_id>/', views.admin_delete_fish_media_view, name='admin_delete_fish_media'),
     path('store-admin/fish/media/<int:media_id>/edit/', views.admin_edit_fish_media_view, name='admin_edit_fish_media'),
+    # Accessories (admin)
+    path('store-admin/accessories/', views.admin_accessories_view, name='admin_accessories'),
+    path('store-admin/add-accessory/', views.admin_add_accessory_view, name='admin_add_accessory'),
+    path('store-admin/edit-accessory/<int:accessory_id>/', views.admin_edit_accessory_view, name='admin_edit_accessory'),
+    path('store-admin/delete-accessory/<int:accessory_id>/', views.admin_delete_accessory_view, name='admin_delete_accessory'),
     # Services Management
     path('store-admin/services/', views.admin_services_view, name='admin_services'),
     path('store-admin/add-service/', views.admin_add_service_view, name='admin_add_service'),

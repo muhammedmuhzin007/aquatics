@@ -5,25 +5,35 @@
   <div class="container-fluid">
     <h2 class="section-heading mb-4">{% if is_edit %}Edit Service{% else %}Add Service{% endif %}</h2>
 
-    <div class="card" style="max-width: 900px;">
+    <div class="card mx-auto mt-4" style="max-width: 900px;">
       <div class="card-body">
         <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
+          {# Show form errors so admins see validation issues #}
+          {% if form.errors %}
+          <div class="alert alert-danger">
+            <ul class="mb-0">
+              {% for field, errors in form.errors.items %}
+                {% for err in errors %}
+                  <li>{{ field }}: {{ err }}</li>
+                {% endfor %}
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
           <div class="row">
             <div class="col-md-8">
               <div class="mb-3">
                 <label class="form-label text-white">Title</label>
                 {{ form.title }}
+                {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors.as_text }}</div>{% endif %}
               </div>
               <div class="mb-3">
                 <label class="form-label text-white">Description</label>
                 {{ form.description }}
+                {% if form.description.errors %}<div class="text-danger small">{{ form.description.errors.as_text }}</div>{% endif %}
               </div>
-              <div class="mb-3">
-                <label class="form-label text-white">Font Awesome Icon</label>
-                {{ form.icon }}
-                <div class="form-text">Example: <code>fas fa-fish</code>, <code>fas fa-shipping-fast</code>, <code>fas fa-water</code></div>
-              </div>
+              {# Icon input removed per request - icons will use default or be set in admin later #}
             </div>
             <div class="col-md-4">
               <div class="mb-3">

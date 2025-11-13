@@ -149,6 +149,43 @@
                             </td>
                         </tr>
                         {% endfor %}
+                            {# Accessories: render accessory items in the same table so total matches visible rows #}
+                            {% for a in accessory_items %}
+                            <tr>
+                                <td class="td-fish">
+                                    <div class="d-flex align-items-center">
+                                        {% if a.accessory.image %}
+                                        <img src="{{ a.accessory.image.url }}" alt="{{ a.accessory.name }}" 
+                                             style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; margin-right: 15px; border: 1px solid var(--border-color);">
+                                        {% endif %}
+                                        <div>
+                                            <strong class="text-white">{{ a.accessory.name }}</strong><br>
+                                            <small class="text-muted">Accessory</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-white" data-label="Price">{{ a.accessory.price|rupees }}</td>
+                                <td data-label="Quantity">
+                                    <form method="POST" action="{% url 'update_accessory_cart' a.id %}" class="d-inline">
+                                        {% csrf_token %}
+                         <input type="number" name="quantity" value="{{ a.quantity }}" 
+                             min="{{ a.accessory.minimum_order_quantity }}" max="{{ a.accessory.stock_quantity }}" 
+                             class="form-control form-control-sm cart-qty"
+                             onchange="this.form.submit()">
+                                    </form>
+                                    {% if a.accessory.minimum_order_quantity > 1 %}
+                                    <small class="text-muted d-block">Min: {{ a.accessory.minimum_order_quantity }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-white" data-label="Total"><strong>{{ a.get_total|rupees }}</strong></td>
+                                <td data-label="Remove">
+                                    <a href="{% url 'remove_accessory_cart' a.id %}" class="btn btn-danger btn-sm" 
+                                           data-confirm="Remove this accessory from cart?">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
                     </tbody>
                     <tfoot>
                         <tr>

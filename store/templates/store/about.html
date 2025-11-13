@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load static %}
 
 {% block content %}
 <!-- Hero Section -->
@@ -15,7 +16,7 @@
             </div>
             <div class="col-lg-6">
                 <div class="about-image-container">
-                    <i class="fas fa-fish" style="font-size: 15rem; opacity: 0.1; color: var(--accent-blue);"></i>
+                    {# removed decorative fish icon to avoid watermark overlay on the hero background image #}
                 </div>
             </div>
         </div>
@@ -64,28 +65,19 @@
         <h2 class="section-heading mb-5">Our Services</h2>
         <div class="row">
             {% for service in services %}
-            <div class="col-md-6 mb-4">
-                <div class="card service-card" style="height: 100%;">
-                    <div class="row g-0 h-100">
-                        <div class="col-md-5">
-                            {% if service.image %}
-                            <img src="{{ service.image.url }}" class="service-image" alt="{{ service.title }}">
-                            {% else %}
-                            <div class="service-image-placeholder">
-                                <i class="{{ service.icon }}" style="font-size: 4rem; opacity: 0.3;"></i>
-                            </div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-7">
-                            <div class="card-body h-100 d-flex flex-column" style="padding: 30px;">
-                                <div class="mb-3">
-                                    <i class="{{ service.icon }}" style="font-size: 2rem; color: var(--accent-blue);"></i>
-                                </div>
-                                <h4 class="text-white mb-3">{{ service.title }}</h4>
-                                <p class="text-gray flex-grow-1" style="line-height: 1.8;">
-                                    {{ service.description }}
-                                </p>
-                            </div>
+            <div class="col-12 col-md-6 col-lg-4 mb-4">
+                <div class="card service-card h-100 d-flex flex-column">
+                    {% if service.image %}
+                    <img src="{{ service.image.url }}" class="service-image-top" alt="{{ service.title }}">
+                    {% else %}
+                    <div class="service-image-placeholder"></div>
+                    {% endif %}
+                    <div class="card-body d-flex flex-column" style="padding: 22px;">
+                        <div class="mb-2">&nbsp;</div>
+                        <h4 class="text-white mb-2" style="font-size:1.15rem;">{{ service.title }}</h4>
+                        <p class="text-gray service-desc mb-0" style="line-height:1.6;">{{ service.description }}</p>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-sm btn-outline-light readmore-btn" data-title="{{ service.title|escapejs }}" data-description="{{ service.description|escapejs }}" {% if service.image %}data-image="{{ service.image.url }}"{% else %}data-image=""{% endif %}>Read more</button>
                         </div>
                     </div>
                 </div>
@@ -95,6 +87,104 @@
     </div>
 </section>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const LIMIT = 220; // characters to show before truncation
+    // Prepare modal container (will be populated on demand)
+    let modalEl = document.getElementById('servicePreviewModal');
+
+    document.querySelectorAll('.service-card').forEach(function (card) {
+        const descEl = card.querySelector('.service-desc');
+        const btn = card.querySelector('.readmore-btn');
+        if (!descEl) {
+            if (btn) btn.style.display = 'none';
+            return;
+        }
+        const full = descEl.textContent.trim();
+        if (!full || full.length <= LIMIT) {
+            if (btn) btn.style.display = 'none';
+            return;
+        }
+        const truncated = full.slice(0, LIMIT).trim() + '...';
+        descEl.dataset.full = full;
+        descEl.dataset.truncated = truncated;
+        descEl.textContent = truncated;
+
+        if (btn) {
+            btn.style.display = 'inline-block';
+            btn.textContent = 'Read more';
+            // Open modal with image, title and full description
+            btn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                const title = btn.getAttribute('data-title') || '';
+                const desc = descEl.dataset.full || '';
+                const imgUrl = btn.getAttribute('data-image') || '';
+
+                // Create modal if missing
+                                        if (!modalEl) {
+                                        modalEl = document.createElement('div');
+                                        modalEl.id = 'servicePreviewModal';
+                                        modalEl.className = 'modal fade';
+                                        modalEl.tabIndex = -1;
+                                        modalEl.setAttribute('aria-hidden', 'true');
+                                        modalEl.innerHTML = `
+                                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                                <div class="modal-content bg-dark text-white">
+                                                    <div class="modal-body text-center p-4">
+                                                        <h3 class="service-preview-title mb-3"></h3>
+                                                        <p class="service-preview-desc mb-0"></p>
+                                                    </div>
+                                                    <div class="modal-footer border-0 justify-content-center">
+                                                        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                        document.body.appendChild(modalEl);
+                                }
+
+                                // Populate modal (title + description only; image intentionally omitted)
+                                const titleEl = modalEl.querySelector('.service-preview-title');
+                                const descElModal = modalEl.querySelector('.service-preview-desc');
+                                titleEl.textContent = title;
+                                descElModal.textContent = desc;
+
+                if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                    const m = new bootstrap.Modal(modalEl);
+                    m.show();
+                } else {
+                    // fallback: simple dialog
+                    modalEl.style.display = 'block';
+                }
+            });
+        }
+    });
+});
+</script>
+
+<style>
+/* Modal content wrapping and centered layout for service preview */
+#servicePreviewModal .service-preview-image img {
+    /* image removed from modal; keep the rule harmless in case it's reintroduced */
+    display: none;
+}
+#servicePreviewModal .service-preview-title {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+#servicePreviewModal .service-preview-desc {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: center;
+    max-width: 820px;
+    margin-left: auto;
+    margin-right: auto;
+}
+#servicePreviewModal .modal-body { padding: 1.5rem; }
+</style>
 
 <!-- Contact Information -->
 {% if contact %}
@@ -186,7 +276,11 @@
 
 <style>
 .about-hero {
-    background: linear-gradient(135deg, rgba(30, 136, 229, 0.05), rgba(100, 181, 246, 0.05));
+    /* Background image (no overlay) */
+    background-image: url("{% static 'images/underwater.jpg' %}");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
     padding: 80px 0;
     margin-bottom: 60px;
 }
@@ -212,34 +306,42 @@
     transform: translateY(-5px);
     box-shadow: 0 10px 30px rgba(30, 136, 229, 0.2);
 }
+.service-card {
+    overflow: hidden;
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
+    border: 1px solid rgba(255,255,255,0.03);
+}
+.service-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(30, 136, 229, 0.12);
+}
 
-.service-image {
+.service-image-top {
     width: 100%;
-    height: 100%;
+    height: 180px;
     object-fit: cover;
 }
 
 .service-image-placeholder {
     width: 100%;
-    height: 100%;
-    min-height: 300px;
+    height: 180px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(100, 181, 246, 0.1));
+    background: linear-gradient(135deg, rgba(30, 136, 229, 0.06), rgba(100, 181, 246, 0.06));
 }
 
-
-.contact-section {
-    padding: 80px 0;
-    background: var(--darker-bg);
+.service-desc {
+    /* allow normal wrapping of service descriptions */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
-.contact-card { background: rgba(20,30,45,0.85); border:1px solid rgba(255,255,255,0.08); }
-html[data-theme='light'] .contact-section { background: var(--light-surface); }
 html[data-theme='light'] .contact-card { background:#fff; border:1px solid var(--light-border); }
 
 html[data-theme='light'] .about-hero {
-    background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(66, 165, 245, 0.05));
+    /* Light theme: use the same image without overlay */
+    background-image: url("{% static 'images/underwater.jpg' %}");
 }
 
 html[data-theme='light'] .services-section {
@@ -270,6 +372,16 @@ html[data-theme='light'] .service-image-placeholder {
     .service-image-placeholder {
         min-height: 200px;
     }
+}
+
+/* Ensure Read more button is visible in light theme */
+html[data-theme='light'] .readmore-btn {
+    color: var(--accent-blue) !important;
+    border-color: var(--accent-blue) !important;
+    background: transparent !important;
+}
+html[data-theme='light'] .readmore-btn:hover {
+    background: rgba(0,0,0,0.04) !important;
 }
 </style>
 {% endblock %}

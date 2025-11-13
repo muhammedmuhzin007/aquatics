@@ -1,0 +1,25 @@
+{% load static %}
+<div class="row">
+  {% for accessory in accessories %}
+  <div class="col-md-4 mb-4">
+  <div class="card h-100" data-href="{% url 'accessory_detail' accessory.id %}" role="button" tabindex="0">
+      {% if accessory.image %}
+        <img src="{{ accessory.image.url }}" class="card-img-top" alt="{{ accessory.name }}">
+      {% else %}
+        <img src="{% static 'images/placeholder.png' %}" class="card-img-top" alt="{{ accessory.name }}">
+      {% endif %}
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">{{ accessory.name }}</h5>
+        <p class="card-text mb-3">₹{{ accessory.price }}</p>
+        <div class="mt-auto d-flex justify-content-end align-items-center">
+          <form method="post" action="{% url 'add_accessory_to_cart' accessory.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="quantity" value="1">
+            <button type="submit" class="btn btn-primary btn-sm">Add to Cart</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

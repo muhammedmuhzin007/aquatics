@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon, LimitedOffer
+from .models import FishMedia, Accessory
 from .models import FishMedia
 
 
@@ -198,19 +199,38 @@ class ReviewForm(forms.ModelForm):
 class ServiceForm(forms.ModelForm):
     class Meta:
         model = Service
-        fields = ['title', 'description', 'icon', 'image', 'is_active', 'display_order']
+        fields = ['title', 'description', 'image', 'is_active', 'display_order']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Service title'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Describe the service'}),
-            'icon': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. fas fa-fish'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
         }
         labels = {
-            'icon': 'Font Awesome Icon',
             'is_active': 'Active',
             'display_order': 'Order',
+        }
+
+class AccessoryForm(forms.ModelForm):
+    class Meta:
+        model = Accessory
+        # Put minimum_order_quantity (Min order) right after stock_quantity as requested
+        # Removed 'display_order' so the 'Order' input is not shown in add/edit accessory forms
+        # Removed 'category' from the accessory form per request
+        fields = ['name', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Accessory name'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'stock_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'e.g., 1'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'minimum_order_quantity': 'Minimum Order Quantity',
+            'is_active': 'Active',
         }
 
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ SITE_NAME }} - Underwater Paradise{% endblock %}</title>
-    {% load static %}
+    {% load static cart_tags %}
     <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
     <link rel="alternate icon" href="{% static 'favicon.svg' %}">
     <script>
@@ -22,6 +22,67 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        /* Category select styling site-wide when widget uses .category-select
+           Uses theme variables so the dropdown follows light/dark and accent colors */
+        select.category-select {
+            background-color: var(--card-bg); /* default to card surface */
+            color: var(--text-white);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+        select.category-select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.10);
+            outline: none;
+        }
+
+        /* Light theme: use light surface and light-accent */
+        html[data-theme='light'] select.category-select {
+            background: var(--light-surface);
+            color: var(--light-text);
+            border-color: var(--light-border);
+        }
+        html[data-theme='light'] select.category-select:focus {
+            border-color: var(--light-accent);
+            box-shadow: 0 0 0 0.2rem rgba(25,118,210,0.12);
+        }
+
+        /* Dark theme tweaks: keep card surface but highlight with accent on focus */
+        html[data-theme='dark'] select.category-select {
+            background: var(--card-bg);
+            color: var(--text-white);
+            border-color: var(--border-color);
+        }
+        html[data-theme='dark'] select.category-select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.16);
+        }
+
+        /* Clickable card affordance: show subtle lift and outline on hover/focus */
+        .card[data-href] {
+            transition: transform 180ms ease, box-shadow 180ms ease;
+            will-change: transform, box-shadow;
+        }
+        .card[data-href]:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 24px rgba(2,6,23,0.12);
+        }
+        .card[data-href]:focus {
+            outline: 3px solid rgba(30,136,229,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 24px rgba(2,6,23,0.12);
+        }
+        /* Make focus visible for keyboard users even if browser doesn't show outline */
+        .card[data-href]:focus {
+            outline-offset: 2px;
+        }
+
+        /* Apply cursor only on non-touch devices (where hover is available) */
+        @media (hover: hover) and (pointer: fine) {
+            .card[data-href] { cursor: pointer; }
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="aquatic-bg">
@@ -51,15 +112,13 @@
                             <i class="fas fa-moon"></i>
                         </span>
                     </button>
-                    <i class="fas fa-search"></i>
+                    {# search icon removed as requested #}
                     <a href="{% url 'profile' %}" style="color: inherit;"><i class="fas fa-user"></i></a>
                     {% if user.is_authenticated and user.role == 'customer' %}
-                        <a href="{% url 'cart' %}" style="color: inherit;">
-                            <i class="fas fa-shopping-cart">
-                                {% if user.cart_items.count > 0 %}
-                                    <span style="font-size: 0.7rem; position: absolute; background: #EF5350; color: white; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; margin-left: -8px; margin-top: -8px;">{{ user.cart_items.count }}</span>
-                                {% endif %}
-                            </i>
+                        <a href="{% url 'cart' %}" style="color: inherit; position: relative;">
+                            <i class="fas fa-shopping-cart"></i>
+                            {% cart_count as cart_total %}
+                            <span id="cart-badge" style="font-size:0.7rem; position: absolute; background:#EF5350; color:white; border-radius:50%; width:16px; height:16px; display: inline-flex; align-items:center; justify-content:center; left:18px; top:-6px; {% if not cart_total or cart_total|add:0 == 0 %}display:none;{% endif %}">{{ cart_total|default:0 }}</span>
                         </a>
                     {% endif %}
                 </div>
@@ -87,6 +146,9 @@
                                 <a class="nav-link" href="{% url 'fish_list' %}">Browse Fishes</a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link" href="{% url 'accessories' %}">Accessories</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" href="{% url 'customer_orders' %}">My Orders</a>
                             </li>
                         {% elif user.role == 'staff' %}
@@ -101,6 +163,9 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'staff_breeds' %}">Breeds</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'staff_accessories' %}">Accessories</a>
                             </li>
                         {% elif user.role == 'admin' %}
                             <li class="nav-item">
@@ -122,8 +187,10 @@
                                 <a class="nav-link" href="{% url 'admin_users' %}">Users</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="/admin/" target="_blank">Django Admin</a>
+                                <a class="nav-link" href="{% url 'admin_accessories' %}">Accessories</a>
                             </li>
+                            
+                            {# Django admin link intentionally removed from nav #}
                         {% endif %}
                     {% else %}
                         <li class="nav-item">
@@ -178,16 +245,9 @@
     <footer class="aquatic-footer mt-5">
         <div class="container text-center py-4">
             <div class="row">
-                <div class="col-md-12 mb-3">
-                    <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
-                        <a href="#" style="color: var(--text-gray); font-size: 1.5rem;"><i class="fab fa-instagram"></i></a>
-                        <a href="#" style="color: var(--text-gray); font-size: 1.5rem;"><i class="fab fa-facebook"></i></a>
-                        <a href="#" style="color: var(--text-gray); font-size: 1.5rem;"><i class="fab fa-twitter"></i></a>
-                        <a href="#" style="color: var(--text-gray); font-size: 1.5rem;"><i class="fab fa-youtube"></i></a>
-                    </div>
-                </div>
+                <!-- Social icons removed per request -->
                 <div class="col-md-12">
-                    <p class="mb-0" style="color: var(--text-gray);">&copy; 2024 {{ SITE_NAME }}. Dive into the aquatic world!</p>
+                    <p class="mb-0 text-gray">&copy; 2024 {{ SITE_NAME }}. Dive into the aquatic world!</p>
                 </div>
             </div>
         </div>
@@ -322,6 +382,121 @@
                         });
                     });
                 })();
+
+                // Intercept add-to-cart forms and POST via fetch to update badge live
+                (function(){
+                    function getCSRFTokenFromForm(form){
+                        const el = form.querySelector('input[name="csrfmiddlewaretoken"]');
+                        if (el) return el.value;
+                        // fallback: read cookie
+                        const name = 'csrftoken=';
+                        const parts = document.cookie.split(';');
+                        for (let i=0;i<parts.length;i++){
+                            let c = parts[i].trim();
+                            if (c.indexOf(name) === 0) return decodeURIComponent(c.substring(name.length));
+                        }
+                        return '';
+                    }
+
+                    function showToast(message, success=true){
+                        const container = document.createElement('div');
+                        container.className = 'alert ' + (success ? 'alert-success' : 'alert-danger') + ' position-fixed';
+                        container.style.right = '20px';
+                        container.style.bottom = '20px';
+                        container.style.zIndex = 1200;
+                        container.textContent = message;
+                        document.body.appendChild(container);
+                        setTimeout(()=>{ container.classList.add('fade'); }, 10);
+                        setTimeout(()=>{ try{ container.remove(); }catch(e){} }, 3000);
+                    }
+
+                    document.body.addEventListener('submit', async function(e){
+                        const form = e.target;
+                        if (!form || form.tagName !== 'FORM') return;
+                        const action = (form.getAttribute('action') || '').toLowerCase();
+                        if (!action.includes('/add-to-cart') && !action.includes('accessory/add-to-cart')) return;
+
+                        // Intercept
+                        e.preventDefault();
+                        const formData = new FormData(form);
+                        const csrf = getCSRFTokenFromForm(form);
+
+                        try{
+                            const resp = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRFToken': csrf
+                                },
+                                body: formData,
+                                credentials: 'same-origin'
+                            });
+
+                            if (!resp.ok){
+                                // Try to parse JSON error
+                                let text = await resp.text();
+                                try{ const j = JSON.parse(text); showToast(j.message || 'Error adding to cart', false); } catch(err){ showToast('Error adding to cart', false); }
+                                return;
+                            }
+
+                            const ct = resp.headers.get('content-type') || '';
+                            if (ct.includes('application/json')){
+                                const data = await resp.json();
+                                if (data.success){
+                                    // Redirect to cart page after successful add
+                                    window.location.href = "{% url 'cart' %}";
+                                } else {
+                                    showToast(data.message || 'Could not add to cart', false);
+                                }
+                            } else {
+                                // fallback: full page HTML - reload to reflect cart
+                                window.location.reload();
+                            }
+                        } catch(err){
+                            console.error('Add to cart failed', err);
+                            showToast('Network error adding to cart', false);
+                        }
+                    });
+                })();
+
+                // Make cards clickable: any element with .card[data-href] will navigate
+                // unless the click originated inside an interactive element (a, button, form, input, select, textarea, label)
+                (function(){
+                    function isInteractive(el){
+                        return el.closest && el.closest('a, button, form, input, select, textarea, label');
+                    }
+
+                    document.body.addEventListener('click', function(e){
+                        try{
+                            const card = e.target.closest && e.target.closest('.card[data-href]');
+                            if (!card) return;
+                            // If clicked on an interactive element inside the card, do nothing
+                            if (isInteractive(e.target)) return;
+                            const href = card.getAttribute('data-href');
+                            if (href) {
+                                window.location.href = href;
+                            }
+                        } catch(err) {
+                            // swallow
+                        }
+                    });
+
+                    // keyboard accessibility: enter/space on focused card
+                    document.body.addEventListener('keydown', function(e){
+                        const active = document.activeElement;
+                        if (!active) return;
+                        if (!active.classList || !active.classList.contains('card')) return;
+                        if (!active.hasAttribute('data-href')) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            // prevent scrolling on space
+                            e.preventDefault();
+                            const href = active.getAttribute('data-href');
+                            if (href) window.location.href = href;
+                        }
+                    });
+                })();
+
+                // (Removed category-select replacement behavior) 
             });
         </script>
         {% block extra_js %}{% endblock %}

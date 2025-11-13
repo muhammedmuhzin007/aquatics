@@ -1,0 +1,96 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}Accessories{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Scoped dark-mode styling for staff accessories list */
+    html[data-theme='dark'] .staff-accessories .card { background: var(--card-bg) !important; border: 1px solid var(--border-color) !important; }
+    html[data-theme='dark'] .staff-accessories .table>:not(caption)>*>*:not(.btn):not(.badge) { background: transparent !important; box-shadow: none !important; color: #FFFFFF !important; border-color: var(--border-color) !important; }
+    html[data-theme='dark'] .staff-accessories thead th { background: rgba(25,40,60,0.65) !important; color: #FFFFFF !important; font-weight: 600 !important; }
+    html[data-theme='dark'] .staff-accessories tbody tr { background: rgba(20,30,45,0.55) !important; }
+    html[data-theme='dark'] .staff-accessories tbody tr:nth-child(odd) { background: rgba(25,40,60,0.55) !important; }
+    html[data-theme='dark'] .staff-accessories tbody tr:hover { background: rgba(40,80,140,0.55) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section staff-accessories">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="section-heading"><i class="fas fa-boxes me-2"></i> Accessories</h2>
+            <a href="{% url 'add_accessory' %}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Add Accessory</a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white">Accessories</h5>
+                <small class="text-muted">Total: {{ accessories|length }}</small>
+            </div>
+            <div class="card-body">
+                {% if accessories %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="admin-text-black">Image</th>
+                            <th class="admin-text-black">Name</th>
+                            <th class="admin-text-black">Price</th>
+                            <th class="admin-text-black">Stock</th>
+                            <th class="admin-text-black">Status</th>
+                            <th class="admin-text-black">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for accessory in accessories %}
+                        <tr>
+                            <td>
+                                {% if accessory.image %}
+                                    <img src="{{ accessory.image.url }}" alt="{{ accessory.name }}" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
+                                {% else %}
+                                    <img src="{% static 'images/placeholder.png' %}" alt="No image" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
+                                {% endif %}
+                            </td>
+                            <td><strong class="admin-text-black">{{ accessory.name }}</strong></td>
+                            <td class="admin-text-black">₹{{ accessory.price }}</td>
+                            <td class="admin-text-black">{{ accessory.stock_quantity }}</td>
+                            <td>
+                                {% if accessory.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a class="btn btn-primary btn-sm" href="{% url 'edit_accessory' accessory.id %}"><i class="fas fa-edit"></i></a>
+                                <form method="post" action="{% url 'delete_accessory' accessory.id %}" style="display:inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this accessory?">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state text-center py-4">
+                    <i class="fas fa-boxes fa-2x mb-2"></i>
+                    <h4 class="mb-1">No accessories yet</h4>
+                    <p class="text-muted">Create your first accessory to show up here.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

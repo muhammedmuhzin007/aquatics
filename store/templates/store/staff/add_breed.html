@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<section class="section">
+<section class="section add-breed">
     <div class="container-fluid">
         <h2 class="section-heading"><i class="fas fa-plus"></i> Add Breed</h2>
 
@@ -29,6 +29,31 @@
     /* Minimal page-specific tweaks - rely on global themed inputs */
     .add-breed .card { overflow: hidden; }
     .add-breed .form-control, .add-breed .form-select { border-radius: 6px; }
+    /* Themed select styling to match light/dark modes */
+    .add-breed .form-select {
+        box-shadow: none;
+        transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+    html[data-theme='light'] .add-breed .form-select {
+        background: var(--light-surface);
+        color: var(--light-text);
+        border: 1px solid var(--light-border);
+    }
+    html[data-theme='light'] .add-breed .form-select:focus {
+        border-color: var(--light-accent);
+        box-shadow: 0 0 0 0.2rem rgba(25,118,210,0.12);
+        outline: none;
+    }
+    html[data-theme='dark'] .add-breed .form-select {
+        background: var(--card-bg);
+        color: var(--text-white);
+        border: 1px solid var(--border-color);
+    }
+    html[data-theme='dark'] .add-breed .form-select:focus {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.10);
+        outline: none;
+    }
     .add-breed .form-label { font-weight: 500; }
     html[data-theme='light'] .add-breed .form-label { color: var(--light-text) !important; }
     html[data-theme='light'] .add-breed .form-control::placeholder { color: var(--light-text-soft) !important; opacity:.7; }
@@ -38,5 +63,15 @@
     html[data-theme='light'] .add-breed select option { background:#fff; color: var(--light-text); }
     @media (max-width:576px){ .add-breed .card-body { padding:24px !important; } }
 </style>
+<!-- Ensure selects in this page get the global category-select styling if crispy doesn't add it -->
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.add-breed select').forEach(function(s){
+        if (!s.classList.contains('category-select')) s.classList.add('category-select');
+    });
+});
+</script>
+{% endblock %}
 {% endblock %}
 

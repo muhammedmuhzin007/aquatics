@@ -14,8 +14,9 @@ from django.utils import timezone
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import (
-    CustomUser, Category, Breed, Fish, FishMedia, Cart, Order, OrderItem, OTP, Review, Service, ContactInfo, Coupon
+    CustomUser, Category, Breed, Fish, FishMedia, Cart, AccessoryCart, Order, OrderItem, OrderAccessoryItem, OTP, Review, Service, ContactInfo, Coupon, Accessory
 )
 from .forms import (
     CustomUserCreationForm, StaffCreateForm, CategoryForm, BreedForm, FishForm, FishMediaForm,
@@ -508,6 +509,72 @@ def fish_detail_view(request, fish_id):
     return render(request, 'store/customer/fish_detail.html', {'fish': fish, 'media': media})
 
 
+@login_required
+@user_passes_test(is_customer)
+def customer_accessories_view(request):
+    """List available accessories for customers"""
+    accessories_qs = Accessory.objects.filter(is_active=True)
+    # query params
+    q = request.GET.get('q', '').strip()
+    category_id = request.GET.get('category', '').strip()
+    sort = request.GET.get('sort', '').strip()
+
+    if q:
+        accessories_qs = accessories_qs.filter(
+            Q(name__icontains=q) | Q(description__icontains=q) | Q(category__name__icontains=q)
+        )
+
+    if category_id:
+        try:
+            accessories_qs = accessories_qs.filter(category_id=int(category_id))
+        except ValueError:
+            pass
+
+    # Sorting
+    if sort == 'price_asc':
+        accessories_qs = accessories_qs.order_by('price')
+    elif sort == 'price_desc':
+        accessories_qs = accessories_qs.order_by('-price')
+    else:
+        # default: newest first
+        # fallback to created_at if present
+        if hasattr(Accessory, 'created_at'):
+            accessories_qs = accessories_qs.order_by('-created_at')
+        else:
+            accessories_qs = accessories_qs.order_by('-id')
+
+    # Pagination
+    page_size = 12
+    paginator = Paginator(accessories_qs, page_size)
+    page = request.GET.get('page', 1)
+    try:
+        accessories_page = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        accessories_page = paginator.page(1)
+
+    # If AJAX request, return partial (render the grid with the page)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render(request, 'store/customer/_accessory_grid.html', {'accessories': accessories_page}).content.decode('utf-8')
+        return JsonResponse({'html': html})
+
+    categories = Category.objects.all()
+
+    return render(request, 'store/customer/accessories.html', {
+        'accessories': accessories_page,
+        'search_query': q,
+        'categories': categories,
+        'selected_category': category_id,
+        'current_sort': sort,
+    })
+
+
+@login_required
+@user_passes_test(is_customer)
+def accessory_detail_view(request, accessory_id):
+    accessory = get_object_or_404(Accessory, id=accessory_id, is_active=True)
+    return render(request, 'store/customer/accessory_detail.html', {'accessory': accessory})
+
+
 # Admin: Manage Fish Media
 @login_required
 @user_passes_test(is_admin)
@@ -579,35 +646,97 @@ def admin_edit_fish_media_view(request, media_id):
 @user_passes_test(is_customer)
 def add_to_cart_view(request, fish_id):
     fish = get_object_or_404(Fish, id=fish_id)
-    quantity = int(request.POST.get('quantity', 1))
-    
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+    except (TypeError, ValueError):
+        quantity = 1
+
     # Check minimum order quantity
     if quantity < fish.minimum_order_quantity:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': f'Minimum order quantity for {fish.name} is {fish.minimum_order_quantity}.'}, status=400)
         messages.error(request, f'Minimum order quantity for {fish.name} is {fish.minimum_order_quantity}.')
         return redirect('fish_detail', fish_id=fish_id)
-    
+
     cart_item, created = Cart.objects.get_or_create(
         user=request.user,
         fish=fish,
         defaults={'quantity': quantity}
     )
-    
+
     if not created:
         cart_item.quantity += quantity
         cart_item.save()
-    
+
+    # If AJAX, return JSON including combined cart count
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        accessory_items = AccessoryCart.objects.filter(user=request.user)
+        cart_items = Cart.objects.filter(user=request.user)
+        total_items = (cart_items.aggregate(total=models.Sum('quantity'))['total'] or 0) + (accessory_items.aggregate(total=models.Sum('quantity'))['total'] or 0)
+        return JsonResponse({'success': True, 'message': f'{fish.name} added to cart.', 'total_items': int(total_items)})
+
     messages.success(request, f'{fish.name} added to cart.')
     return redirect('cart')
 
 
 @login_required
 @user_passes_test(is_customer)
+@require_POST
+def add_accessory_to_cart_view(request, accessory_id):
+    from .models import AccessoryCart, Accessory
+    accessory = get_object_or_404(Accessory, id=accessory_id)
+
+    # Safely parse quantity
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+    except (TypeError, ValueError):
+        quantity = 1
+
+    if quantity < 1:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': 'Invalid quantity.'}, status=400)
+        messages.error(request, 'Invalid quantity.')
+        return redirect('accessory_detail', accessory_id=accessory_id)
+
+    try:
+        cart_item, created = AccessoryCart.objects.get_or_create(
+            user=request.user,
+            accessory=accessory,
+            defaults={'quantity': quantity}
+        )
+
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+
+        # AJAX clients expect JSON; regular clients expect redirect
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Return cart summary counts so client can update UI without a full reload
+            accessory_items = AccessoryCart.objects.filter(user=request.user)
+            total_items = accessory_items.aggregate(total=models.Sum('quantity'))['total'] or 0
+            return JsonResponse({'success': True, 'message': f'{accessory.name} added to cart.', 'total_items': int(total_items)})
+
+        messages.success(request, f'{accessory.name} added to cart.')
+        return redirect('cart')
+    except Exception as e:
+        # Log error to console for local debugging and return friendly message
+        print(f"Error adding accessory to cart: {e}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': 'Server error adding to cart.'}, status=500)
+        messages.error(request, 'Server error adding to cart.')
+        return redirect('accessory_detail', accessory_id=accessory_id)
+
+
+@login_required
+@user_passes_test(is_customer)
 def cart_view(request):
     cart_items = Cart.objects.filter(user=request.user)
-    total = sum(item.get_total() for item in cart_items)
+    accessory_items = AccessoryCart.objects.filter(user=request.user)
+    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
     
     return render(request, 'store/customer/cart.html', {
         'cart_items': cart_items,
+        'accessory_items': accessory_items,
         'total': total,
     })
 
@@ -643,34 +772,68 @@ def remove_from_cart_view(request, cart_id):
 
 @login_required
 @user_passes_test(is_customer)
+def update_accessory_cart_view(request, accessory_cart_id):
+    a_item = get_object_or_404(AccessoryCart, id=accessory_cart_id, user=request.user)
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+    except (TypeError, ValueError):
+        quantity = 1
+
+    # Check minimum order quantity
+    if quantity > 0 and quantity < a_item.accessory.minimum_order_quantity:
+        messages.error(request, f'Minimum order quantity for {a_item.accessory.name} is {a_item.accessory.minimum_order_quantity}.')
+        return redirect('cart')
+
+    if quantity > 0:
+        a_item.quantity = quantity
+        a_item.save()
+    else:
+        a_item.delete()
+
+    return redirect('cart')
+
+
+@login_required
+@user_passes_test(is_customer)
+def remove_accessory_cart_view(request, accessory_cart_id):
+    a_item = get_object_or_404(AccessoryCart, id=accessory_cart_id, user=request.user)
+    a_item.delete()
+    messages.success(request, 'Accessory removed from cart.')
+    return redirect('cart')
+
+
+@login_required
+@user_passes_test(is_customer)
 def checkout_view(request):
     cart_items = Cart.objects.filter(user=request.user)
-    
-    if not cart_items:
+    accessory_items = AccessoryCart.objects.filter(user=request.user)
+
+    if not cart_items and not accessory_items:
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
-    
+
     if request.method == 'POST':
         shipping_address = request.POST.get('shipping_address')
         phone_number = request.POST.get('phone_number')
         payment_method = request.POST.get('payment_method')
-        
+
         if not shipping_address or not phone_number or not payment_method:
             messages.error(request, 'Please fill in all required fields.')
-            total = sum(item.get_total() for item in cart_items)
+            total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
             return render(request, 'store/customer/checkout.html', {
                 'cart_items': cart_items,
+                'accessory_items': accessory_items,
                 'total': total,
             })
-        
+
         # Create order
-        total_amount = sum(item.get_total() for item in cart_items)
-        
+        total_amount = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+
         # Apply coupon if exists
         applied_coupon = None
         discount_amount = 0
         final_amount = total_amount
-        
+
         if 'applied_coupon_code' in request.session:
             try:
                 coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
@@ -685,14 +848,13 @@ def checkout_view(request):
                     coupon.save()
             except Coupon.DoesNotExist:
                 pass
-        
+
         # Generate transaction ID
         transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
-        
+
         # Set initial payment status based on payment method
-        # UPI payments start as pending and will be updated after verification
         payment_status = 'pending' if payment_method == 'upi' else 'paid'
-        
+
         order = Order.objects.create(
             user=request.user,
             order_number=Order.generate_order_number(),
@@ -706,8 +868,8 @@ def checkout_view(request):
             payment_status=payment_status,
             transaction_id=transaction_id,
         )
-        
-        # Create order items
+
+        # Create order items for fishes
         for cart_item in cart_items:
             OrderItem.objects.create(
                 order=order,
@@ -715,25 +877,38 @@ def checkout_view(request):
                 quantity=cart_item.quantity,
                 price=cart_item.fish.price,
             )
-            # Update stock
+            # Update fish stock
             cart_item.fish.stock_quantity -= cart_item.quantity
             cart_item.fish.save()
-        
-        # Clear cart
+
+        # Create accessory order items
+        for a_item in accessory_items:
+            OrderAccessoryItem.objects.create(
+                order=order,
+                accessory=a_item.accessory,
+                quantity=a_item.quantity,
+                price=a_item.accessory.price,
+            )
+            # Update accessory stock
+            a_item.accessory.stock_quantity -= a_item.quantity
+            a_item.accessory.save()
+
+        # Clear carts
         cart_items.delete()
-        
+        accessory_items.delete()
+
         # Clear coupon session
         if 'applied_coupon_code' in request.session:
             del request.session['applied_coupon_code']
-        
+
         # Redirect to UPI payment page if UPI is selected
         if payment_method == 'upi':
             return redirect('upi_payment', order_id=order.id)
-        
+
         messages.success(request, f'Order placed successfully! Order number: {order.order_number}')
         return redirect('order_detail', order_id=order.id)
-    
-    total = sum(item.get_total() for item in cart_items)
+
+    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
     
     # Get available coupons for the user
     now = timezone.now()
@@ -786,65 +961,66 @@ def apply_coupon_view(request):
     """AJAX view to apply coupon code"""
     try:
         coupon_code = request.POST.get('coupon_code', '').strip().upper()
-        
+
         if not coupon_code:
             return JsonResponse({'success': False, 'message': 'Please enter a coupon code'})
-        
+
         try:
             coupon = Coupon.objects.get(code=coupon_code)
         except Coupon.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Invalid coupon code'})
-        
+
         # Validate coupon
         if not coupon.is_active:
             return JsonResponse({'success': False, 'message': 'This coupon is no longer active'})
-        
+
         # Check validity with detailed error
         now = timezone.now()
         if coupon.valid_from and now < coupon.valid_from:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': f'This coupon is not valid yet. Valid from: {coupon.valid_from.strftime("%d %b %Y, %I:%M %p")}'
             })
-        
+
         if coupon.valid_until and now > coupon.valid_until:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': f'This coupon expired on: {coupon.valid_until.strftime("%d %b %Y, %I:%M %p")}'
             })
-        
+
         # Check usage limit
         if coupon.usage_limit and coupon.times_used >= coupon.usage_limit:
             return JsonResponse({'success': False, 'message': 'This coupon has reached its usage limit'})
-        
+
         # Check if user can use this coupon
         if coupon.coupon_type == 'favorites' and not request.user.is_favorite:
             return JsonResponse({'success': False, 'message': 'This coupon is only for favorite customers'})
-        
+
         if coupon.coupon_type == 'normal' and request.user.is_favorite:
             return JsonResponse({'success': False, 'message': 'This coupon is only for normal users'})
-        
-        # Calculate cart total
+
+        # Calculate cart total including accessories
         cart_items = Cart.objects.filter(user=request.user)
-        total = sum(item.get_total() for item in cart_items)
-        
+        accessory_items = AccessoryCart.objects.filter(user=request.user)
+        total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+
         # Check minimum order amount
         if coupon.min_order_amount and total < coupon.min_order_amount:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': f'Minimum order amount of ₹{coupon.min_order_amount} required'
             })
-        
+
         # Calculate discount
         discount = (total * coupon.discount_percentage) / 100
         if coupon.max_discount_amount:
             discount = min(discount, coupon.max_discount_amount)
-        
+
         final_total = total - discount
-        
+
         # Store in session
         request.session['applied_coupon_code'] = coupon_code
-        
+
         return JsonResponse({
             'success': True,
             'message': f'Coupon applied! You saved ₹{discount:.2f}',
@@ -866,7 +1042,8 @@ def remove_coupon_view(request):
         del request.session['applied_coupon_code']
     
     cart_items = Cart.objects.filter(user=request.user)
-    total = sum(item.get_total() for item in cart_items)
+    accessory_items = AccessoryCart.objects.filter(user=request.user)
+    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
     
     return JsonResponse({
         'success': True,
@@ -1051,31 +1228,24 @@ def staff_fish_list_view(request):
     fishes = Fish.objects.all()
     
     search_query = request.GET.get('search', '')
-    category_filter = request.GET.get('category', '')
-    breed_filter = request.GET.get('breed', '')
     
     if search_query:
         fishes = fishes.filter(
             Q(name__icontains=search_query) | 
             Q(description__icontains=search_query)
         )
-    
-    if category_filter:
-        fishes = fishes.filter(category_id=category_filter)
-    
-    if breed_filter:
-        fishes = fishes.filter(breed_id=breed_filter)
-    
-    categories = Category.objects.all()
-    breeds = Breed.objects.all()
-    
+    # If AJAX, return only the rendered table HTML so the client can update it
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('store/staff/_fish_table.html', {'fishes': fishes}, request=request)
+        # If there are no fishes, still return the empty-state HTML block so the client can replace container
+        if not fishes:
+            empty_html = render_to_string('store/staff/fish_list.html', {'fishes': fishes, 'search_query': search_query}, request=request)
+            return JsonResponse({'html': html + empty_html})
+        return JsonResponse({'html': html})
+
     return render(request, 'store/staff/fish_list.html', {
         'fishes': fishes,
-        'categories': categories,
-        'breeds': breeds,
         'search_query': search_query,
-        'category_filter': category_filter,
-        'breed_filter': breed_filter,
     })
 
 
@@ -1574,6 +1744,138 @@ def admin_add_service_view(request):
     else:
         form = ServiceForm()
     return render(request, 'store/admin/add_service.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_staff)
+def staff_accessories_view(request):
+    from .models import Accessory
+    accessories = Accessory.objects.all()
+    return render(request, 'store/staff/accessories.html', {'accessories': accessories})
+
+
+@login_required
+@user_passes_test(is_staff)
+def add_accessory_view(request):
+    from .models import Accessory
+    from .forms import AccessoryForm
+
+    if request.method == 'POST':
+        form = AccessoryForm(request.POST, request.FILES)
+        if form.is_valid():
+            accessory = form.save(commit=False)
+            accessory.created_by = request.user
+            accessory.save()
+            messages.success(request, 'Accessory added successfully.')
+            return redirect('staff_accessories')
+    else:
+        form = AccessoryForm()
+    return render(request, 'store/staff/add_accessory.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_staff)
+def accessories_add_view(request):
+    """Unified add-accessory page available to staff and admin (uses staff template)."""
+    from .forms import AccessoryForm
+
+    if request.method == 'POST':
+        form = AccessoryForm(request.POST, request.FILES)
+        if form.is_valid():
+            accessory = form.save(commit=False)
+            accessory.created_by = request.user
+            accessory.save()
+            messages.success(request, 'Accessory added successfully.')
+            # Role-aware redirect
+            if hasattr(request.user, 'role') and request.user.role == 'admin':
+                return redirect('admin_accessories')
+            return redirect('staff_accessories')
+    else:
+        form = AccessoryForm()
+
+    # Reuse staff add template for simplicity
+    return render(request, 'store/staff/add_accessory.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_staff)
+def edit_accessory_view(request, accessory_id):
+    from .models import Accessory
+    from .forms import AccessoryForm
+    accessory = get_object_or_404(Accessory, id=accessory_id)
+    if request.method == 'POST':
+        form = AccessoryForm(request.POST, request.FILES, instance=accessory)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Accessory updated successfully.')
+            return redirect('staff_accessories')
+    else:
+        form = AccessoryForm(instance=accessory)
+    return render(request, 'store/staff/edit_accessory.html', {'form': form, 'accessory': accessory})
+
+
+@login_required
+@user_passes_test(is_staff)
+@require_POST
+def delete_accessory_view(request, accessory_id):
+    from .models import Accessory
+    accessory = get_object_or_404(Accessory, id=accessory_id)
+    accessory.delete()
+    messages.success(request, 'Accessory deleted successfully.')
+    return redirect('staff_accessories')
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_accessories_view(request):
+    from .models import Accessory
+    accessories = Accessory.objects.all()
+    return render(request, 'store/admin/accessories.html', {'accessories': accessories})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_accessory_view(request):
+    from .forms import AccessoryForm
+    if request.method == 'POST':
+        form = AccessoryForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.created_by = request.user
+            obj.save()
+            messages.success(request, 'Accessory created successfully.')
+            return redirect('admin_accessories')
+    else:
+        form = AccessoryForm()
+    return render(request, 'store/admin/add_accessory.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_accessory_view(request, accessory_id):
+    from .models import Accessory
+    from .forms import AccessoryForm
+    accessory = get_object_or_404(Accessory, id=accessory_id)
+    if request.method == 'POST':
+        form = AccessoryForm(request.POST, request.FILES, instance=accessory)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Accessory updated successfully.')
+            return redirect('admin_accessories')
+    else:
+        form = AccessoryForm(instance=accessory)
+    return render(request, 'store/admin/add_accessory.html', {'form': form, 'accessory': accessory})
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def admin_delete_accessory_view(request, accessory_id):
+    from .models import Accessory
+    accessory = get_object_or_404(Accessory, id=accessory_id)
+    accessory.delete()
+    messages.success(request, 'Accessory deleted successfully.')
+    return redirect('admin_accessories')
 
 
 @login_required

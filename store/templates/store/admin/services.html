@@ -28,7 +28,13 @@
               <tr>
                 <td>{{ s.display_order }}</td>
                 <td>{{ s.title }}</td>
-                <td><i class="{{ s.icon }}"></i> <small class="text-gray ms-2">{{ s.icon }}</small></td>
+                <td class="text-center">
+                  {% if s.image %}
+                    <img src="{{ s.image.url }}" alt="{{ s.title }}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.04);">
+                  {% else %}
+                    <div class="d-inline-flex align-items-center justify-content-center" style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.02);"></div>
+                  {% endif %}
+                </td>
                 <td>
                   {% if s.is_active %}
                     <span class="badge bg-success">Active</span>

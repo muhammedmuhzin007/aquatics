@@ -1,12 +1,20 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils import timezone
 import random
 import string
 from urllib.parse import urlparse, parse_qs
 
 
+class CustomUserManager(UserManager):
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        # Ensure role is set to admin for any superuser created via management commands
+        extra_fields.setdefault('role', 'admin')
+        return super().create_superuser(username, email=email, password=password, **extra_fields)
+
+
 class CustomUser(AbstractUser):
+    objects = CustomUserManager()
     ROLE_CHOICES = [
         ('customer', 'Customer'),
         ('staff', 'Staff'),
@@ -190,6 +198,22 @@ class Cart(models.Model):
         return self.fish.price * self.quantity
 
 
+class AccessoryCart(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='accessory_cart_items')
+    accessory = models.ForeignKey('Accessory', on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'accessory']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.accessory.name}"
+
+    def get_total(self):
+        return self.accessory.price * self.quantity
+
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -252,6 +276,19 @@ class OrderItem(models.Model):
         return self.price * self.quantity
 
 
+class OrderAccessoryItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='accessory_items')
+    accessory = models.ForeignKey('Accessory', on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.order.order_number} - {self.accessory.name}"
+
+    def get_total(self):
+        return self.price * self.quantity
+
+
 class Review(models.Model):
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews')
@@ -273,7 +310,6 @@ class Review(models.Model):
 class Service(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
-    icon = models.CharField(max_length=50, default='fas fa-fish', help_text='Font Awesome icon class (e.g., fas fa-fish)')
     image = models.ImageField(upload_to='services/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
     display_order = models.PositiveIntegerField(default=0, help_text='Lower numbers appear first')
@@ -285,6 +321,28 @@ class Service(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Accessory(models.Model):
+    """Accessories that can be sold alongside fishes (e.g., filters, nets, food)."""
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='accessories')
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock_quantity = models.IntegerField(default=0)
+    minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
+    image = models.ImageField(upload_to='accessories/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_accessories')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+
+    def __str__(self):
+        return self.name
 
 
 class ContactInfo(models.Model):

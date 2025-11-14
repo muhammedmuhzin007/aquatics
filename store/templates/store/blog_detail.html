@@ -1,0 +1,25 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}{{ post.title }} - {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 col-lg-10 offset-lg-1">
+                <article class="text-center">
+                    <h1 class="section-heading">{{ post.title }}</h1>
+                    <div class="card py-2 px-3">
+                        {% if post.image %}
+                        <img src="{{ post.image.url }}" alt="{{ post.title }}" class="img-fluid mb-2 mt-0 rounded-3 w-100">
+                        {% endif %}
+                        <div class="text-gray text-start">{{ post.content|linebreaks }}</div>
+                    </div>
+                </article>
+            </div>
+            
+        </div>
+    </div>
+</section>
+{% endblock %}

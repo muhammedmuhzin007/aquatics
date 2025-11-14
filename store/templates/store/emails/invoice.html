@@ -1,0 +1,19 @@
+<html>
+  <body>
+    <p>Hello {{ order.user.first_name|default:order.user.username }},</p>
+    <p>Thank you for your order at <strong>{{ site_name }}</strong>.</p>
+    <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+    <p><strong>Order Total:</strong> {{ order.final_amount }}</p>
+    <h4>Items</h4>
+    <ul>
+    {% for item in order_items %}
+      <li>{{ item.fish.name }} x {{ item.quantity }} @ {{ item.price }} = {{ item.get_total }}</li>
+    {% endfor %}
+    </ul>
+    {% if order_url %}
+      <p>You can view your order details <a href="{{ order_url }}">here</a>.</p>
+    {% endif %}
+    <p>If you have questions, reply to this email or contact support.</p>
+    <p>Thanks,<br>{{ site_name }}</p>
+  </body>
+</html>

@@ -3,6 +3,23 @@ from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon, LimitedOffer
 from .models import FishMedia, Accessory
 from .models import FishMedia
+from .models import BlogPost
+
+
+class BlogPostForm(forms.ModelForm):
+    published_at = forms.DateTimeField(required=False, widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}))
+
+    class Meta:
+        model = BlogPost
+        fields = ['title', 'slug', 'excerpt', 'content', 'image', 'is_published', 'published_at']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'slug': forms.TextInput(attrs={'class': 'form-control'}),
+            'excerpt': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
 
 class CustomUserCreationForm(UserCreationForm):

@@ -1,0 +1,18 @@
+Hello {{ order.user.first_name|default:order.user.username }},
+
+Thank you for your order at {{ site_name }}.
+
+Order Number: {{ order.order_number }}
+Order Total: {{ order.final_amount }}
+
+Items:
+{% for item in order_items %}
+- {{ item.fish.name }} x {{ item.quantity }} @ {{ item.price }} = {{ item.get_total }}
+{% endfor %}
+
+You can view your order here: {{ order_url }}
+
+If you have any questions, reply to this email or contact support.
+
+Thanks,
+{{ site_name }}

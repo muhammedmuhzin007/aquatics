@@ -46,3 +46,18 @@ Thumbs.db
 .env
 .env.local
 
+# Sensitive keys and credentials
+# Ignore any other env variants, private keys, certificates, and service account files
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
+credentials*.json
+service-account*.json
+service_account_*.json
+secrets.yml
+config/secrets.yml
+id_rsa
+id_dsa
+

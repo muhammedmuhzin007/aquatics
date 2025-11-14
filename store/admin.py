@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Category, Breed, Fish, Cart, Order, OrderItem, OTP, Review, Service, ContactInfo, LimitedOffer
+from .models import CustomUser, Category, Breed, Fish, Cart, Order, OrderItem, OTP, Review, Service, ContactInfo, LimitedOffer, BlogPost
 
 admin.site.register(CustomUser)
 admin.site.register(Category)
@@ -60,5 +60,14 @@ class LimitedOfferAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(BlogPost)
+class BlogPostAdmin(admin.ModelAdmin):
+    list_display = ('title', 'author', 'is_published', 'published_at', 'created_at')
+    list_filter = ('is_published', 'published_at')
+    search_fields = ('title', 'excerpt', 'content', 'author__username')
+    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ('created_at', 'updated_at')
 
 

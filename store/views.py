@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.http import JsonResponse, HttpResponse
 from django.db import models
 from django.db.models import Q, Sum, Count
@@ -34,9 +34,11 @@ import base64
 import uuid
 import smtplib
 import socket
+import logging
+from django.contrib.sessions.models import Session
+import os
 
 
-# Helper Functions
 def is_customer(user):
     return user.is_authenticated and user.role == 'customer'
 
@@ -149,7 +151,15 @@ def verify_otp_view(request):
                 email_verified=True,
             )
             user.set_password(password)
-            user.save()
+            # Save with error handling to surface DB/validation issues
+            logger = logging.getLogger(__name__)
+            try:
+                user.save()
+            except Exception as exc:
+                logger.exception('Failed to create user during OTP verification: %s', exc)
+                messages.error(request, 'Unable to create account at this time. Please try again or contact support.')
+                # Keep pending session so user can retry (do not pop yet)
+                return redirect('verify_otp')
 
             # Clear pending session
             for k in ['pending_registration', 'pending_registration_otp', 'pending_registration_time']:
@@ -161,6 +171,405 @@ def verify_otp_view(request):
             messages.error(request, 'Invalid OTP. Please try again.')
 
     return render(request, 'store/verify_otp.html', {'pending_email': pending_email})
+
+
+def terminate_user_sessions(user):
+    """Delete all session records that belong to `user` so any active logins are ended.
+
+    Returns the number of sessions removed.
+    """
+    removed = 0
+    try:
+        for session in Session.objects.all():
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+            # Django stores user id in session key '_auth_user_id'
+            if str(data.get('_auth_user_id')) == str(user.pk):
+                session.delete()
+                removed += 1
+    except Exception:
+        logging.getLogger(__name__).exception('Error terminating sessions for user %s', getattr(user, 'pk', None))
+    return removed
+
+
+def _send_order_email(order, template_base, subject, recipient_email, request=None):
+    """Render email templates and send an order-related email (invoice/cancellation).
+
+    `template_base` should be the base filename under `store/emails/`, e.g. 'invoice' or 'order_cancelled'.
+    """
+    try:
+        context = {
+            'order': order,
+            'order_items': order.items.all(),
+            'site_name': settings.SITE_NAME,
+        }
+        if request is not None:
+            try:
+                context['order_url'] = request.build_absolute_uri(reverse('order_detail', args=[order.id]))
+            except Exception:
+                context['order_url'] = None
+
+        text_body = render_to_string(f'store/emails/{template_base}.txt', context)
+        html_body = render_to_string(f'store/emails/{template_base}.html', context)
+
+        # Use EmailMultiAlternatives to support HTML alternative and attachments
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
+            to=[recipient_email],
+        )
+        email.extra_headers = {'Reply-To': settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com'}
+        # Attach HTML alternative
+        email.attach_alternative(html_body, 'text/html')
+
+        # If sending invoice, generate PDF and save to media (fallback). Attaching
+        # the PDF to the email is controlled by `settings.INVOICE_ATTACHMENTS`.
+        download_url = None
+        pdf_bytes = None
+        if template_base == 'invoice':
+            try:
+                pdf_bytes = generate_invoice_pdf(order)
+                if pdf_bytes:
+                    # Save a copy to MEDIA so we can include a download link if email delivery fails
+                    try:
+                        invoices_dir = os.path.join(getattr(settings, 'MEDIA_ROOT', os.path.join(getattr(settings, 'BASE_DIR', ''), 'media')), 'invoices')
+                        os.makedirs(invoices_dir, exist_ok=True)
+                        filename = f'invoice-{order.order_number}.pdf'
+                        fs_path = os.path.join(invoices_dir, filename)
+                        with open(fs_path, 'wb') as f:
+                            f.write(pdf_bytes)
+                        # Build URL: prefer absolute if request present
+                        rel_url = os.path.join(getattr(settings, 'MEDIA_URL', '/media/'), 'invoices', filename).replace('\\', '/')
+                        if request is not None:
+                            try:
+                                download_url = request.build_absolute_uri(rel_url)
+                            except Exception:
+                                download_url = rel_url
+                        else:
+                            download_url = rel_url
+                    except Exception:
+                        logging.getLogger(__name__).exception('Failed to save invoice PDF to media for order %s', order.order_number)
+            except Exception:
+                logging.getLogger(__name__).exception('Failed to generate PDF invoice for order %s', order.order_number)
+
+        # If we have a download URL, append it to the email bodies so customer can fetch the invoice even if attachment fails
+        if download_url:
+            try:
+                text_body = text_body + f"\n\nDownload your invoice: {download_url}\n"
+                # Append an HTML link
+                html_body = html_body + f"<p>Download your invoice: <a href=\"{download_url}\">Download Invoice</a></p>"
+                # Re-attach as alternative HTML
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
+                    to=[recipient_email],
+                )
+                email.extra_headers = {'Reply-To': settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com'}
+                email.attach_alternative(html_body, 'text/html')
+                # Attach the PDF only if the system is configured to do so. Otherwise
+                # rely on the download link saved above. This avoids frequent SMTP
+                # DATA-phase timeouts observed with some providers when attachments
+                # are used.
+                try:
+                    if getattr(settings, 'INVOICE_ATTACHMENTS', False) and pdf_bytes:
+                        email.attach(f'invoice-{order.order_number}.pdf', pdf_bytes, 'application/pdf')
+                except Exception:
+                    logging.getLogger(__name__).exception('Failed to attach PDF to email for order %s', order.order_number)
+            except Exception:
+                logging.getLogger(__name__).exception('Failed to append download URL to email bodies for order %s', order.order_number)
+
+        try:
+            email.send(fail_silently=False)
+            logging.getLogger(__name__).info('Sent order email %s for order %s to %s', template_base, order.order_number, recipient_email)
+        except Exception:
+            # First send failed (often SMTP disconnects with attachments). Try again without attachments so customer still receives notification.
+            logging.getLogger(__name__).exception('Failed to send order email %s for order %s; retrying without attachments', template_base, order.order_number)
+            try:
+                # Remove attachments and resend plain email (text + html alternative)
+                email.attachments = []
+                email.send(fail_silently=False)
+                logging.getLogger(__name__).warning('Sent order email %s for order %s WITHOUT attachment to %s', template_base, order.order_number, recipient_email)
+            except Exception:
+                logging.getLogger(__name__).exception('Retry without attachment also failed for order %s', order.order_number)
+    except Exception:
+        logging.getLogger(__name__).exception('Failed to send order email %s for order %s', template_base, getattr(order, 'order_number', None))
+
+
+def generate_invoice_pdf(order):
+    """Generate PDF invoice bytes using fpdf2. Returns bytes or None on error."""
+    try:
+        # Import fpdf locally so missing dependency doesn't break Django startup.
+        try:
+            from fpdf import FPDF
+        except Exception:
+            logging.getLogger(__name__).warning('fpdf2 package not available; invoice PDF generation disabled.')
+            return None
+
+        # Create a cleaner, more professional invoice layout using fpdf2
+        pdf = FPDF(unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+
+        # Attempt to embed a Unicode-capable TTF (DejaVu Sans) from static/fonts/
+        use_unicode_font = False
+        try:
+            font_path = os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'DejaVuSans.ttf')
+            if os.path.exists(font_path):
+                try:
+                    pdf.add_font('DejaVu', '', font_path, uni=True)
+                    # Also try bold variant if present (DejaVuSans-Bold.ttf)
+                    bold_path = os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'DejaVuSans-Bold.ttf')
+                    if os.path.exists(bold_path):
+                        pdf.add_font('DejaVu', 'B', bold_path, uni=True)
+                    use_unicode_font = True
+                except Exception:
+                    logging.getLogger(__name__).warning('Failed to register DejaVu fonts; falling back to core fonts')
+        except Exception:
+            use_unicode_font = False
+
+        # Header: logo + company name
+        logo_path = os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'images', 'hero-betta-fish.png')
+        if os.path.exists(logo_path):
+            try:
+                pdf.image(logo_path, x=15, y=10, w=30)
+            except Exception:
+                pass
+        pdf.set_xy(50, 12)
+        # Choose font family depending on availability
+        header_font = 'DejaVu' if use_unicode_font else 'Arial'
+        regular_font = 'DejaVu' if use_unicode_font else 'Arial'
+        pdf.set_font(header_font, 'B' if use_unicode_font else 'B', 18)
+        pdf.set_text_color(11, 83, 148)
+        pdf.cell(0, 8, settings.SITE_NAME, ln=True)
+        pdf.set_font(regular_font, '', 10)
+        pdf.set_text_color(80, 80, 80)
+        company_lines = [
+            getattr(settings, 'COMPANY_ADDRESS_LINE1', ''),
+            getattr(settings, 'COMPANY_ADDRESS_LINE2', ''),
+            getattr(settings, 'COMPANY_PHONE', '')
+        ]
+        for line in [l for l in company_lines if l]:
+            pdf.set_x(50)
+            pdf.cell(0, 5, line, ln=True)
+
+        pdf.ln(6)
+
+        # Invoice title and meta (right side)
+        pdf.set_font(header_font, 'B' if use_unicode_font else 'B', 14)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 8, f'INVOICE', ln=True, align='R')
+        pdf.set_font(regular_font, '', 10)
+        pdf.cell(0, 5, f'Invoice #: {order.order_number}', ln=True, align='R')
+        pdf.cell(0, 5, f'Date: {order.created_at.strftime("%Y-%m-%d")}', ln=True, align='R')
+
+        pdf.ln(4)
+
+        # Billing / Shipping details
+        pdf.set_font(header_font, 'B' if use_unicode_font else 'B', 11)
+        pdf.cell(95, 6, 'Bill To:', border=0)
+        pdf.cell(0, 6, 'Ship To:', border=0, ln=True)
+
+        pdf.set_font(regular_font, '', 10)
+        name = f"{order.user.first_name} {order.user.last_name}".strip() or order.user.username
+        bill_lines = [name, order.user.email or '']
+        ship_lines = (str(order.shipping_address) or '').split('\n') if order.shipping_address else ['N/A']
+
+        max_lines = max(len(bill_lines), len(ship_lines))
+        for i in range(max_lines):
+            left = bill_lines[i] if i < len(bill_lines) else ''
+            right = ship_lines[i] if i < len(ship_lines) else ''
+            pdf.cell(95, 5, left, border=0)
+            pdf.cell(0, 5, right, border=0, ln=True)
+
+        pdf.ln(6)
+
+        # Table header
+        pdf.set_fill_color(242, 246, 251)
+        pdf.set_text_color(11, 83, 148)
+        pdf.set_draw_color(180, 180, 180)
+        pdf.set_line_width(0.4)
+        pdf.set_font(regular_font, 'B' if use_unicode_font else 'B', 10)
+
+        col_item_w = 95
+        col_qty_w = 20
+        col_unit_w = 30
+        col_total_w = 30
+
+        th = 8
+        pdf.cell(col_item_w, th, 'Item', border=1, fill=True)
+        pdf.cell(col_qty_w, th, 'Qty', border=1, fill=True, align='R')
+        pdf.cell(col_unit_w, th, 'Unit', border=1, fill=True, align='R')
+        pdf.cell(col_total_w, th, 'Total', border=1, fill=True, align='R')
+        pdf.ln(th)
+
+        # Table rows — use single-line truncated names for clean alignment
+        pdf.set_font(regular_font, '', 10)
+        pdf.set_text_color(0, 0, 0)
+
+        def fmt(v):
+            try:
+                if use_unicode_font:
+                    return f'₹{float(v):,.2f}'
+                return f'Rs{float(v):,.2f}'
+            except Exception:
+                return str(v)
+
+        row_fill_toggle = False
+        for item in order.items.all():
+            row_fill = row_fill_toggle
+            row_fill_toggle = not row_fill_toggle
+            name = item.fish.name or ''
+            name_display = name if len(name) <= 60 else name[:57] + '...'
+            fill = 240 if row_fill else 255
+            if fill != 255:
+                pdf.set_fill_color(fill, fill, fill)
+            # Item cell
+            pdf.cell(col_item_w, 8, name_display, border=1, fill=(fill != 255))
+            pdf.cell(col_qty_w, 8, str(item.quantity), border=1, align='R', fill=(fill != 255))
+            pdf.cell(col_unit_w, 8, fmt(item.price), border=1, align='R', fill=(fill != 255))
+            pdf.cell(col_total_w, 8, fmt(item.get_total()), border=1, align='R', fill=(fill != 255))
+            pdf.ln(8)
+
+        # Accessory items (if any)
+        for a in (order.accessory_items.all() if hasattr(order, 'accessory_items') else []):
+            row_fill = row_fill_toggle
+            row_fill_toggle = not row_fill_toggle
+            name = a.accessory.name or ''
+            name_display = name if len(name) <= 60 else name[:57] + '...'
+            fill = 240 if row_fill else 255
+            if fill != 255:
+                pdf.set_fill_color(fill, fill, fill)
+            pdf.cell(col_item_w, 8, name_display, border=1, fill=(fill != 255))
+            pdf.cell(col_qty_w, 8, str(a.quantity), border=1, align='R', fill=(fill != 255))
+            pdf.cell(col_unit_w, 8, fmt(a.price), border=1, align='R', fill=(fill != 255))
+            pdf.cell(col_total_w, 8, fmt(a.get_total()), border=1, align='R', fill=(fill != 255))
+            pdf.ln(8)
+
+        # Totals box
+        pdf.ln(6)
+        right_x = 15 + col_item_w + col_qty_w
+        pdf.set_x(right_x)
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(col_unit_w, 6, 'Subtotal:', border=0)
+        pdf.cell(col_total_w, 6, fmt(order.total_amount), border=0, align='R', ln=True)
+        if order.discount_amount and float(order.discount_amount) > 0:
+            pdf.set_x(right_x)
+            pdf.cell(col_unit_w, 6, 'Discount:', border=0)
+            pdf.cell(col_total_w, 6, f"-{fmt(order.discount_amount)}", border=0, align='R', ln=True)
+        pdf.set_x(right_x)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(col_unit_w, 8, 'Total:', border=0)
+        pdf.cell(col_total_w, 8, fmt(order.final_amount), border=0, align='R', ln=True)
+
+        pdf.ln(8)
+        pdf.set_font('Arial', '', 9)
+        pdf.multi_cell(0, 5, f'If you have any questions about this invoice, contact us at {getattr(settings, "DEFAULT_FROM_EMAIL", "support@aquafishstore.com")}')
+
+        # Footer
+        pdf.set_y(-30)
+        pdf.set_font('Arial', 'I', 8)
+        pdf.set_text_color(120, 120, 120)
+        pdf.cell(0, 5, f'Thank you for shopping with {settings.SITE_NAME}', ln=True, align='C')
+
+        result = pdf.output(dest='S')
+        # fpdf2 may return bytes or bytearray; ensure bytes
+        if isinstance(result, (bytes, bytearray)):
+            return bytes(result)
+        try:
+            return result.encode('latin-1')
+        except Exception:
+            return result.encode('utf-8', errors='replace')
+
+        # Logo
+        logo_path = os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'images', 'hero-betta-fish.png')
+        if os.path.exists(logo_path):
+            try:
+                pdf.image(logo_path, x=10, y=8, w=25)
+            except Exception:
+                pass
+
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.cell(0, 10, settings.SITE_NAME, ln=True, align='R')
+        pdf.ln(4)
+
+        pdf.set_font('Helvetica', '', 10)
+        pdf.cell(0, 6, f'Invoice: {order.order_number}', ln=True, align='L')
+        pdf.cell(0, 6, f'Date: {order.created_at.strftime("%Y-%m-%d %H:%M")}', ln=True, align='L')
+        pdf.ln(4)
+
+        # Bill to
+        name = f"{order.user.first_name} {order.user.last_name}".strip() or order.user.username
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.cell(0, 6, 'Bill To:', ln=True)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.multi_cell(0, 6, name)
+        if order.user.email:
+            pdf.multi_cell(0, 6, order.user.email)
+        if order.shipping_address:
+            for line in str(order.shipping_address).split('\n'):
+                if line.strip():
+                    pdf.multi_cell(0, 6, line.strip())
+
+        pdf.ln(6)
+
+        # Table header
+        pdf.set_fill_color(242, 246, 251)
+        pdf.set_text_color(11, 83, 148)
+        pdf.set_draw_color(200,200,200)
+        pdf.set_font('Helvetica', 'B', 10)
+        th = 8
+        pdf.cell(90, th, 'Item', border=1, fill=True)
+        pdf.cell(20, th, 'Qty', border=1, fill=True, align='R')
+        pdf.cell(30, th, 'Unit', border=1, fill=True, align='R')
+        pdf.cell(30, th, 'Total', border=1, fill=True, align='R')
+        pdf.ln(th)
+
+        # Table rows
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(0,0,0)
+        def fmt(v):
+            try:
+                return f'₹{float(v):,.2f}'
+            except Exception:
+                return str(v)
+
+        for item in order.items.all():
+            pdf.cell(90, 7, item.fish.name[:60], border=1)
+            pdf.cell(20, 7, str(item.quantity), border=1, align='R')
+            pdf.cell(30, 7, fmt(item.price), border=1, align='R')
+            pdf.cell(30, 7, fmt(item.get_total()), border=1, align='R')
+            pdf.ln(7)
+
+        # Totals
+        pdf.ln(4)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.cell(140, 6, '', border=0)
+        pdf.cell(30, 6, 'Subtotal:', border=0)
+        pdf.cell(30, 6, fmt(order.total_amount), border=0, align='R')
+        pdf.ln(6)
+        if order.discount_amount and float(order.discount_amount) > 0:
+            pdf.cell(140, 6, '', border=0)
+            pdf.cell(30, 6, 'Discount:', border=0)
+            pdf.cell(30, 6, f"-{fmt(order.discount_amount)}", border=0, align='R')
+            pdf.ln(6)
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.cell(140, 8, '', border=0)
+        pdf.cell(30, 8, 'Total:', border=0)
+        pdf.cell(30, 8, fmt(order.final_amount), border=0, align='R')
+        pdf.ln(12)
+
+        pdf.set_font('Helvetica', '', 9)
+        pdf.multi_cell(0, 6, f'Thank you for shopping with {settings.SITE_NAME}')
+
+        out = pdf.output(dest='S').encode('latin-1')
+        return out
+    except Exception:
+        logging.getLogger(__name__).exception('Error generating invoice PDF (fpdf) for order %s', getattr(order, 'order_number', None))
+        return None
 
 
 def resend_otp_view(request):
@@ -456,6 +865,27 @@ def about_view(request):
         'contact': contact,
         'map_url': map_url,
     })
+
+
+def blog_list_view(request):
+    """Public blog list showing published posts."""
+    from .models import BlogPost
+    posts = BlogPost.objects.filter(is_published=True).order_by('-published_at')
+    paginator = Paginator(posts, 10)
+    page = request.GET.get('page', 1)
+    try:
+        posts_page = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        posts_page = paginator.page(1)
+    return render(request, 'store/blog_list.html', {'posts': posts_page})
+
+
+def blog_detail_view(request, slug):
+    from .models import BlogPost
+    post = get_object_or_404(BlogPost, slug=slug, is_published=True)
+    # Provide recent published posts to the template (avoid ORM calls from templates)
+    recent_posts = BlogPost.objects.filter(is_published=True).order_by('-published_at')[:5]
+    return render(request, 'store/blog_detail.html', {'post': post, 'recent_posts': recent_posts})
 
 
 @login_required
@@ -905,6 +1335,21 @@ def checkout_view(request):
         if payment_method == 'upi':
             return redirect('upi_payment', order_id=order.id)
 
+        # Send invoice email to customer asynchronously via Celery
+        try:
+            subject = f'Invoice - {settings.SITE_NAME} - {order.order_number}'
+            # Import task lazily to avoid Celery import issues when not installed
+            try:
+                from store.tasks import send_order_email
+                site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
+                send_order_email.delay(order.id, 'invoice', subject, order.user.email, site_base)
+            except Exception:
+                # Fall back to synchronous send if task import fails
+                logging.getLogger(__name__).exception('Celery task import failed; falling back to synchronous send for order %s', order.order_number)
+                _send_order_email(order, 'invoice', subject, order.user.email, request=request)
+        except Exception:
+            logging.getLogger(__name__).exception('Error initiating invoice email for order %s', order.order_number)
+
         messages.success(request, f'Order placed successfully! Order number: {order.order_number}')
         return redirect('order_detail', order_id=order.id)
 
@@ -1108,6 +1553,18 @@ def cancel_order_view(request, order_id):
         if order.status in ['pending', 'processing']:
             order.status = 'cancelled'
             order.save()
+            # Send cancellation email to customer
+            try:
+                subject = f'Order Cancelled - {settings.SITE_NAME} - {order.order_number}'
+                try:
+                    from store.tasks import send_order_email
+                    site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
+                    send_order_email.delay(order.id, 'order_cancelled', subject, order.user.email, site_base)
+                except Exception:
+                    logging.getLogger(__name__).exception('Celery task import failed; falling back to synchronous send for order %s', order.order_number)
+                    _send_order_email(order, 'order_cancelled', subject, order.user.email, request=request)
+            except Exception:
+                logging.getLogger(__name__).exception('Error sending cancellation email for order %s', order.order_number)
             messages.success(request, f'Order #{order.order_number} has been cancelled successfully.')
         else:
             messages.error(request, f'Order #{order.order_number} cannot be cancelled at this stage.')
@@ -1196,7 +1653,20 @@ def verify_upi_payment(request, order_id):
             order.payment_status = 'paid'
             order.save()
             
-            messages.success(request, f'Payment successful! Your order has been confirmed.')
+            # Send invoice email now that payment is confirmed
+            try:
+                subject = f'Invoice - {settings.SITE_NAME} - {order.order_number}'
+                try:
+                    from store.tasks import send_order_email
+                    site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
+                    send_order_email.delay(order.id, 'invoice', subject, order.user.email, site_base)
+                except Exception:
+                    logging.getLogger(__name__).exception('Celery task import failed; falling back to synchronous send for order %s', order.order_number)
+                    _send_order_email(order, 'invoice', subject, order.user.email, request=request)
+            except Exception:
+                logging.getLogger(__name__).exception('Error sending invoice after UPI payment for order %s', order.order_number)
+
+            messages.success(request, f'Payment successful! Your order has been confirmed and an invoice has been sent.')
             return redirect('order_detail', order_id=order.id)
         else:
             messages.error(request, 'Please enter a valid UPI transaction ID.')
@@ -1608,6 +2078,31 @@ def remove_staff_view(request, user_id):
 
 @login_required
 @user_passes_test(is_admin)
+def block_staff_view(request, user_id):
+    staff = get_object_or_404(CustomUser, id=user_id, role='staff')
+    staff.is_blocked = True
+    staff.save()
+    # Terminate any active sessions for this staff member so they are immediately logged out
+    removed = terminate_user_sessions(staff)
+    if removed:
+        messages.success(request, f'Staff member {staff.username} has been blocked and {removed} active session(s) terminated.')
+    else:
+        messages.success(request, f'Staff member {staff.username} has been blocked.')
+    return redirect('admin_staff_list')
+
+
+@login_required
+@user_passes_test(is_admin)
+def unblock_staff_view(request, user_id):
+    staff = get_object_or_404(CustomUser, id=user_id, role='staff')
+    staff.is_blocked = False
+    staff.save()
+    messages.success(request, f'Staff member {staff.username} has been unblocked.')
+    return redirect('admin_staff_list')
+
+
+@login_required
+@user_passes_test(is_admin)
 def admin_categories_view(request):
     categories = Category.objects.all()
     return render(request, 'store/admin/categories.html', {'categories': categories})
@@ -1902,6 +2397,64 @@ def admin_delete_service_view(request, service_id):
     return redirect('admin_services')
 
 
+@login_required
+@user_passes_test(is_admin)
+def admin_blogs_view(request):
+    from .models import BlogPost
+    posts = BlogPost.objects.all().order_by('-created_at')
+    return render(request, 'store/admin/blogs.html', {'posts': posts})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_blog_view(request):
+    from .forms import BlogPostForm
+    if request.method == 'POST':
+        form = BlogPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.author = request.user
+            # If published flag set and no published_at, set now
+            if obj.is_published and not obj.published_at:
+                obj.published_at = timezone.now()
+            obj.save()
+            messages.success(request, 'Blog post created successfully.')
+            return redirect('admin_blogs')
+    else:
+        form = BlogPostForm()
+    return render(request, 'store/admin/add_blog.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_blog_view(request, post_id):
+    from .models import BlogPost
+    from .forms import BlogPostForm
+    post = get_object_or_404(BlogPost, id=post_id)
+    if request.method == 'POST':
+        form = BlogPostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            if obj.is_published and not obj.published_at:
+                obj.published_at = timezone.now()
+            obj.save()
+            messages.success(request, 'Blog post updated successfully.')
+            return redirect('admin_blogs')
+    else:
+        form = BlogPostForm(instance=post)
+    return render(request, 'store/admin/add_blog.html', {'form': form, 'post': post})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_blog_view(request, post_id):
+    from .models import BlogPost
+    post = get_object_or_404(BlogPost, id=post_id)
+    post.delete()
+    messages.success(request, 'Blog post deleted.')
+    return redirect('admin_blogs')
+
+
 # -------------------- Contact Info (Admin Managed) --------------------
 @login_required
 @user_passes_test(is_admin)
@@ -2069,7 +2622,12 @@ def block_user_view(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id, role='customer')
     user.is_blocked = True
     user.save()
-    messages.success(request, f'User {user.username} has been blocked.')
+    # Terminate any active sessions for this user so they are immediately logged out
+    removed = terminate_user_sessions(user)
+    if removed:
+        messages.success(request, f'User {user.username} has been blocked and {removed} active session(s) terminated.')
+    else:
+        messages.success(request, f'User {user.username} has been blocked.')
     return redirect('admin_users')
 
 

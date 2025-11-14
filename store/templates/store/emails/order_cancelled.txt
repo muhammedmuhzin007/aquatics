@@ -1,0 +1,14 @@
+Hello {{ order.user.first_name|default:order.user.username }},
+
+We're sorry to inform you that your order {{ order.order_number }} has been cancelled.
+
+If you paid already, our support team will reach out regarding refunds.
+
+Order Total: {{ order.final_amount }}
+
+You can view the order details here: {{ order_url }}
+
+If you have any questions, reply to this email or contact support.
+
+Thanks,
+{{ site_name }}

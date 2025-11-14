@@ -99,8 +99,18 @@
                             <td class="admin-text-black">{{ staff.phone_number|default:"N/A" }}</td>
                             <td class="admin-text-black">{{ staff.created_at|date:"M d, Y" }}</td>
                             <td class="admin-text-black">
-                                          <a href="{% url 'remove_staff' staff.id %}" class="btn btn-danger btn-sm" 
-                                              data-confirm="Are you sure you want to remove this staff member?">
+                                {% if staff.is_blocked %}
+                                    <a href="{% url 'unblock_staff' staff.id %}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-user-check"></i> Unblock
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'block_staff' staff.id %}" class="btn btn-warning btn-sm" 
+                                        data-confirm="Are you sure you want to block this staff member?">
+                                        <i class="fas fa-user-lock"></i> Block
+                                    </a>
+                                {% endif %}
+                                <a href="{% url 'remove_staff' staff.id %}" class="btn btn-danger btn-sm ms-2" 
+                                    data-confirm="Are you sure you want to remove this staff member?">
                                     <i class="fas fa-user-times"></i> Remove
                                 </a>
                             </td>

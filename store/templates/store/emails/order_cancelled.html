@@ -1,0 +1,13 @@
+<html>
+  <body>
+    <p>Hello {{ order.user.first_name|default:order.user.username }},</p>
+    <p>We're sorry to inform you that your order <strong>{{ order.order_number }}</strong> has been <strong>cancelled</strong>.</p>
+    <p><strong>Order Total:</strong> {{ order.final_amount }}</p>
+    {% if order_url %}
+      <p>You can view the order details <a href="{{ order_url }}">here</a>.</p>
+    {% endif %}
+    <p>If you paid already, our support team will reach out regarding refunds.</p>
+    <p>If you have any questions, reply to this email or contact support.</p>
+    <p>Thanks,<br>{{ site_name }}</p>
+  </body>
+</html>

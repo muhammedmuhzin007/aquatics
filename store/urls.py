@@ -18,6 +18,9 @@ urlpatterns = [
     # Home
     path('', views.home_view, name='home'),
     path('about/', views.about_view, name='about'),
+    # Blog
+    path('blog/', views.blog_list_view, name='blog_list'),
+    path('blog/<slug:slug>/', views.blog_detail_view, name='blog_detail'),
     
     # Customer Routes
     path('fishes/', views.customer_fish_list_view, name='fish_list'),
@@ -69,6 +72,8 @@ urlpatterns = [
     path('store-admin/staff/', views.admin_staff_list_view, name='admin_staff_list'),
     path('store-admin/add-staff/', views.add_staff_view, name='add_staff'),
     path('store-admin/remove-staff/<int:user_id>/', views.remove_staff_view, name='remove_staff'),
+    path('store-admin/block-staff/<int:user_id>/', views.block_staff_view, name='block_staff'),
+    path('store-admin/unblock-staff/<int:user_id>/', views.unblock_staff_view, name='unblock_staff'),
     path('store-admin/categories/', views.admin_categories_view, name='admin_categories'),
     path('store-admin/add-category/', views.admin_add_category_view, name='admin_add_category'),
     path('store-admin/delete-category/<int:category_id>/', views.admin_delete_category_view, name='admin_delete_category'),
@@ -119,6 +124,11 @@ urlpatterns = [
         path('store-admin/limited-offers/<int:offer_id>/edit/', views.admin_edit_limited_offer_view, name='admin_edit_limited_offer'),
         path('store-admin/limited-offers/<int:offer_id>/toggle/', views.admin_toggle_limited_offer_view, name='admin_toggle_limited_offer'),
         path('store-admin/limited-offers/<int:offer_id>/delete/', views.admin_delete_limited_offer_view, name='admin_delete_limited_offer'),
+        # Blogs (site-admin)
+        path('store-admin/blogs/', views.admin_blogs_view, name='admin_blogs'),
+        path('store-admin/blogs/add/', views.admin_add_blog_view, name='admin_add_blog'),
+        path('store-admin/blogs/<int:post_id>/edit/', views.admin_edit_blog_view, name='admin_edit_blog'),
+        path('store-admin/blogs/<int:post_id>/delete/', views.admin_delete_blog_view, name='admin_delete_blog'),
     
     # Profile
     path('profile/', views.profile_view, name='profile'),

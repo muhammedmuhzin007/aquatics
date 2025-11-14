@@ -375,6 +375,29 @@ class ContactInfo(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+class BlogPost(models.Model):
+    title = models.CharField(max_length=250)
+    slug = models.SlugField(max_length=260, unique=True)
+    author = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='blog_posts')
+    excerpt = models.TextField(blank=True)
+    content = models.TextField()
+    image = models.ImageField(upload_to='blog/', blank=True, null=True)
+    is_published = models.BooleanField(default=False)
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-published_at', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('blog_detail', args=[self.slug])
+
     class Meta:
         verbose_name = 'Contact Information'
         verbose_name_plural = 'Contact Information'

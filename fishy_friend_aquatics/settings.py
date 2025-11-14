@@ -24,6 +24,10 @@ INSTALLED_APPS = [
 
 SITE_NAME = 'Fishy Friend Aquatics'
 
+# Public site base URL used by background tasks to build absolute links when
+# no HttpRequest object is available. Override in .env for production.
+SITE_URL = os.getenv('SITE_URL', 'http://127.0.0.1:8000')
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -92,24 +96,65 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 EMAIL_HOST_ENV = os.getenv('EMAIL_HOST')
 EMAIL_HOST_USER_ENV = os.getenv('EMAIL_HOST_USER')
 
-if EMAIL_HOST_ENV and EMAIL_HOST_USER_ENV:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp.gmail.com'
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_USE_SSL = False
-    EMAIL_HOST_USER = 'muhzinmuhammed4@gmail.com'
-    EMAIL_HOST_PASSWORD = 'jejo nueg ovmb xmnd'
-    DEFAULT_FROM_EMAIL = 'muhzinmuhammed4@gmail.com'
-    if DEBUG:
-        print(f"[EMAIL CONFIG] Using SMTP backend: {EMAIL_BACKEND} host={EMAIL_HOST}:{EMAIL_PORT}")
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@fishyfriendaquatics.local')
-    if DEBUG:
-        print("[EMAIL CONFIG] Using console email backend. Configure SMTP via env vars.")
 
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
+def _parse_bool_env(name: str, default: bool) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    return v.lower() in ("true", "1", "yes", "on")
+
+
+# If SMTP settings are provided via environment variables, configure SMTP backend.
+# Otherwise fall back to console backend for development.
+if EMAIL_HOST_ENV and EMAIL_HOST_USER_ENV:
+    EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    # Allow explicit toggles for TLS and SSL. SSL takes precedence if enabled.
+    EMAIL_USE_TLS = _parse_bool_env("EMAIL_USE_TLS", True)
+    EMAIL_USE_SSL = _parse_bool_env("EMAIL_USE_SSL", False)
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
+    if DEBUG:
+        proto = "smtps" if EMAIL_USE_SSL else ("smtp+tls" if EMAIL_USE_TLS else "smtp")
+        print(f"[EMAIL CONFIG] Using SMTP backend: {EMAIL_BACKEND} host={EMAIL_HOST}:{EMAIL_PORT} proto={proto} user={EMAIL_HOST_USER}")
+else:
+    EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@fishyfriendaquatics.local")
+    if DEBUG:
+        print("[EMAIL CONFIG] Using console email backend. Configure SMTP via environment variables (.env) to enable SMTP.")
+
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
+
+# Whether to attach invoice PDFs to outgoing emails. When False, PDFs are still
+# generated and saved under MEDIA_ROOT/invoices/ and a download link is included
+# in the email body. Set to True only when your SMTP provider reliably supports
+# large messages and attachments.
+INVOICE_ATTACHMENTS = _parse_bool_env('INVOICE_ATTACHMENTS', False)
+
+# Celery / Redis
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+
+# Basic logging configuration so email backend events and errors appear in console
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.core.mail": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'

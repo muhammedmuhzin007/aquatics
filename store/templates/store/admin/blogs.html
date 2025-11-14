@@ -1,0 +1,42 @@
+{% extends 'store/base.html' %}
+{% block title %}Manage Blogs - {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="section-heading">Blog Posts</h2>
+        <a href="{% url 'admin_add_blog' %}" class="btn btn-primary">Add Post</a>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Published</th>
+                        <th>Published At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in posts %}
+                    <tr>
+                        <td>{{ p.title }}</td>
+                        <td>{% if p.author %}{{ p.author.username }}{% else %}{% endif %}</td>
+                        <td>{% if p.is_published %}Yes{% else %}No{% endif %}</td>
+                        <td>{{ p.published_at|default:'—' }}</td>
+                        <td>
+                            <a href="{% url 'admin_edit_blog' p.id %}" class="btn btn-sm btn-outline-light">Edit</a>
+                            <a href="{% url 'admin_delete_blog' p.id %}" class="btn btn-sm btn-danger" data-confirm="Delete this post?">Delete</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">No posts yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

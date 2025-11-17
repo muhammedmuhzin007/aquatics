@@ -7,7 +7,7 @@ Order Total: {{ order.final_amount }}
 
 Items:
 {% for item in order_items %}
-- {{ item.fish.name }} x {{ item.quantity }} @ {{ item.price }} = {{ item.get_total }}
+- {{ item.fish.name }} x {{ item.quantity }} - {{ item.price }} = {{ item.get_total }}
 {% endfor %}
 
 You can view your order here: {{ order_url }}

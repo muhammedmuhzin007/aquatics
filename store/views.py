@@ -1,3 +1,256 @@
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.csrf import csrf_protect
+
+def is_customer(user):
+    return user.is_authenticated and user.role == 'customer'
+
+def is_staff(user):
+    return user.is_authenticated and (user.role == 'staff' or user.role == 'admin')
+
+def is_admin(user):
+    return user.is_authenticated and user.role == 'admin'
+
+# Modernized checkout_view with AJAX, Razorpay, and draft order logic
+@login_required
+@user_passes_test(is_customer)
+@csrf_protect
+def checkout_view(request):
+    cart_items = Cart.objects.filter(user=request.user)
+    accessory_items = AccessoryCart.objects.filter(user=request.user)
+
+    if not cart_items and not accessory_items:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart')
+
+    if request.method == 'POST':
+        shipping_address = request.POST.get('shipping_address')
+        phone_number = request.POST.get('phone_number')
+        payment_method = request.POST.get('payment_method')
+
+        if not shipping_address or not phone_number or not payment_method:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'error': 'Please fill in all required fields.'}, status=400)
+            messages.error(request, 'Please fill in all required fields.')
+            total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+            return render(request, 'store/customer/checkout.html', {
+                'cart_items': cart_items,
+                'accessory_items': accessory_items,
+                'total': total,
+            })
+
+        # Create or update an Order (reuse a recent draft if present)
+        total_amount = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+
+        # Apply coupon if exists
+        applied_coupon = None
+        discount_amount = 0
+        final_amount = total_amount
+
+        if 'applied_coupon_code' in request.session:
+            try:
+                coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
+                if coupon.is_valid() and coupon.can_use(request.user):
+                    applied_coupon = coupon
+                    discount_amount = (total_amount * coupon.discount_percentage) / 100
+                    if coupon.max_discount_amount:
+                        discount_amount = min(discount_amount, coupon.max_discount_amount)
+                    final_amount = total_amount - discount_amount
+            except Coupon.DoesNotExist:
+                pass
+
+        # Generate transaction ID
+        transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
+
+        # Set initial payment status based on payment method and provider
+        provider = getattr(settings, 'PAYMENT_PROVIDER', None)
+        provider = provider.lower() if isinstance(provider, str) else ''
+        if provider == 'razorpay':
+            payment_status = 'pending'
+        else:
+            payment_status = 'pending' if payment_method == 'upi' else 'paid'
+
+        # Try to find a recent draft order for this user and same cart totals
+        draft_cutoff = timezone.now() - timedelta(minutes=30)
+        draft_order = Order.objects.filter(
+            user=request.user,
+            transaction_id__isnull=True,
+            status='pending',
+            created_at__gte=draft_cutoff,
+        ).order_by('-created_at').first()
+
+        order = None
+        if draft_order and float(draft_order.total_amount) == float(total_amount) and float(draft_order.final_amount) == float(final_amount):
+            # Reuse and update the draft
+            order = draft_order
+            order.shipping_address = shipping_address
+            order.phone_number = phone_number
+            order.payment_method = payment_method
+            order.coupon = applied_coupon
+            order.discount_amount = discount_amount
+            order.final_amount = final_amount
+            order.total_amount = total_amount
+            order.payment_status = payment_status
+            order.transaction_id = transaction_id
+            order.save()
+        else:
+            # Create a fresh order (no stock changes yet for draft)
+            order = Order.objects.create(
+                user=request.user,
+                order_number=Order.generate_order_number(),
+                total_amount=total_amount,
+                coupon=applied_coupon,
+                discount_amount=discount_amount,
+                final_amount=final_amount,
+                shipping_address=shipping_address,
+                phone_number=phone_number,
+                payment_method=payment_method,
+                payment_status=payment_status,
+                transaction_id=transaction_id,
+            )
+            for cart_item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    fish=cart_item.fish,
+                    quantity=cart_item.quantity,
+                    price=cart_item.fish.price,
+                )
+            for a_item in accessory_items:
+                OrderAccessoryItem.objects.create(
+                    order=order,
+                    accessory=a_item.accessory,
+                    quantity=a_item.quantity,
+                    price=a_item.accessory.price,
+                )
+
+        # If AJAX, return order info for payment
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'user_name': order.user.get_full_name(),
+                'user_email': order.user.email,
+                'user_phone': order.phone_number,
+            })
+
+        # (Legacy non-AJAX fallback: finalize order, decrement stock, clear cart, etc.)
+        # ...existing code...
+
+    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+    
+    # Get available coupons for the user
+    now = timezone.now()
+    available_coupons = Coupon.objects.filter(
+        is_active=True,
+        show_in_suggestions=True,
+        valid_from__lte=now,
+        valid_until__gte=now
+    ).filter(
+        Q(coupon_type='all') |
+        Q(coupon_type='favorites', user__is_favorite=True) if request.user.is_favorite else Q(coupon_type='normal')
+    ).exclude(
+        usage_limit__isnull=False,
+        times_used__gte=models.F('usage_limit')
+    ).filter(
+        Q(min_order_amount__isnull=True) | Q(min_order_amount__lte=total)
+    ).order_by('-discount_percentage')[:5]  # Show top 5 best coupons
+    
+    # Get applied coupon from session
+    applied_coupon = None
+    discount = 0
+    final_total = total
+    
+    if 'applied_coupon_code' in request.session:
+        try:
+            coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
+            if coupon.is_valid() and coupon.can_use(request.user):
+                applied_coupon = coupon
+                discount = (total * coupon.discount_percentage) / 100
+                if coupon.max_discount_amount:
+                    discount = min(discount, coupon.max_discount_amount)
+                final_total = total - discount
+        except Coupon.DoesNotExist:
+            del request.session['applied_coupon_code']
+
+    # Ensure a draft Order exists for the checkout page so the Razorpay snippet has an `order` to reference.
+    try:
+        draft_cutoff = timezone.now() - timedelta(minutes=30)
+        draft_order = Order.objects.filter(
+            user=request.user,
+            transaction_id__isnull=True,
+            status='pending',
+            created_at__gte=draft_cutoff,
+        ).order_by('-created_at').first()
+
+        if draft_order is None:
+            # Create a lightweight draft (no stock decrement). Use final_total as final amount.
+            draft_order = Order.objects.create(
+                user=request.user,
+                order_number=Order.generate_order_number(),
+                total_amount=total,
+                coupon=applied_coupon,
+                discount_amount=discount,
+                final_amount=final_total,
+                shipping_address=(request.user.address if hasattr(request.user, 'address') else ''),
+                phone_number=(request.user.phone_number if hasattr(request.user, 'phone_number') else ''),
+                payment_method='card',
+                payment_status='pending',
+            )
+            # Mirror cart items into the draft order (no stock change)
+            for cart_item in cart_items:
+                OrderItem.objects.create(
+                    order=draft_order,
+                    fish=cart_item.fish,
+                    quantity=cart_item.quantity,
+                    price=cart_item.fish.price,
+                )
+            for a_item in accessory_items:
+                OrderAccessoryItem.objects.create(
+                    order=draft_order,
+                    accessory=a_item.accessory,
+                    quantity=a_item.quantity,
+                    price=a_item.accessory.price,
+                )
+    except Exception:
+        logging.getLogger(__name__).exception('Failed to create draft order for checkout page')
+        draft_order = None
+
+    return render(request, 'store/customer/checkout.html', {
+        'cart_items': cart_items,
+        'total': total,
+        'applied_coupon': applied_coupon,
+        'discount': discount,
+        'final_total': final_total,
+        'available_coupons': available_coupons,
+        'order': draft_order,
+    })
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+def is_customer(user):
+    return user.is_authenticated and user.role == 'customer'
+
+def is_staff(user):
+    return user.is_authenticated and (user.role == 'staff' or user.role == 'admin')
+
+def is_admin(user):
+    return user.is_authenticated and user.role == 'admin'
+
+# ...existing code...
+
+@login_required
+@user_passes_test(is_customer)
+def order_confirmation_view(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    # Attach invoice_url if paid and invoice exists
+    invoice_url = None
+    if order.payment_status == 'paid':
+        # Assume invoices are saved as media/invoices/invoice-<order_number>.pdf
+        from django.conf import settings
+        import os
+        invoice_path = os.path.join(settings.MEDIA_ROOT, 'invoices', f'invoice-{order.order_number}.pdf')
+        if os.path.exists(invoice_path):
+            invoice_url = settings.MEDIA_URL + f'invoices/invoice-{order.order_number}.pdf'
+    order.invoice_url = invoice_url
+    return render(request, 'store/customer/order_confirmation.html', {'order': order})
 from .models import CustomUser, Category, Breed, Fish, Order, OrderItem, Review, Service, ContactInfo, Coupon, LimitedOffer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
@@ -13,7 +266,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET, require_POST
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import (
     CustomUser, Category, Breed, Fish, FishMedia, Cart, AccessoryCart, Order, OrderItem, OrderAccessoryItem, OTP, Review, Service, ContactInfo, Coupon, Accessory
@@ -1232,171 +1485,6 @@ def remove_accessory_cart_view(request, accessory_cart_id):
     return redirect('cart')
 
 
-@login_required
-@user_passes_test(is_customer)
-def checkout_view(request):
-    cart_items = Cart.objects.filter(user=request.user)
-    accessory_items = AccessoryCart.objects.filter(user=request.user)
-
-    if not cart_items and not accessory_items:
-        messages.error(request, 'Your cart is empty.')
-        return redirect('cart')
-
-    if request.method == 'POST':
-        shipping_address = request.POST.get('shipping_address')
-        phone_number = request.POST.get('phone_number')
-        payment_method = request.POST.get('payment_method')
-
-        if not shipping_address or not phone_number or not payment_method:
-            messages.error(request, 'Please fill in all required fields.')
-            total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-            return render(request, 'store/customer/checkout.html', {
-                'cart_items': cart_items,
-                'accessory_items': accessory_items,
-                'total': total,
-            })
-
-        # Create order
-        total_amount = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-
-        # Apply coupon if exists
-        applied_coupon = None
-        discount_amount = 0
-        final_amount = total_amount
-
-        if 'applied_coupon_code' in request.session:
-            try:
-                coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
-                if coupon.is_valid() and coupon.can_use(request.user):
-                    applied_coupon = coupon
-                    discount_amount = (total_amount * coupon.discount_percentage) / 100
-                    if coupon.max_discount_amount:
-                        discount_amount = min(discount_amount, coupon.max_discount_amount)
-                    final_amount = total_amount - discount_amount
-                    # Increment coupon usage
-                    coupon.times_used += 1
-                    coupon.save()
-            except Coupon.DoesNotExist:
-                pass
-
-        # Generate transaction ID
-        transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
-
-        # Set initial payment status based on payment method
-        payment_status = 'pending' if payment_method == 'upi' else 'paid'
-
-        order = Order.objects.create(
-            user=request.user,
-            order_number=Order.generate_order_number(),
-            total_amount=total_amount,
-            coupon=applied_coupon,
-            discount_amount=discount_amount,
-            final_amount=final_amount,
-            shipping_address=shipping_address,
-            phone_number=phone_number,
-            payment_method=payment_method,
-            payment_status=payment_status,
-            transaction_id=transaction_id,
-        )
-
-        # Create order items for fishes
-        for cart_item in cart_items:
-            OrderItem.objects.create(
-                order=order,
-                fish=cart_item.fish,
-                quantity=cart_item.quantity,
-                price=cart_item.fish.price,
-            )
-            # Update fish stock
-            cart_item.fish.stock_quantity -= cart_item.quantity
-            cart_item.fish.save()
-
-        # Create accessory order items
-        for a_item in accessory_items:
-            OrderAccessoryItem.objects.create(
-                order=order,
-                accessory=a_item.accessory,
-                quantity=a_item.quantity,
-                price=a_item.accessory.price,
-            )
-            # Update accessory stock
-            a_item.accessory.stock_quantity -= a_item.quantity
-            a_item.accessory.save()
-
-        # Clear carts
-        cart_items.delete()
-        accessory_items.delete()
-
-        # Clear coupon session
-        if 'applied_coupon_code' in request.session:
-            del request.session['applied_coupon_code']
-
-        # Redirect to UPI payment page if UPI is selected
-        if payment_method == 'upi':
-            return redirect('upi_payment', order_id=order.id)
-
-        # Send invoice email to customer asynchronously via Celery
-        try:
-            subject = f'Invoice - {settings.SITE_NAME} - {order.order_number}'
-            # Import task lazily to avoid Celery import issues when not installed
-            try:
-                from store.tasks import send_order_email
-                site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
-                send_order_email.delay(order.id, 'invoice', subject, order.user.email, site_base)
-            except Exception:
-                # Fall back to synchronous send if task import fails
-                logging.getLogger(__name__).exception('Celery task import failed; falling back to synchronous send for order %s', order.order_number)
-                _send_order_email(order, 'invoice', subject, order.user.email, request=request)
-        except Exception:
-            logging.getLogger(__name__).exception('Error initiating invoice email for order %s', order.order_number)
-
-        messages.success(request, f'Order placed successfully! Order number: {order.order_number}')
-        return redirect('order_detail', order_id=order.id)
-
-    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-    
-    # Get available coupons for the user
-    now = timezone.now()
-    available_coupons = Coupon.objects.filter(
-        is_active=True,
-        show_in_suggestions=True,
-        valid_from__lte=now,
-        valid_until__gte=now
-    ).filter(
-        Q(coupon_type='all') |
-        Q(coupon_type='favorites', user__is_favorite=True) if request.user.is_favorite else Q(coupon_type='normal')
-    ).exclude(
-        usage_limit__isnull=False,
-        times_used__gte=models.F('usage_limit')
-    ).filter(
-        Q(min_order_amount__isnull=True) | Q(min_order_amount__lte=total)
-    ).order_by('-discount_percentage')[:5]  # Show top 5 best coupons
-    
-    # Get applied coupon from session
-    applied_coupon = None
-    discount = 0
-    final_total = total
-    
-    if 'applied_coupon_code' in request.session:
-        try:
-            coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
-            if coupon.is_valid() and coupon.can_use(request.user):
-                applied_coupon = coupon
-                discount = (total * coupon.discount_percentage) / 100
-                if coupon.max_discount_amount:
-                    discount = min(discount, coupon.max_discount_amount)
-                final_total = total - discount
-        except Coupon.DoesNotExist:
-            del request.session['applied_coupon_code']
-    
-    return render(request, 'store/customer/checkout.html', {
-        'cart_items': cart_items,
-        'total': total,
-        'applied_coupon': applied_coupon,
-        'discount': discount,
-        'final_total': final_total,
-        'available_coupons': available_coupons,
-    })
 
 
 @login_required
@@ -1495,6 +1583,82 @@ def remove_coupon_view(request):
         'message': 'Coupon removed',
         'total': float(total)
     })
+
+
+@login_required
+@require_POST
+@csrf_protect
+def create_draft_order(request):
+    """AJAX endpoint: create or return a recent draft Order for the current user's cart.
+
+    Returns JSON: { order_id, order_number, final_amount }
+    """
+    try:
+        cart_items = Cart.objects.filter(user=request.user)
+        accessory_items = AccessoryCart.objects.filter(user=request.user)
+
+        if not cart_items and not accessory_items:
+            return JsonResponse({'error': 'Cart is empty'}, status=400)
+
+        total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+
+        # Get applied coupon from session if present
+        applied_coupon = None
+        discount = 0
+        final_total = total
+        if 'applied_coupon_code' in request.session:
+            try:
+                coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
+                if coupon.is_valid() and coupon.can_use(request.user):
+                    applied_coupon = coupon
+                    discount = (total * coupon.discount_percentage) / 100
+                    if coupon.max_discount_amount:
+                        discount = min(discount, coupon.max_discount_amount)
+                    final_total = total - discount
+            except Coupon.DoesNotExist:
+                pass
+
+        # Try to reuse a recent draft
+        draft_cutoff = timezone.now() - timedelta(minutes=30)
+        draft_order = Order.objects.filter(
+            user=request.user,
+            transaction_id__isnull=True,
+            status='pending',
+            created_at__gte=draft_cutoff,
+        ).order_by('-created_at').first()
+
+        if draft_order is None:
+            draft_order = Order.objects.create(
+                user=request.user,
+                order_number=Order.generate_order_number(),
+                total_amount=total,
+                coupon=applied_coupon,
+                discount_amount=discount,
+                final_amount=final_total,
+                shipping_address=(request.user.address if hasattr(request.user, 'address') else ''),
+                phone_number=(request.user.phone_number if hasattr(request.user, 'phone_number') else ''),
+                payment_method='card',
+                payment_status='pending',
+            )
+            for cart_item in cart_items:
+                OrderItem.objects.create(
+                    order=draft_order,
+                    fish=cart_item.fish,
+                    quantity=cart_item.quantity,
+                    price=cart_item.fish.price,
+                )
+            for a_item in accessory_items:
+                OrderAccessoryItem.objects.create(
+                    order=draft_order,
+                    accessory=a_item.accessory,
+                    quantity=a_item.quantity,
+                    price=a_item.accessory.price,
+                )
+
+        return JsonResponse({'order_id': draft_order.id, 'order_number': draft_order.order_number, 'final_amount': float(draft_order.final_amount)})
+    except Exception:
+        logging.getLogger(__name__).exception('Failed to create draft order via AJAX')
+        return JsonResponse({'error': 'Server error'}, status=500)
 
 
 @login_required

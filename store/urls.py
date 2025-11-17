@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import razorpay_integration
 
 urlpatterns = [
     # Authentication
@@ -37,14 +38,20 @@ urlpatterns = [
     path('update-accessory-cart/<int:accessory_cart_id>/', views.update_accessory_cart_view, name='update_accessory_cart'),
     path('remove-accessory-cart/<int:accessory_cart_id>/', views.remove_accessory_cart_view, name='remove_accessory_cart'),
     path('checkout/', views.checkout_view, name='checkout'),
+    path('checkout/create-draft/', views.create_draft_order, name='create_draft_order'),
     path('apply-coupon/', views.apply_coupon_view, name='apply_coupon'),
     path('remove-coupon/', views.remove_coupon_view, name='remove_coupon'),
     path('orders/', views.customer_orders_view, name='customer_orders'),
     path('order/<int:order_id>/', views.order_detail_view, name='order_detail'),
+    path('order-confirmation/<int:order_id>/', views.order_confirmation_view, name='order_confirmation'),
     path('order/<int:order_id>/cancel/', views.cancel_order_view, name='cancel_order'),
     path('order/<int:order_id>/review/', views.submit_review_view, name='submit_review'),
     path('upi-payment/<int:order_id>/', views.upi_payment_view, name='upi_payment'),
     path('verify-upi/<int:order_id>/', views.verify_upi_payment, name='verify_upi_payment'),
+    # Razorpay payment endpoints
+    path('payments/razorpay/create/<int:order_id>/', razorpay_integration.create_razorpay_order, name='create_razorpay_order'),
+    path('payments/razorpay/webhook/', razorpay_integration.razorpay_webhook, name='razorpay_webhook'),
+    path('payments/razorpay/verify/', razorpay_integration.verify_razorpay_payment, name='verify_razorpay_payment'),
     
     # Staff Routes
     path('staff/dashboard/', views.staff_dashboard_view, name='staff_dashboard'),

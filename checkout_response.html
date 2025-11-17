@@ -1,0 +1,468 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fishy Friend Aquatics - Underwater Paradise</title>
+    
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="alternate icon" href="/static/favicon.svg">
+    <script>
+        // Set theme early: default to light if nothing stored
+        (function(){
+            try {
+                var saved = localStorage.getItem('theme');
+                var theme = saved ? saved : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch(e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* Category select styling site-wide when widget uses .category-select
+           Uses theme variables so the dropdown follows light/dark and accent colors */
+        select.category-select {
+            background-color: var(--card-bg); /* default to card surface */
+            color: var(--text-white);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+        select.category-select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.10);
+            outline: none;
+        }
+
+        /* Light theme: use light surface and light-accent */
+        html[data-theme='light'] select.category-select {
+            background: var(--light-surface);
+            color: var(--light-text);
+            border-color: var(--light-border);
+        }
+        html[data-theme='light'] select.category-select:focus {
+            border-color: var(--light-accent);
+            box-shadow: 0 0 0 0.2rem rgba(25,118,210,0.12);
+        }
+
+        /* Dark theme tweaks: keep card surface but highlight with accent on focus */
+        html[data-theme='dark'] select.category-select {
+            background: var(--card-bg);
+            color: var(--text-white);
+            border-color: var(--border-color);
+        }
+        html[data-theme='dark'] select.category-select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.16);
+        }
+
+        /* Clickable card affordance: show subtle lift and outline on hover/focus */
+        .card[data-href] {
+            transition: transform 180ms ease, box-shadow 180ms ease;
+            will-change: transform, box-shadow;
+        }
+        .card[data-href]:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 24px rgba(2,6,23,0.12);
+        }
+        .card[data-href]:focus {
+            outline: 3px solid rgba(30,136,229,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 24px rgba(2,6,23,0.12);
+        }
+        /* Make focus visible for keyboard users even if browser doesn't show outline */
+        .card[data-href]:focus {
+            outline-offset: 2px;
+        }
+
+        /* Apply cursor only on non-touch devices (where hover is available) */
+        @media (hover: hover) and (pointer: fine) {
+            .card[data-href] { cursor: pointer; }
+        }
+    </style>
+    
+</head>
+<body class="aquatic-bg">
+    <!-- Top Navigation Bar -->
+    <div class="top-nav">
+        <div class="top-nav-content">
+            <div class="top-nav-left">
+                <div class="top-nav-logo">
+                    <i class="fas fa-fish"></i>
+                    <span>Fishy Friend Aquatics | Landing Page</span>
+                </div>
+            </div>
+            <div class="top-nav-right">
+                <a href="/" class="top-nav-link">Home</a>
+                
+                    <a href="/login/" class="top-nav-link">Login</a>
+                
+                
+                <div class="top-nav-icons">
+                    <!-- Global theme toggle (compact) -->
+                    <button type="button" class="nav-theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
+                        <span class="toggle-icon">
+                            <i class="fas fa-moon"></i>
+                        </span>
+                    </button>
+                    
+                    <a href="/profile/" style="color: inherit;"><i class="fas fa-user"></i></a>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark aquatic-nav">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-fish"></i> Fishy Friend Aquatics
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="border-color: rgba(255,255,255,0.3);">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">Home</a>
+                        </li>
+                            <li class="nav-item">
+                                    <a class="nav-link" href="/about/">About Us</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/blog/">Blog</a>
+                                </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/fishes/">Fishes</a>
+                        </li>
+                    
+                </ul>
+                <ul class="navbar-nav">
+                    
+                        <li class="nav-item">
+                            <a class="nav-link" href="/login/">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-buy-tickets" href="/register/" style="margin-left: 10px;">Register</a>
+                        </li>
+                    
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        
+
+        
+<div class="section" style="min-height: calc(100vh - 300px); display: flex; align-items: center;">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-body" style="padding: 50px;">
+                        <div class="text-center mb-5">
+                            <i class="fas fa-fish fa-4x mb-4" style="color: var(--accent-light-blue);"></i>
+                            <h2 class="text-white mb-2" style="font-weight: 700; font-size: 2rem;">Welcome to Fishy Friend Aquatics</h2>
+                            <p class="text-gray">Login to dive into the aquatic world</p>
+                        </div>
+                        
+                        <form method="POST">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="gBEfg9NKGzoATJo4rSd7N2gnn82Ol3nieMUsLUFuSrtNkm2ywAMXUAjZpiykDPHc">
+                            <div class="mb-4">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user"></i> Username
+                                </label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock"></i> Password
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <a href="/forgot-password/" class="btn w-100" style="background-color: rgba(15, 25, 40, 0.95); color: #FFFFFF; border: 1px solid rgba(255,255,255,0.1);">
+                                    <i class="fas fa-question-circle"></i> Forgot Password?
+                                </a>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 mb-3" style="padding: 15px;">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </button>
+                        </form>
+                        
+                        <div class="text-center mt-4">
+                            <p class="text-gray mb-0">Don't have an account? <a href="/register/" class="text-white" style="text-decoration: none; font-weight: 500;">Register here</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div>
+
+    <footer class="aquatic-footer mt-5">
+        <div class="container text-center py-4">
+            <div class="row">
+                <!-- Social icons removed per request -->
+                <div class="col-md-12">
+                    <p class="mb-0 text-gray">&copy; 2024 Fishy Friend Aquatics. Dive into the aquatic world!</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+        <!-- Warning Messages Modal -->
+        <div class="modal fade" id="warningMessageModal" tabindex="-1" aria-labelledby="warningMessageModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="background: rgba(15,25,40,0.95); border: 1px solid rgba(255,255,255,0.15);">
+                    <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <h5 class="modal-title text-white" id="warningMessageModalLabel"><i class="fas fa-exclamation-circle"></i> Warning</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="warningMessageContent" class="text-white"></div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-dark" data-bs-dismiss="modal">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Action Modal (themed) -->
+        <div class="modal fade" id="confirmActionModal" tabindex="-1" aria-labelledby="confirmActionModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="background: rgba(15,25,40,0.95); border: 1px solid rgba(255,255,255,0.15);">
+                    <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <h5 class="modal-title text-white" id="confirmActionModalLabel"><i class="fas fa-question-circle"></i> Confirm</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="confirmActionMessage" class="text-white"></div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-dark" id="confirmActionOkBtn">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const warnings = [
+                    
+                ];
+                if (warnings.length > 0) {
+                    const modalEl = document.getElementById('warningMessageModal');
+                    const contentEl = document.getElementById('warningMessageContent');
+                    contentEl.innerHTML = warnings.map(w => `<div class=\"d-flex align-items-start mb-2\"><i class=\"fas fa-exclamation-circle me-2\"></i><span>${w}</span></div>`).join('');
+                    const bsModal = new bootstrap.Modal(modalEl);
+                    bsModal.show();
+                }
+
+                // Delegated handler for themed confirmation popups
+                let pendingConfirm = null;
+                document.body.addEventListener('click', function(e) {
+                    const trigger = e.target.closest('[data-confirm]');
+                    if (!trigger) return;
+                    e.preventDefault();
+                    const message = trigger.getAttribute('data-confirm') || 'Are you sure?';
+
+                    // Store intended action
+                    pendingConfirm = trigger;
+                    const modalEl = document.getElementById('confirmActionModal');
+                    const msgEl = document.getElementById('confirmActionMessage');
+                    msgEl.innerHTML = `<div class=\"d-flex align-items-start\"><i class=\"fas fa-question-circle me-2\"></i><span>${message}</span></div>`;
+                    const okBtn = document.getElementById('confirmActionOkBtn');
+                    const bsModal = new bootstrap.Modal(modalEl);
+
+                    // Clean previous handlers
+                    const newOkBtn = okBtn.cloneNode(true);
+                    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+                    newOkBtn.addEventListener('click', function() {
+                        if (!pendingConfirm) return;
+                        // If it's a link, navigate
+                        if (pendingConfirm.tagName.toLowerCase() === 'a' && pendingConfirm.href) {
+                            window.location.href = pendingConfirm.href;
+                        } else {
+                            // Try submitting its closest form
+                            const form = pendingConfirm.closest('form');
+                            if (form) {
+                                form.submit();
+                            }
+                        }
+                        pendingConfirm = null;
+                        const modalInst = bootstrap.Modal.getInstance(modalEl);
+                        if (modalInst) modalInst.hide();
+                    }, { once: true });
+
+                    bsModal.show();
+                });
+
+                // Unified theme toggle logic (navbar + any page-level toggles)
+                (function(){
+                    const STORAGE_KEY = 'theme';
+                    const root = document.documentElement;
+                    function apply(theme){
+                        root.setAttribute('data-theme', theme);
+                        try { localStorage.setItem(STORAGE_KEY, theme); } catch(e) {}
+                        // Update all toggle icons
+                        document.querySelectorAll('[data-theme-toggle] i').forEach(icon => {
+                            icon.className = theme === 'light' ? 'fas fa-sun' : 'fas fa-moon';
+                        });
+                        // Update any profile/edit toggle labels if present
+                        document.querySelectorAll('#profileThemeToggle .label').forEach(label => {
+                            label.textContent = theme === 'light' ? 'Light' : 'Dark';
+                        });
+                        const profileIcon = document.querySelector('#profileThemeToggle i');
+                        if (profileIcon){
+                            profileIcon.className = theme === 'light' ? 'fas fa-sun me-2' : 'fas fa-moon me-2';
+                        }
+                    }
+                    // Initialize
+                    apply(root.getAttribute('data-theme') || 'light');
+                    // Bind click events
+                    document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
+                        btn.addEventListener('click', function(ev){
+                            ev.preventDefault();
+                            const current = root.getAttribute('data-theme') || 'light';
+                            apply(current === 'light' ? 'dark' : 'light');
+                        });
+                    });
+                })();
+
+                // Intercept add-to-cart forms and POST via fetch to update badge live
+                (function(){
+                    function getCSRFTokenFromForm(form){
+                        const el = form.querySelector('input[name="csrfmiddlewaretoken"]');
+                        if (el) return el.value;
+                        // fallback: read cookie
+                        const name = 'csrftoken=';
+                        const parts = document.cookie.split(';');
+                        for (let i=0;i<parts.length;i++){
+                            let c = parts[i].trim();
+                            if (c.indexOf(name) === 0) return decodeURIComponent(c.substring(name.length));
+                        }
+                        return '';
+                    }
+
+                    function showToast(message, success=true){
+                        const container = document.createElement('div');
+                        container.className = 'alert ' + (success ? 'alert-success' : 'alert-danger') + ' position-fixed';
+                        container.style.right = '20px';
+                        container.style.bottom = '20px';
+                        container.style.zIndex = 1200;
+                        container.textContent = message;
+                        document.body.appendChild(container);
+                        setTimeout(()=>{ container.classList.add('fade'); }, 10);
+                        setTimeout(()=>{ try{ container.remove(); }catch(e){} }, 3000);
+                    }
+
+                    document.body.addEventListener('submit', async function(e){
+                        const form = e.target;
+                        if (!form || form.tagName !== 'FORM') return;
+                        const action = (form.getAttribute('action') || '').toLowerCase();
+                        if (!action.includes('/add-to-cart') && !action.includes('accessory/add-to-cart')) return;
+
+                        // Intercept
+                        e.preventDefault();
+                        const formData = new FormData(form);
+                        const csrf = getCSRFTokenFromForm(form);
+
+                        try{
+                            const resp = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRFToken': csrf
+                                },
+                                body: formData,
+                                credentials: 'same-origin'
+                            });
+
+                            if (!resp.ok){
+                                // Try to parse JSON error
+                                let text = await resp.text();
+                                try{ const j = JSON.parse(text); showToast(j.message || 'Error adding to cart', false); } catch(err){ showToast('Error adding to cart', false); }
+                                return;
+                            }
+
+                            const ct = resp.headers.get('content-type') || '';
+                            if (ct.includes('application/json')){
+                                const data = await resp.json();
+                                if (data.success){
+                                    // Redirect to cart page after successful add
+                                    window.location.href = "/cart/";
+                                } else {
+                                    showToast(data.message || 'Could not add to cart', false);
+                                }
+                            } else {
+                                // fallback: full page HTML - reload to reflect cart
+                                window.location.reload();
+                            }
+                        } catch(err){
+                            console.error('Add to cart failed', err);
+                            showToast('Network error adding to cart', false);
+                        }
+                    });
+                })();
+
+                // Make cards clickable: any element with .card[data-href] will navigate
+                // unless the click originated inside an interactive element (a, button, form, input, select, textarea, label)
+                (function(){
+                    function isInteractive(el){
+                        return el.closest && el.closest('a, button, form, input, select, textarea, label');
+                    }
+
+                    document.body.addEventListener('click', function(e){
+                        try{
+                            const card = e.target.closest && e.target.closest('.card[data-href]');
+                            if (!card) return;
+                            // If clicked on an interactive element inside the card, do nothing
+                            if (isInteractive(e.target)) return;
+                            const href = card.getAttribute('data-href');
+                            if (href) {
+                                window.location.href = href;
+                            }
+                        } catch(err) {
+                            // swallow
+                        }
+                    });
+
+                    // keyboard accessibility: enter/space on focused card
+                    document.body.addEventListener('keydown', function(e){
+                        const active = document.activeElement;
+                        if (!active) return;
+                        if (!active.classList || !active.classList.contains('card')) return;
+                        if (!active.hasAttribute('data-href')) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            // prevent scrolling on space
+                            e.preventDefault();
+                            const href = active.getAttribute('data-href');
+                            if (href) window.location.href = href;
+                        }
+                    });
+                })();
+
+                // (Removed category-select replacement behavior) 
+            });
+        </script>
+        
+</body>
+</html>
+

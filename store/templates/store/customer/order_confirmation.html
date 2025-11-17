@@ -1,0 +1,42 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<section class="section order-confirmation-center">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-8 col-lg-6">
+        <div class="card mt-5 mb-4">
+          <div class="card-header text-center">
+            <h2 class="text-success"><i class="fas fa-check-circle"></i> Order Confirmed!</h2>
+          </div>
+          <div class="card-body text-center">
+            <h4>Order <code>{{ order.order_number }}</code></h4>
+            <p class="mb-2">Thank you for your purchase, <strong>{{ order.user.first_name }}</strong>!</p>
+            <p class="mb-3">Your order has been placed and is being processed.</p>
+            <ul class="list-group mb-3 text-start">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>Status:</span>
+                <span class="fw-bold text-{{ 'success' if order.payment_status == 'paid' else 'warning' }}">{{ order.get_payment_status_display }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>Total Amount:</span>
+                <span class="fw-bold">{{ order.final_amount|rupees }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>Payment Method:</span>
+                <span>{{ order.get_payment_method_display }}</span>
+              </li>
+            </ul>
+            {% if order.payment_status == 'paid' %}
+              <a href="{{ order.invoice_url }}" class="btn btn-success mb-2" target="_blank"><i class="fas fa-file-invoice"></i> Download Invoice</a>
+            {% endif %}
+            <div class="d-grid gap-2 mt-3">
+              <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary">View My Orders</a>
+              <a href="{% url 'home' %}" class="btn btn-outline-secondary">Continue Shopping</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

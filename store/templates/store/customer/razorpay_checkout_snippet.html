@@ -1,0 +1,116 @@
+{#
+Minimal Razorpay Checkout snippet.
+
+Usage: include this template on your checkout page where `order` is in context.
+
+It calls the backend endpoint that creates a Razorpay order (see `create_razorpay_order`).
+
+Make sure `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are set in .env and
+`razorpay` package is installed. Configure your webhook in Razorpay dashboard
+to point at the webhook URL added earlier.
+#}
+
+<div id="razorpay-checkout-container">
+  <button id="razorpay-pay-btn" class="btn btn-primary">Pay with Razorpay</button>
+  <div id="razorpay-status" style="margin-top:8px;display:none;"></div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(function(){
+  const btn = document.getElementById('razorpay-pay-btn');
+  const status = document.getElementById('razorpay-status');
+  if(!btn) return;
+
+  // CSRF helper: prefer form token, fallback to cookie
+  function getCookie(name) {
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        return decodeURIComponent(cookie.substring(name.length + 1));
+      }
+    }
+    return null;
+  }
+  let csrftoken = null;
+  const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (csrfInput && csrfInput.value) csrftoken = csrfInput.value;
+  if (!csrftoken) csrftoken = getCookie('csrftoken');
+
+  btn.addEventListener('click', async function(){
+    btn.disabled = true;
+    status.style.display = 'none';
+    try{
+      // First, create or get a draft order via AJAX POST
+      const draftUrl = "{% url 'create_draft_order' %}";
+      const draftResp = await fetch(draftUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } });
+      if(!draftResp.ok) throw new Error('Failed to create draft order');
+      const draftData = await draftResp.json();
+      if(!draftData.order_id) throw new Error('No order id returned from draft creation');
+
+      // Next, request the server to create a Razorpay provider order for the draft (POST + CSRF)
+      const createTemplate = "{% url 'create_razorpay_order' 0 %}"; // e.g. /payments/razorpay/create/0/
+      const createUrl = createTemplate.replace('/0/', `/${draftData.order_id}/`);
+      const resp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } });
+      if(!resp.ok) throw new Error('Failed to create provider order');
+      const data = await resp.json();
+
+      const options = {
+        key: data.razorpay_key,
+        amount: data.amount,
+        currency: data.currency || 'INR',
+        name: window.siteName || document.title || 'Payment',
+        description: `Order ${draftData.order_number || draftData.order_id}`,
+        order_id: data.razorpay_order_id,
+        handler: async function (response){
+          try{
+            const verifyUrl = "{% url 'verify_razorpay_payment' %}";
+            const payload = {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              order_id: draftData.order_id
+            };
+            const vresp = await fetch(verifyUrl, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if(!vresp.ok) throw new Error('Verification failed');
+          }catch(e){
+            console.error('Payment verification error', e);
+          } finally{
+            // Redirect to order detail if available; fallback to home
+            try{
+              window.location.href = `/order/${draftData.order_id}/`;
+            }catch(e){
+              window.location.href = '/';
+            }
+          }
+        },
+        modal: {
+          ondismiss: function(){
+            btn.disabled = false;
+          }
+        },
+        prefill: {
+          name: "{{ order.user.first_name }} {{ order.user.last_name }}",
+          email: "{{ order.user.email }}",
+          contact: "{{ order.phone_number|default:order.user.phone_number|default:'' }}"
+        }
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+    }catch(err){
+      console.error('Razorpay error', err);
+      status.style.display = 'block';
+      status.style.color = 'red';
+      status.textContent = 'Unable to start payment. Please try again or contact support.';
+      btn.disabled = false;
+    }
+  });
+})();
+</script>

@@ -222,21 +222,21 @@ class Order(models.Model):
         ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     PAYMENT_METHOD_CHOICES = [
         ('card', 'Credit/Debit Card'),
         ('upi', 'UPI Payment'),
         ('netbanking', 'Net Banking'),
         ('wallet', 'Digital Wallet'),
     ]
-    
+
     PAYMENT_STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('paid', 'Paid'),
         ('failed', 'Failed'),
         ('refunded', 'Refunded'),
     ]
-    
+
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders')
     order_number = models.CharField(max_length=20, unique=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -247,20 +247,33 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='card')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
-    shipping_address = models.TextField()
-    phone_number = models.CharField(max_length=15)
+    # Provider's order id (e.g., Razorpay order id or Stripe PaymentIntent id)
+    provider_order_id = models.CharField(max_length=200, blank=True, null=True)
+    shipping_address = models.TextField(blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"Order {self.order_number} - {self.user.username}"
-    
+
     @staticmethod
     def generate_order_number():
         while True:
             order_number = f"ORD{random.randint(100000, 999999)}"
             if not Order.objects.filter(order_number=order_number).exists():
                 return order_number
+
+    @property
+    def invoice_url(self):
+        if self.payment_status != 'paid':
+            return None
+        from django.conf import settings
+        import os
+        invoice_path = os.path.join(settings.MEDIA_ROOT, 'invoices', f'invoice-{self.order_number}.pdf')
+        if os.path.exists(invoice_path):
+            return settings.MEDIA_URL + f'invoices/invoice-{self.order_number}.pdf'
+        return None
 
 
 class OrderItem(models.Model):

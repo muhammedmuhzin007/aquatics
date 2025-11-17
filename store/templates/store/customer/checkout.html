@@ -157,6 +157,14 @@
                     </div>
                 </div>
                 
+                <!-- Draft notice -->
+                {% if order and order.payment_status == 'pending' and not order.transaction_id %}
+                <div class="alert alert-info mt-3">
+                    <strong>Draft order created:</strong>
+                    Order <code>{{ order.order_number }}</code> has been prepared. It will be finalized when you place the order.
+                </div>
+                {% endif %}
+
                 <!-- Coupon Code Section -->
                 <div class="card mb-4">
                     <div class="card-header">
@@ -226,7 +234,7 @@
                     </div>
                 </div>
                 
-                <form method="POST" class="checkout-form">
+                <form method="POST" class="checkout-form" id="ajax-checkout-form" autocomplete="off">
                     {% csrf_token %}
                 <div class="card">
                     <div class="card-header">
@@ -291,13 +299,15 @@
                                        required placeholder="Enter your phone number">
                             </div>
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-check"></i> Place Order
+                                <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn">
+                                    <span id="place-order-btn-text"><i class="fas fa-check"></i> Place Order</span>
+                                    <span id="place-order-btn-spinner" style="display:none"><i class="fas fa-spinner fa-spin"></i> Processing...</span>
                                 </button>
                                 <a href="{% url 'cart' %}" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left"></i> Back to Cart
                                 </a>
                             </div>
+                            <div id="checkout-message" class="mt-3"></div>
                         
                     </div>
                 </div>
@@ -442,5 +452,96 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 });
-</script>
+{% if order %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+// AJAX checkout form logic
+const checkoutForm = document.getElementById('ajax-checkout-form');
+const placeOrderBtn = document.getElementById('place-order-btn');
+const btnText = document.getElementById('place-order-btn-text');
+const btnSpinner = document.getElementById('place-order-btn-spinner');
+const messageDiv = document.getElementById('checkout-message');
+function showCheckoutMessage(msg, type='danger') {
+    messageDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => { messageDiv.innerHTML = ''; }, 6000);
+}
+if (checkoutForm) {
+    checkoutForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (placeOrderBtn) placeOrderBtn.disabled = true;
+        if (btnText) btnText.style.display = 'none';
+        if (btnSpinner) btnSpinner.style.display = '';
+        showCheckoutMessage('');
+        // Gather form data
+        const formData = new FormData(checkoutForm);
+        try {
+            // AJAX POST to checkout endpoint
+            const resp = await fetch('/checkout/', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
+                body: formData
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.order_id) {
+                throw new Error(data.error || 'Failed to create order');
+            }
+            // Now, create provider order and open Razorpay
+            const createTemplate = "/payments/razorpay/create/0/";
+            const createUrl = createTemplate.replace('/0/', `/${data.order_id}/`);
+            const provResp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') } });
+            if (!provResp.ok) throw new Error('Failed to create payment order');
+            const provData = await provResp.json();
+            // Open Razorpay Checkout
+            const options = {
+                key: provData.razorpay_key,
+                amount: provData.amount,
+                currency: provData.currency || 'INR',
+                name: window.siteName || document.title || 'Payment',
+                description: `Order ${data.order_number || data.order_id}`,
+                order_id: provData.razorpay_order_id,
+                handler: async function (response){
+                    try{
+                        const verifyUrl = "/payments/razorpay/verify/";
+                        const payload = {
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                            order_id: data.order_id
+                        };
+                        const vresp = await fetch(verifyUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }catch(e){
+                        // ignore, webhook will update order
+                    } finally{
+                        window.location.href = `/order-confirmation/${data.order_id}/`;
+                    }
+                },
+                modal: {
+                    ondismiss: function(){
+                        if (placeOrderBtn) placeOrderBtn.disabled = false;
+                        if (btnText) btnText.style.display = '';
+                        if (btnSpinner) btnSpinner.style.display = 'none';
+                    }
+                },
+                prefill: {
+                    name: data.user_name || '',
+                    email: data.user_email || '',
+                    contact: data.user_phone || ''
+                }
+            };
+            const rzp = new Razorpay(options);
+            rzp.open();
+        } catch (err) {
+            showCheckoutMessage(err.message || 'Order failed. Please try again.');
+            if (placeOrderBtn) placeOrderBtn.disabled = false;
+            if (btnText) btnText.style.display = '';
+            if (btnSpinner) btnSpinner.style.display = 'none';
+        }
+    });
+}
+{% endif %}
 {% endblock %}

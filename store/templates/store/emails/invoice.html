@@ -7,7 +7,7 @@
     <h4>Items</h4>
     <ul>
     {% for item in order_items %}
-      <li>{{ item.fish.name }} x {{ item.quantity }} @ {{ item.price }} = {{ item.get_total }}</li>
+      <li>{{ item.fish.name }} x {{ item.quantity }} - {{ item.price }} = {{ item.get_total }}</li>
     {% endfor %}
     </ul>
     {% if order_url %}

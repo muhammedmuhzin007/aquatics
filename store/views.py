@@ -10,7 +10,7 @@ def is_staff(user):
 def is_admin(user):
     return user.is_authenticated and user.role == 'admin'
 
-# Modernized checkout_view with AJAX, Razorpay, and draft order logic
+# Modernized checkout_view with AJAX and draft order logic
 @login_required
 @user_passes_test(is_customer)
 @csrf_protect
@@ -61,13 +61,10 @@ def checkout_view(request):
         # Generate transaction ID
         transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
 
-        # Set initial payment status based on payment method and provider
-        provider = getattr(settings, 'PAYMENT_PROVIDER', None)
-        provider = provider.lower() if isinstance(provider, str) else ''
-        if provider == 'razorpay':
-            payment_status = 'pending'
-        else:
-            payment_status = 'pending' if payment_method == 'upi' else 'paid'
+        # Set initial payment status to pending for all new orders (will be
+        # updated upon payment confirmation/webhook). This avoids provider-
+        # specific branching and keeps draft orders consistent.
+        payment_status = 'pending'
 
         # Try to find a recent draft order for this user and same cart totals
         draft_cutoff = timezone.now() - timedelta(minutes=30)
@@ -171,7 +168,8 @@ def checkout_view(request):
         except Coupon.DoesNotExist:
             del request.session['applied_coupon_code']
 
-    # Ensure a draft Order exists for the checkout page so the Razorpay snippet has an `order` to reference.
+    # Ensure a draft Order exists for the checkout page so the payment snippet
+    # (client integration) has an `order` to reference.
     try:
         draft_cutoff = timezone.now() - timedelta(minutes=30)
         draft_order = Order.objects.filter(

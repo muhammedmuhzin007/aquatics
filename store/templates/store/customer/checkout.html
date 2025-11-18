@@ -453,9 +453,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 {% if order %}
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-// AJAX checkout form logic
+// AJAX checkout form logic (provider-agnostic).
 const checkoutForm = document.getElementById('ajax-checkout-form');
 const placeOrderBtn = document.getElementById('place-order-btn');
 const btnText = document.getElementById('place-order-btn-text');
@@ -472,10 +471,9 @@ if (checkoutForm) {
         if (btnText) btnText.style.display = 'none';
         if (btnSpinner) btnSpinner.style.display = '';
         showCheckoutMessage('');
-        // Gather form data
         const formData = new FormData(checkoutForm);
         try {
-            // AJAX POST to checkout endpoint
+            // Create the draft/final order via AJAX
             const resp = await fetch('/checkout/', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
@@ -485,56 +483,16 @@ if (checkoutForm) {
             if (!resp.ok || !data.order_id) {
                 throw new Error(data.error || 'Failed to create order');
             }
-            // Now, create provider order and open Razorpay
-            const createTemplate = "/payments/razorpay/create/0/";
-            const createUrl = createTemplate.replace('/0/', `/${data.order_id}/`);
+
+            // Ask backend to create provider order (Stripe-backed endpoint)
+            const createUrl = `/payments/stripe/create/${data.order_id}/`;
             const provResp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') } });
             if (!provResp.ok) throw new Error('Failed to create payment order');
-            const provData = await provResp.json();
-            // Open Razorpay Checkout
-            const options = {
-                key: provData.razorpay_key,
-                amount: provData.amount,
-                currency: provData.currency || 'INR',
-                name: window.siteName || document.title || 'Payment',
-                description: `Order ${data.order_number || data.order_id}`,
-                order_id: provData.razorpay_order_id,
-                handler: async function (response){
-                    try{
-                        const verifyUrl = "/payments/razorpay/verify/";
-                        const payload = {
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_signature: response.razorpay_signature,
-                            order_id: data.order_id
-                        };
-                        const vresp = await fetch(verifyUrl, {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                    }catch(e){
-                        // ignore, webhook will update order
-                    } finally{
-                        window.location.href = `/order-confirmation/${data.order_id}/`;
-                    }
-                },
-                modal: {
-                    ondismiss: function(){
-                        if (placeOrderBtn) placeOrderBtn.disabled = false;
-                        if (btnText) btnText.style.display = '';
-                        if (btnSpinner) btnSpinner.style.display = 'none';
-                    }
-                },
-                prefill: {
-                    name: data.user_name || '',
-                    email: data.user_email || '',
-                    contact: data.user_phone || ''
-                }
-            };
-            const rzp = new Razorpay(options);
-            rzp.open();
+
+            // For now, redirect to the order confirmation page. Full client-side
+            // payment flows (Stripe Elements) can be implemented later using the
+            // returned `client_secret` from the provider create endpoint.
+            window.location.href = `/order-confirmation/${data.order_id}/`;
         } catch (err) {
             showCheckoutMessage(err.message || 'Order failed. Please try again.');
             if (placeOrderBtn) placeOrderBtn.disabled = false;

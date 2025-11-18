@@ -247,7 +247,7 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='card')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
-    # Provider's order id (e.g., Razorpay order id or Stripe PaymentIntent id)
+    # Provider's order id (e.g., Stripe PaymentIntent id or other provider id)
     provider_order_id = models.CharField(max_length=200, blank=True, null=True)
     shipping_address = models.TextField(blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)

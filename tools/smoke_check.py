@@ -3,6 +3,7 @@ import sys
 import pathlib
 import django
 import json
+import argparse
 from decimal import Decimal
 
 # Ensure project root is on sys.path so Django settings package is importable
@@ -10,18 +11,21 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Allow overriding the payment provider from the CLI for one-off runs
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument('--provider', '-p', help='Override payment provider (stripe|mock)')
+args, _ = parser.parse_known_args()
+if args.provider:
+    os.environ['PAYMENT_PROVIDER'] = args.provider
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fishy_friend_aquatics.settings')
-# Use mock payment provider for local smoke tests
-os.environ.setdefault('PAYMENT_PROVIDER', 'mock')
 django.setup()
 
-# Ensure Django settings use the mock provider (some setups read from env early;
-# setting it explicitly on the settings object guarantees mock provider is used)
 from django.conf import settings as dj_settings
-try:
-    dj_settings.PAYMENT_PROVIDER = 'mock'
-except Exception:
-    pass
+
+# Determine provider: prefer environment, then Django settings, else default to 'mock'
+PROVIDER = os.environ.get('PAYMENT_PROVIDER') or getattr(dj_settings, 'PAYMENT_PROVIDER', 'mock')
+PROVIDER = (PROVIDER or 'mock').lower()
 
 from django.contrib.auth import get_user_model
 from django.test import Client
@@ -82,7 +86,7 @@ try:
 except Exception:
     print('checkout text:', checkout_resp.content.decode('utf-8')[:500])
 
-# If order created, try to call create_razorpay_order
+# If order created, route provider create/verify through the Stripe-backed endpoints
 order_id = None
 try:
     data = checkout_resp.json()
@@ -90,26 +94,35 @@ try:
 except Exception:
     pass
 
-if order_id:
-    create_resp = client.post(f'/payments/razorpay/create/{order_id}/')
-    print('create_razorpay status:', create_resp.status_code)
-    try:
-        print('create_razorpay json:', create_resp.json())
-    except Exception:
-        print('create_razorpay text:', create_resp.content.decode('utf-8')[:500])
+if not order_id:
+    print('No order_id returned from checkout; skipping provider checks')
+else:
+    # Route create/verify through the Stripe-backed endpoints (Stripe or mock provider)
+    create_path = f'/payments/stripe/create/{order_id}/'
+    verify_path = '/payments/stripe/verify/'
 
-    # Attempt verify with dummy payload (likely to fail if signature doesn't match)
-    verify_payload = {
-        'razorpay_payment_id': 'pay_ABC',
-        'razorpay_order_id': 'order_ABC',
-        'razorpay_signature': 'sig_ABC',
-        'order_id': order_id,
-    }
-    verify_resp = client.post('/payments/razorpay/verify/', json.dumps(verify_payload), content_type='application/json')
+    create_resp = client.post(create_path)
+    print('create status:', create_resp.status_code)
+    try:
+        create_json = create_resp.json()
+        print('create json:', create_json)
+    except Exception:
+        print('create text:', create_resp.content.decode('utf-8')[:500])
+        create_json = {}
+
+    # Build a generic verify payload using whatever id the provider returned
+    pid = (
+        create_json.get('payment_intent_id') or
+        create_json.get('id') or
+        create_json.get('payment_intent') or
+        create_json.get('provider_order_id') or
+        create_json.get('provider_order') or
+        f'mock_pid_{order_id}'
+    )
+    verify_payload = {'payment_intent_id': pid, 'order_id': order_id}
+    verify_resp = client.post(verify_path, json.dumps(verify_payload), content_type='application/json')
     print('verify status:', verify_resp.status_code)
     try:
         print('verify json:', verify_resp.json())
     except Exception:
         print('verify text:', verify_resp.content.decode('utf-8')[:500])
-else:
-    print('No order_id returned from checkout; skipping provider checks')

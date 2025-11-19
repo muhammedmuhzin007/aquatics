@@ -1,6 +1,8 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect
 
+from .payments import razorpay as razorpay_provider
+
 def is_customer(user):
     return user.is_authenticated and user.role == 'customer'
 
@@ -3110,3 +3112,27 @@ def change_password_view(request):
 
     return render(request, 'store/change_password.html', {'form': form})
 
+
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+import razorpay
+
+def start_payment(request):
+    amount = 50000  # amount in paise (₹500)
+
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+    # Create order
+    payment = client.order.create({
+        "amount": amount,
+        "currency": "INR",
+        "payment_capture": "1",  # auto capture
+    })
+
+    # Pass order to frontend
+    context = {
+        "order_id": payment["id"],
+        "amount": amount,
+        "razorpay_key": settings.RAZORPAY_KEY_ID,
+    }
+    return render(request, "payment.html", context)

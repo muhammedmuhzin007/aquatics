@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from . import stripe_integration
+from . import razorpay_integration
 
 urlpatterns = [
     # Authentication
@@ -49,10 +49,10 @@ urlpatterns = [
     path('upi-payment/<int:order_id>/', views.upi_payment_view, name='upi_payment'),
     path('verify-upi/<int:order_id>/', views.verify_upi_payment, name='verify_upi_payment'),
     # Payment endpoints (Stripe-backed integration is the primary path now)
-    # Stripe payment endpoints
-    path('payments/stripe/create/<int:order_id>/', stripe_integration.create_stripe_payment, name='create_stripe_payment'),
-    path('payments/stripe/webhook/', stripe_integration.stripe_webhook, name='stripe_webhook'),
-    path('payments/stripe/verify/', stripe_integration.verify_stripe_payment, name='verify_stripe_payment'),
+    # Razorpay payment endpoints
+    path('payments/razorpay/create/<int:order_id>/', razorpay_integration.create_razorpay_payment, name='create_razorpay_payment'),
+    path('payments/razorpay/webhook/', razorpay_integration.razorpay_webhook, name='razorpay_webhook'),
+    path('payments/razorpay/verify/', razorpay_integration.verify_razorpay_payment, name='verify_razorpay_payment'),
     
     # Staff Routes
     path('staff/dashboard/', views.staff_dashboard_view, name='staff_dashboard'),

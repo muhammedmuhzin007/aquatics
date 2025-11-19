@@ -484,15 +484,94 @@ if (checkoutForm) {
                 throw new Error(data.error || 'Failed to create order');
             }
 
-            // Ask backend to create provider order (Stripe-backed endpoint)
-            const createUrl = `/payments/stripe/create/${data.order_id}/`;
+            // Ask backend to create provider order (Razorpay-backed endpoint)
+            const createUrl = `/payments/razorpay/create/${data.order_id}/`;
             const provResp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') } });
             if (!provResp.ok) throw new Error('Failed to create payment order');
+            const provJson = await provResp.json();
 
-            // For now, redirect to the order confirmation page. Full client-side
-            // payment flows (Stripe Elements) can be implemented later using the
-            // returned `client_secret` from the provider create endpoint.
-            window.location.href = `/order-confirmation/${data.order_id}/`;
+            // Expected response: { razorpay_order_id, razorpay_key_id, amount, currency }
+            const rOrderId = provJson.razorpay_order_id;
+            const rKeyId = provJson.razorpay_key_id || provJson.key_id || provJson.razorpay_key;
+            if (!rOrderId || !rKeyId) {
+                throw new Error('Provider did not return required Razorpay parameters');
+            }
+
+            // Load Razorpay checkout script if needed
+            function loadScript(src){
+                return new Promise((resolve, reject) => {
+                    if (window.Razorpay) return resolve();
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => resolve();
+                    s.onerror = () => reject(new Error('Failed to load Razorpay script'));
+                    document.head.appendChild(s);
+                });
+            }
+
+            try {
+                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+            } catch (err) {
+                throw new Error('Could not load Razorpay checkout library');
+            }
+
+            const options = {
+                key: rKeyId,
+                amount: provJson.amount || provJson.amount_paise || undefined,
+                currency: provJson.currency || 'INR',
+                name: "{{ SITE_NAME|escapejs }}",
+                description: `Order ${data.order_id}`,
+                order_id: rOrderId,
+                handler: async function(response){
+                    // response contains: razorpay_payment_id, razorpay_order_id, razorpay_signature
+                    try {
+                        const verifyPayload = {
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                            order_id: data.order_id
+                        };
+                        const verifyResp = await fetch('/payments/razorpay/verify/', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                            },
+                            body: JSON.stringify(verifyPayload)
+                        });
+                        if (!verifyResp.ok) throw new Error('Verification failed');
+                        const vjson = await verifyResp.json();
+                        if (vjson.success) {
+                            // Redirect to confirmation
+                            window.location.href = `/order-confirmation/${data.order_id}/`;
+                        } else {
+                            throw new Error(vjson.message || 'Payment verification failed');
+                        }
+                    } catch (err) {
+                        showCheckoutMessage(err.message || 'Payment verification failed.');
+                        if (placeOrderBtn) placeOrderBtn.disabled = false;
+                        if (btnText) btnText.style.display = '';
+                        if (btnSpinner) btnSpinner.style.display = 'none';
+                    }
+                },
+                prefill: {
+                    email: "{{ user.email|default:''|escapejs }}",
+                    contact: document.querySelector('input[name="phone_number"]') ? document.querySelector('input[name="phone_number"]').value : "{{ user.phone_number|default:''|escapejs }}"
+                },
+                modal: {
+                    ondismiss: function(){
+                        // User dismissed the checkout popup
+                        showCheckoutMessage('Payment cancelled');
+                        if (placeOrderBtn) placeOrderBtn.disabled = false;
+                        if (btnText) btnText.style.display = '';
+                        if (btnSpinner) btnSpinner.style.display = 'none';
+                    }
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
         } catch (err) {
             showCheckoutMessage(err.message || 'Order failed. Please try again.');
             if (placeOrderBtn) placeOrderBtn.disabled = false;

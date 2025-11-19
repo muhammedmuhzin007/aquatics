@@ -1,19 +1,19 @@
 from .mock import MockProvider
-from .stripe import StripeProvider
+from .razorpay import RazorpayProvider
 import os
 
 # In the future, add: from .stripe import StripeProvider, etc.
 
 PROVIDERS = {
     'mock': MockProvider,
-    'stripe': StripeProvider,
+    'razorpay': RazorpayProvider,
 }
 
 def get_payment_provider(name=None):
     from django.conf import settings
     if not name:
-        # Prefer environment override, then Django settings, then default to 'stripe'.
-        name = os.environ.get('PAYMENT_PROVIDER') or getattr(settings, 'PAYMENT_PROVIDER', 'stripe')
+        # Prefer environment override, then Django settings, then default to 'razorpay'.
+        name = os.environ.get('PAYMENT_PROVIDER') or getattr(settings, 'PAYMENT_PROVIDER', 'razorpay')
     name = name.lower()
     provider_cls = PROVIDERS.get(name)
     if not provider_cls:

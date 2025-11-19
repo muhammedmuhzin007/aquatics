@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Allow overriding the payment provider from the CLI for one-off runs
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument('--provider', '-p', help='Override payment provider (stripe|mock)')
+parser.add_argument('--provider', '-p', help='Override payment provider (razorpay|mock)')
 args, _ = parser.parse_known_args()
 if args.provider:
     os.environ['PAYMENT_PROVIDER'] = args.provider
@@ -86,7 +86,7 @@ try:
 except Exception:
     print('checkout text:', checkout_resp.content.decode('utf-8')[:500])
 
-# If order created, route provider create/verify through the Stripe-backed endpoints
+# If order created, route provider create/verify through the provider endpoints
 order_id = None
 try:
     data = checkout_resp.json()
@@ -97,9 +97,9 @@ except Exception:
 if not order_id:
     print('No order_id returned from checkout; skipping provider checks')
 else:
-    # Route create/verify through the Stripe-backed endpoints (Stripe or mock provider)
-    create_path = f'/payments/stripe/create/{order_id}/'
-    verify_path = '/payments/stripe/verify/'
+    # Route create/verify through the configured provider endpoints
+    create_path = f'/payments/{PROVIDER}/create/{order_id}/'
+    verify_path = f'/payments/{PROVIDER}/verify/'
 
     create_resp = client.post(create_path)
     print('create status:', create_resp.status_code)

@@ -288,6 +288,33 @@ body.aquatic-bg {
     gap: 8px;
 }
 
+/* Logo images used in top nav and navbar brand */
+
+.top-nav-logo .site-logo {
+    height: 60px;
+    width: 60px;
+    display: inline-block;
+    object-fit: cover;
+    border-radius: 50%;
+    overflow: hidden;
+    display: block;
+}
+
+.navbar-brand .navbar-logo {
+    height: 60px; /* fixed square size */
+    width: 60px;
+    display: block;
+    object-fit: cover; /* crop to fit */
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+@media (max-width: 576px) {
+    /* Keep logo square and circular on small screens */
+    .top-nav-logo .site-logo { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; overflow: hidden; }
+    .navbar-brand .navbar-logo { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; overflow: hidden; margin-right: 6px; }
+}
+
 .top-nav-link {
     color: var(--text-gray);
     text-decoration: none;

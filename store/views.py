@@ -584,14 +584,15 @@ def generate_invoice_pdf(order):
         except Exception:
             use_unicode_font = False
 
-        # Header: logo + company name
-        logo_path = os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'images', 'hero-betta-fish.png')
+        # Header: logo + company name (use site logo)
+        logo_path = os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'images', 'logo.jpg')
         if os.path.exists(logo_path):
             try:
                 pdf.image(logo_path, x=15, y=10, w=30)
             except Exception:
                 pass
-        pdf.set_xy(50, 12)
+        # Move the site name down by ~10px (≈2.65mm) for subtle spacing
+        pdf.set_xy(50, 14.5)
         # Choose font family depending on availability
         header_font = 'DejaVu' if use_unicode_font else 'Arial'
         regular_font = 'DejaVu' if use_unicode_font else 'Arial'

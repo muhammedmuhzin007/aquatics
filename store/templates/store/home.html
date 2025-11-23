@@ -48,6 +48,7 @@
     cursor: pointer;
     text-decoration: none;
     display: block;
+    z-index: 1; /* keep banner below nav controls (nav uses much higher z-index) */
 }
 
 .offer-banner-item.active {
@@ -83,6 +84,7 @@
     background-repeat: no-repeat;
     transform: scale(1.1);
     transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 0;
 }
 
 .offer-banner-item.active .offer-banner-bg {
@@ -262,7 +264,7 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    z-index: 10;
+    z-index: 9999;
     font-size: 1.2rem;
     backdrop-filter: blur(8px);
     outline: none;
@@ -277,6 +279,15 @@
 .offer-carousel-nav:focus {
     outline: 2px solid rgba(255, 255, 255, 0.8);
     outline-offset: 2px;
+}
+
+/* Ensure nav buttons receive pointer events even if parent elements add overlays */
+.offer-carousel-nav { pointer-events: auto; }
+
+/* DEBUG: temporary outline to verify nav button click areas during testing */
+.offer-carousel-nav.debug-outline {
+    outline: 3px solid rgba(255,0,0,0.7);
+    box-shadow: 0 0 0 6px rgba(255,0,0,0.08);
 }
 
 .offer-carousel-prev {
@@ -788,12 +799,13 @@ html[data-theme='light'] .category-carousel-nav:hover {
 </div>
 
 <!-- About Section -->
+{% if limited_offers %}
+<!-- Limited Offers Heading + Banner -->
 <section class="section">
     <div class="container-fluid">
         <h2 class="section-heading">Limited Offers</h2>
     </div>
 </section>
-        {% if limited_offers %}
         <section class="limited-offers-banner">
             <div class="container-fluid">
                 <div class="offer-banner-carousel">
@@ -851,17 +863,15 @@ html[data-theme='light'] .category-carousel-nav:hover {
                     </a>
                     {% endfor %}
                     
-                    <!-- Navigation Arrows (only show if more than 1 offer) -->
-                    {% if limited_offers|length > 1 %}
-                    <button class="offer-carousel-nav offer-carousel-prev" id="offerCarouselPrev" aria-label="Previous offer">
-                        <i class="fas fa-chevron-left"></i>
+                    <!-- Navigation Arrows (always rendered so client-side can control visibility) -->
+                    <button class="offer-carousel-nav offer-carousel-prev" id="offerCarouselPrev" aria-label="Previous offer" title="Previous offer" tabindex="0" aria-controls="offerCarousel">
+                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
                     </button>
-                    <button class="offer-carousel-nav offer-carousel-next" id="offerCarouselNext" aria-label="Next offer">
-                        <i class="fas fa-chevron-right"></i>
+                    <button class="offer-carousel-nav offer-carousel-next" id="offerCarouselNext" aria-label="Next offer" title="Next offer" tabindex="0" aria-controls="offerCarousel">
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
                     </button>
-                    
+
                     <!-- Indicator Dots removed: UI simplified by hiding the small dots -->
-                    {% endif %}
                 </div>
             </div>
         </section>
@@ -1159,6 +1169,8 @@ html[data-theme='light'] .review-dot.active {
 <script>
 // Hero Carousel
 document.addEventListener('DOMContentLoaded', function(){
+    try {
+        console.debug('home.js DOMContentLoaded');
     const heroSlides = document.querySelectorAll('.hero-slide');
     const heroDots = document.querySelectorAll('.hero-dot');
     const heroPrevBtn = document.getElementById('heroPrev');
@@ -1244,8 +1256,8 @@ document.addEventListener('DOMContentLoaded', function(){
     
     // Enhanced review carousel with indicators
     const track = document.querySelector('#reviewCarouselTrack');
-    if(!track) return;
-    
+    if(track) {
+
     const items = track.querySelectorAll('.review-slide');
     const dots = document.querySelectorAll('.review-dot');
 
@@ -1322,98 +1334,80 @@ document.addEventListener('DOMContentLoaded', function(){
     // Pause on hover
     track.addEventListener('mouseenter', stopAutoPlay);
     track.addEventListener('mouseleave', startAutoPlay);
+
+    } // end if(track)
     
-    // Offer Banner Carousel
-    const offerBanners = document.querySelectorAll('.offer-banner-item');
-    const offerDots = document.querySelectorAll('.offer-carousel-dot');
-    const offerPrevBtn = document.getElementById('offerCarouselPrev');
-    const offerNextBtn = document.getElementById('offerCarouselNext');
-    
-    let offerIdx = 0;
-    let offerAutoPlayInterval;
-    
-    function showOfferBanner(i){
-        offerBanners.forEach((banner, j) => {
-            if(j === i) {
-                banner.classList.add('active');
-            } else {
-                banner.classList.remove('active');
-            }
-        });
-        
-        offerDots.forEach((dot, j) => {
-            if(j === i) {
-                dot.classList.add('active');
-            } else {
-                dot.classList.remove('active');
-            }
-        });
-    }
-    
-    function nextOfferBanner(){
-        offerIdx = (offerIdx + 1) % offerBanners.length;
-        showOfferBanner(offerIdx);
-    }
-    
-    function prevOfferBanner(){
-        offerIdx = (offerIdx - 1 + offerBanners.length) % offerBanners.length;
-        showOfferBanner(offerIdx);
-    }
-    
-    function startOfferAutoPlay(){
-        stopOfferAutoPlay();
-        if(offerBanners.length > 1){
-            offerAutoPlayInterval = setInterval(nextOfferBanner, 5000);
-        }
-    }
-    
-    function stopOfferAutoPlay(){
-        if(offerAutoPlayInterval){
-            clearInterval(offerAutoPlayInterval);
-        }
-    }
-    
-    // Initialize offer carousel
-    if(offerBanners.length > 0){
-        showOfferBanner(offerIdx);
-        startOfferAutoPlay();
-        
-        // Navigation buttons
-        offerNextBtn?.addEventListener('click', function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            nextOfferBanner();
-            stopOfferAutoPlay();
-            startOfferAutoPlay();
-        });
-        
-        offerPrevBtn?.addEventListener('click', function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            prevOfferBanner();
-            stopOfferAutoPlay();
-            startOfferAutoPlay();
-        });
-        
-        // Dot indicators
-        offerDots.forEach((dot, i) => {
-            dot.addEventListener('click', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                offerIdx = i;
-                showOfferBanner(offerIdx);
-                stopOfferAutoPlay();
-                startOfferAutoPlay();
-            });
-        });
-        
-        // Pause on hover
+    // Offer Banner Carousel (scoped, single-binding, robust)
+    (function(){
         const offerCarousel = document.querySelector('.offer-banner-carousel');
-        if(offerCarousel){
-            offerCarousel.addEventListener('mouseenter', stopOfferAutoPlay);
-            offerCarousel.addEventListener('mouseleave', startOfferAutoPlay);
+        if(!offerCarousel) return;
+
+        const banners = Array.from(offerCarousel.querySelectorAll('.offer-banner-item'));
+        const prevBtn = offerCarousel.querySelector('#offerCarouselPrev') || document.getElementById('offerCarouselPrev');
+        const nextBtn = offerCarousel.querySelector('#offerCarouselNext') || document.getElementById('offerCarouselNext');
+        const dots = Array.from(offerCarousel.querySelectorAll('.offer-carousel-dot'));
+
+        if(banners.length === 0) return;
+
+        let idx = banners.findIndex(b => b.classList.contains('active'));
+        if(idx === -1) idx = 0;
+        let autoInterval = null;
+
+        function show(i){
+            banners.forEach((b, j) => b.classList.toggle('active', j === i));
+            dots.forEach((d, j) => d.classList.toggle('active', j === i));
         }
-    }
+
+        function next(){
+            idx = (idx + 1) % banners.length;
+            show(idx);
+        }
+
+        function prev(){
+            idx = (idx - 1 + banners.length) % banners.length;
+            show(idx);
+        }
+
+        function startAuto(){
+            stopAuto();
+            if(banners.length > 1) autoInterval = setInterval(next, 5000);
+        }
+
+        function stopAuto(){
+            if(autoInterval){ clearInterval(autoInterval); autoInterval = null; }
+        }
+
+        // Single, defensive binding for controls
+        if(nextBtn && !nextBtn.__offerBound){
+            nextBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); next(); stopAuto(); startAuto(); });
+            nextBtn.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); nextBtn.click(); } });
+            nextBtn.__offerBound = true;
+        }
+
+        if(prevBtn && !prevBtn.__offerBound){
+            prevBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); prev(); stopAuto(); startAuto(); });
+            prevBtn.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); prevBtn.click(); } });
+            prevBtn.__offerBound = true;
+        }
+
+        // Dot bindings
+        if(dots.length){
+            dots.forEach((dot, i) => {
+                if(!dot.__offerBound){
+                    dot.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); idx = i; show(idx); stopAuto(); startAuto(); });
+                    dot.__offerBound = true;
+                }
+            });
+        }
+
+        // Pause on hover for the whole carousel element
+        offerCarousel.addEventListener('mouseenter', stopAuto);
+        offerCarousel.addEventListener('mouseleave', startAuto);
+
+        // Initialize
+        show(idx);
+        startAuto();
+    })();
     
     // Limited Offers Banner: countdown + progress bars
     function fmt(n){ return n.toString().padStart(2,'0'); }
@@ -1614,6 +1608,9 @@ document.addEventListener('DOMContentLoaded', function(){
             }, 250);
         });
     }
+    } catch(err) {
+        console.error('home.js uncaught error:', err);
+    }
 });
 
     // Featured fishes carousel (infinite loop with clones)
@@ -1726,4 +1723,6 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     })();
 </script>
+{% load static %}
+<script src="{% static 'js/home.offers.js' %}"></script>
 {% endblock %}

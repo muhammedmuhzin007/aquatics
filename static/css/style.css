@@ -251,6 +251,8 @@ body.aquatic-bg {
     background: var(--dark-bg);
     min-height: 100vh;
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Top Navigation Bar */
@@ -1134,6 +1136,7 @@ html[data-theme='light'] .deal-badge-large {
     padding: 40px;
     max-width: 1400px;
     margin: 0 auto;
+    flex: 1 0 auto; /* allow main content to grow and push footer to bottom */
 }
 
 /* Section Spacing */

@@ -52,6 +52,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'fishy_friend_aquatics.context_processors.site_settings',
+                'fishy_friend_aquatics.context_processors.global_flags',
             ],
             'libraries': {
                 'currency': 'store.templatetags.currency',

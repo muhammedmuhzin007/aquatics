@@ -350,5 +350,24 @@ html[data-theme='light'] .readmore-btn {
 html[data-theme='light'] .readmore-btn:hover {
     background: rgba(0,0,0,0.04) !important;
 }
+
+/* Contact card theming: keep cards adaptive to theme */
+.contact-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+.contact-card .text-white { color: var(--text-white) !important; }
+.contact-card .text-gray { color: rgba(255,255,255,0.75); }
+
+/* Light theme overrides */
+html[data-theme='light'] .contact-card { background: #fff; border: 1px solid var(--light-border); }
+html[data-theme='light'] .contact-card .text-gray { color: var(--light-text-soft); }
+
+/* Map card should match theme */
+.contact-card iframe { background: transparent; }
+
+/* Gallery thumbnails (if present) should use themed cards */
+.gallery-thumb { background: var(--card-bg); border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; }
+html[data-theme='light'] .gallery-thumb { background: var(--light-card); border: 1px solid var(--light-border); }
 </style>
 {% endblock %}

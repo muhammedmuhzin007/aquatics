@@ -508,32 +508,14 @@ def _send_order_email(order, template_base, subject, recipient_email, request=No
             except Exception:
                 logging.getLogger(__name__).exception('Failed to generate PDF invoice for order %s', order.order_number)
 
-        # If we have a download URL, append it to the email bodies so customer can fetch the invoice even if attachment fails
-        if download_url:
-            try:
-                text_body = text_body + f"\n\nDownload your invoice: {download_url}\n"
-                # Append an HTML link
-                html_body = html_body + f"<p>Download your invoice: <a href=\"{download_url}\">Download Invoice</a></p>"
-                # Re-attach as alternative HTML
-                email = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_body,
-                    from_email=settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com',
-                    to=[recipient_email],
-                )
-                email.extra_headers = {'Reply-To': settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com'}
-                email.attach_alternative(html_body, 'text/html')
-                # Attach the PDF only if the system is configured to do so. Otherwise
-                # rely on the download link saved above. This avoids frequent SMTP
-                # DATA-phase timeouts observed with some providers when attachments
-                # are used.
-                try:
-                    if getattr(settings, 'INVOICE_ATTACHMENTS', False) and pdf_bytes:
-                        email.attach(f'invoice-{order.order_number}.pdf', pdf_bytes, 'application/pdf')
-                except Exception:
-                    logging.getLogger(__name__).exception('Failed to attach PDF to email for order %s', order.order_number)
-            except Exception:
-                logging.getLogger(__name__).exception('Failed to append download URL to email bodies for order %s', order.order_number)
+        # Attach the generated PDF to the email when configured. We do not
+        # include a download link in the email body to avoid exposing direct
+        # media links in emails.
+        try:
+            if getattr(settings, 'INVOICE_ATTACHMENTS', False) and pdf_bytes:
+                email.attach(f'invoice-{order.order_number}.pdf', pdf_bytes, 'application/pdf')
+        except Exception:
+            logging.getLogger(__name__).exception('Failed to attach PDF to email for order %s', order.order_number)
 
         try:
             email.send(fail_silently=False)
@@ -591,8 +573,14 @@ def generate_invoice_pdf(order):
                 pdf.image(logo_path, x=15, y=10, w=30)
             except Exception:
                 pass
-        # Move the site name down by ~10px (≈2.65mm) for subtle spacing
-        pdf.set_xy(50, 14.5)
+        # Move the site name down by 40px. Convert pixels to mm assuming 96 DPI
+        # (1 inch = 25.4 mm; px_to_mm = 25.4 / 96). 40px ≈ 10.583 mm.
+        try:
+            px_to_mm = 25.4 / 96.0
+            y_offset_mm = 40 * px_to_mm
+        except Exception:
+            y_offset_mm = 10.583
+        pdf.set_xy(50, 14.5 + y_offset_mm)
         # Choose font family depending on availability
         header_font = 'DejaVu' if use_unicode_font else 'Arial'
         regular_font = 'DejaVu' if use_unicode_font else 'Arial'
@@ -1051,7 +1039,7 @@ def admin_limited_offers_view(request):
 @user_passes_test(is_admin)
 def admin_add_limited_offer_view(request):
     if request.method == 'POST':
-        form = LimitedOfferForm(request.POST)
+        form = LimitedOfferForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, 'Limited offer created successfully.')
@@ -1065,7 +1053,7 @@ def admin_add_limited_offer_view(request):
 def admin_edit_limited_offer_view(request, offer_id):
     offer = get_object_or_404(LimitedOffer, id=offer_id)
     if request.method == 'POST':
-        form = LimitedOfferForm(request.POST, instance=offer)
+        form = LimitedOfferForm(request.POST, request.FILES, instance=offer)
         if form.is_valid():
             form.save()
             messages.success(request, 'Limited offer updated successfully.')
@@ -1227,24 +1215,16 @@ def customer_accessories_view(request):
         else:
             accessories_qs = accessories_qs.order_by('-id')
 
-    # Pagination
-    page_size = 12
-    paginator = Paginator(accessories_qs, page_size)
-    page = request.GET.get('page', 1)
-    try:
-        accessories_page = paginator.page(page)
-    except (PageNotAnInteger, EmptyPage):
-        accessories_page = paginator.page(1)
-
-    # If AJAX request, return partial (render the grid with the page)
+    # No pagination — return the full accessory list as requested
+    # If AJAX request, return partial rendering of the full grid
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        html = render(request, 'store/customer/_accessory_grid.html', {'accessories': accessories_page}).content.decode('utf-8')
+        html = render(request, 'store/customer/_accessory_grid.html', {'accessories': accessories_qs}).content.decode('utf-8')
         return JsonResponse({'html': html})
 
     categories = Category.objects.all()
 
     return render(request, 'store/customer/accessories.html', {
-        'accessories': accessories_page,
+        'accessories': accessories_qs,
         'search_query': q,
         'categories': categories,
         'selected_category': category_id,

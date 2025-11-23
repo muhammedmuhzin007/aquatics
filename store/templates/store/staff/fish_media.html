@@ -3,22 +3,62 @@
 
 {% block content %}
 <style>
-  .media-form-stable input.form-control,
-  .media-form-stable select.form-select,
-  .media-form-stable input[type="file"] {
+  html[data-theme='dark'] .media-form-stable input.form-control,
+  html[data-theme='dark'] .media-form-stable select.form-select,
+  html[data-theme='dark'] .media-form-stable input[type="file"] {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
-  .media-form-stable input.form-control:focus,
-  .media-form-stable select.form-select:focus {
+  html[data-theme='dark'] .media-form-stable input.form-control:focus,
+  html[data-theme='dark'] .media-form-stable select.form-select:focus {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
     border-color: #1E88E5 !important;
     box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
   }
-  .media-form-stable input.form-control::placeholder { color: rgba(255, 255, 255, 0.5) !important; }
-  .media-form-stable .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+  html[data-theme='dark'] .media-form-stable input.form-control::placeholder { color: rgba(255, 255, 255, 0.5) !important; }
+  html[data-theme='dark'] .media-form-stable .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+  
+  /* Themed media item cards (match admin theme) */
+  .media-item-card {
+    background: rgba(20,30,45,0.75) !important;
+    border: 1px solid rgba(100,150,255,0.2) !important;
+    box-shadow: 0 4px 12px rgba(0,100,255,0.15) !important;
+    border-radius: 8px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .media-item-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,100,255,0.25) !important;
+  }
+  .media-item-card .card-body {
+    background: transparent !important;
+  }
+  .media-item-card strong { color: #FFFFFF !important; }
+  .media-item-card .text-muted { color: rgba(255,255,255,0.7) !important; }
+
+  /* Empty state */
+  .empty-state {
+    background: rgba(20,30,45,0.55) !important;
+    border: 2px dashed rgba(100,150,255,0.3) !important;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    color: rgba(255,255,255,0.9) !important;
+  }
+  .empty-state i { color: var(--accent-blue); }
+  .empty-state h4 { color: #FFFFFF !important; }
+  .empty-state p { color: rgba(255,255,255,0.7) !important; }
+
+  .no-preview-area {
+    background: rgba(15,25,40,0.6) !important;
+    border: 1px solid rgba(100,150,255,0.2) !important;
+    height:170px;
+    border-radius:4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
 </style>
 <section class="section">
   <div class="container-fluid">
@@ -32,7 +72,7 @@
         <div class="card admin-card-light h-100">
           <div class="card-header"><h5 class="text-white" style="margin:0;">Add Media</h5></div>
           <div class="card-body">
-            <form method="POST" enctype="multipart/form-data" class="needs-validation media-form-stable" novalidate>
+            <form method="POST" enctype="multipart/form-data" class="needs-validation media-form-stable admin-form-stable" novalidate>
               {% csrf_token %}
               <div class="mb-3">
                 <label class="form-label admin-text-black">Type</label>
@@ -69,7 +109,7 @@
             <div class="row g-3">
               {% for m in media_items %}
               <div class="col-md-6">
-                <div class="card h-100" style="background:#fff; color:#000;">
+                <div class="card media-item-card h-100">
                   <div class="card-body p-2 d-flex flex-column">
                     {% if m.media_type == 'image' and m.source %}
                       <img src="{{ m.source }}" alt="{{ m.title|default:fish.name }}" style="width:100%; height:170px; object-fit:cover; border-radius:4px;">
@@ -87,7 +127,7 @@
                         <a href="{{ m.embed_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">Open Video</a>
                       {% endif %}
                     {% else %}
-                      <div class="d-flex align-items-center justify-content-center" style="height:170px; background:#eee; border-radius:4px;">
+                      <div class="no-preview-area">
                         <span class="text-muted">No preview</span>
                       </div>
                     {% endif %}

@@ -1,13 +1,14 @@
 {% extends 'store/base.html' %}
 
+{% block extra_css %}{% endblock %}
+
 {% block content %}
 <section class="section">
   <div class="container-fluid">
     <h2 class="section-heading mb-4">{% if is_edit %}Edit Contact Information{% else %}Add Contact Information{% endif %}</h2>
-
-    <div class="card" style="max-width: 1000px;">
+    <div class="card admin-card-light" style="max-width: 1000px;">
       <div class="card-body">
-        <form method="post">
+        <form method="post" class="admin-form-stable needs-validation" novalidate>
           {% csrf_token %}
 
           {% if form.non_field_errors %}
@@ -20,35 +21,35 @@
             <div class="col-md-6">
               <h5 class="text-white mb-3">Address</h5>
               <div class="mb-3">
-                <label class="form-label">{{ form.address_line1.label }}</label>
+                <label class="form-label admin-text-black">{{ form.address_line1.label }}</label>
                 {{ form.address_line1 }}
                 {% if form.address_line1.errors %}<div class="text-danger small">{{ form.address_line1.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.address_line2.label }}</label>
+                <label class="form-label admin-text-black">{{ form.address_line2.label }}</label>
                 {{ form.address_line2 }}
                 {% if form.address_line2.errors %}<div class="text-danger small">{{ form.address_line2.errors }}</div>{% endif %}
               </div>
               <div class="row">
                 <div class="col-md-6 mb-3">
-                  <label class="form-label">{{ form.city.label }}</label>
+                  <label class="form-label admin-text-black">{{ form.city.label }}</label>
                   {{ form.city }}
                   {% if form.city.errors %}<div class="text-danger small">{{ form.city.errors }}</div>{% endif %}
                 </div>
                 <div class="col-md-6 mb-3">
-                  <label class="form-label">{{ form.state.label }}</label>
+                  <label class="form-label admin-text-black">{{ form.state.label }}</label>
                   {{ form.state }}
                   {% if form.state.errors %}<div class="text-danger small">{{ form.state.errors }}</div>{% endif %}
                 </div>
               </div>
               <div class="row">
                 <div class="col-md-6 mb-3">
-                  <label class="form-label">{{ form.postal_code.label }}</label>
+                  <label class="form-label admin-text-black">{{ form.postal_code.label }}</label>
                   {{ form.postal_code }}
                   {% if form.postal_code.errors %}<div class="text-danger small">{{ form.postal_code.errors }}</div>{% endif %}
                 </div>
                 <div class="col-md-6 mb-3">
-                  <label class="form-label">{{ form.country.label }}</label>
+                  <label class="form-label admin-text-black">{{ form.country.label }}</label>
                   {{ form.country }}
                   {% if form.country.errors %}<div class="text-danger small">{{ form.country.errors }}</div>{% endif %}
                 </div>
@@ -56,22 +57,22 @@
 
               <h5 class="text-white mt-4 mb-3">Phones & Emails</h5>
               <div class="mb-3">
-                <label class="form-label">{{ form.phone_primary.label }}</label>
+                <label class="form-label admin-text-black">{{ form.phone_primary.label }}</label>
                 {{ form.phone_primary }}
                 {% if form.phone_primary.errors %}<div class="text-danger small">{{ form.phone_primary.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.phone_secondary.label }}</label>
+                <label class="form-label admin-text-black">{{ form.phone_secondary.label }}</label>
                 {{ form.phone_secondary }}
                 {% if form.phone_secondary.errors %}<div class="text-danger small">{{ form.phone_secondary.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.email_support.label }}</label>
+                <label class="form-label admin-text-black">{{ form.email_support.label }}</label>
                 {{ form.email_support }}
                 {% if form.email_support.errors %}<div class="text-danger small">{{ form.email_support.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.email_sales.label }}</label>
+                <label class="form-label admin-text-black">{{ form.email_sales.label }}</label>
                 {{ form.email_sales }}
                 {% if form.email_sales.errors %}<div class="text-danger small">{{ form.email_sales.errors }}</div>{% endif %}
               </div>
@@ -80,40 +81,40 @@
             <div class="col-md-6">
               <h5 class="text-white mb-3">Social</h5>
               <div class="mb-3">
-                <label class="form-label">{{ form.whatsapp.label }}</label>
+                <label class="form-label admin-text-black">{{ form.whatsapp.label }}</label>
                 {{ form.whatsapp }}
                 {% if form.whatsapp.errors %}<div class="text-danger small">{{ form.whatsapp.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.facebook_url.label }}</label>
+                <label class="form-label admin-text-black">{{ form.facebook_url.label }}</label>
                 {{ form.facebook_url }}
                 {% if form.facebook_url.errors %}<div class="text-danger small">{{ form.facebook_url.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.instagram_url.label }}</label>
+                <label class="form-label admin-text-black">{{ form.instagram_url.label }}</label>
                 {{ form.instagram_url }}
                 {% if form.instagram_url.errors %}<div class="text-danger small">{{ form.instagram_url.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.twitter_url.label }}</label>
+                <label class="form-label admin-text-black">{{ form.twitter_url.label }}</label>
                 {{ form.twitter_url }}
                 {% if form.twitter_url.errors %}<div class="text-danger small">{{ form.twitter_url.errors }}</div>{% endif %}
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.youtube_url.label }}</label>
+                <label class="form-label admin-text-black">{{ form.youtube_url.label }}</label>
                 {{ form.youtube_url }}
                 {% if form.youtube_url.errors %}<div class="text-danger small">{{ form.youtube_url.errors }}</div>{% endif %}
               </div>
 
               <h5 class="text-white mt-4 mb-3">Map & Hours</h5>
               <div class="mb-3">
-                <label class="form-label">{{ form.map_embed_url.label }}</label>
+                <label class="form-label admin-text-black">{{ form.map_embed_url.label }}</label>
                 {{ form.map_embed_url }}
                 {% if form.map_embed_url.errors %}<div class="text-danger small">{{ form.map_embed_url.errors }}</div>{% endif %}
                 <small class="text-muted d-block mt-1">Optional. Use Google Maps embed URL or leave blank for auto-generated map.</small>
               </div>
               <div class="mb-3">
-                <label class="form-label">{{ form.opening_hours.label }}</label>
+                <label class="form-label admin-text-black">{{ form.opening_hours.label }}</label>
                 {{ form.opening_hours }}
                 {% if form.opening_hours.errors %}<div class="text-danger small">{{ form.opening_hours.errors }}</div>{% endif %}
               </div>

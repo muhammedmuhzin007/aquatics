@@ -485,9 +485,15 @@ if (checkoutForm) {
             }
 
             // Ask backend to create provider order (Razorpay-backed endpoint)
-            const createUrl = `/payments/razorpay/create/${data.order_id}/`;
-            const provResp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') } });
-            if (!provResp.ok) throw new Error('Failed to create payment order');
+            // Build URL from the named route to avoid hardcoding and to support prefixing
+            const createUrlTemplate = "{% url 'create_razorpay_payment' 0 %}"; // will contain /0/ which we replace
+            const createUrl = createUrlTemplate.replace('/0/', `/${data.order_id}/`);
+            const provResp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!provResp.ok) {
+                let errText = 'Failed to create payment order';
+                try { const errJson = await provResp.json(); if (errJson && errJson.error) errText = errJson.error; } catch(e){}
+                throw new Error(errText);
+            }
             const provJson = await provResp.json();
 
             // Expected response: { razorpay_order_id, razorpay_key_id, amount, currency }
@@ -512,6 +518,7 @@ if (checkoutForm) {
             try {
                 await loadScript('https://checkout.razorpay.com/v1/checkout.js');
             } catch (err) {
+                console.error('Razorpay script load failed', err);
                 throw new Error('Could not load Razorpay checkout library');
             }
 
@@ -531,12 +538,13 @@ if (checkoutForm) {
                             razorpay_signature: response.razorpay_signature,
                             order_id: data.order_id
                         };
-                        const verifyResp = await fetch('/payments/razorpay/verify/', {
+                        const verifyResp = await fetch('{% url "verify_razorpay_payment" %}', {
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                                'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                                'X-Requested-With': 'XMLHttpRequest'
                             },
                             body: JSON.stringify(verifyPayload)
                         });

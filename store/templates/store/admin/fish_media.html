@@ -25,47 +25,71 @@
     font-weight: 500;
   }
   
-  /* Form inputs */
-  .fish-media-management input.form-control,
-  .fish-media-management select.form-select,
-  .fish-media-management input[type="file"],
-  .fish-media-management textarea.form-control {
+  /* Form inputs: apply dark-mode styles only in dark theme, provide light-mode overrides */
+  html[data-theme='dark'] .fish-media-management input.form-control,
+  html[data-theme='dark'] .fish-media-management select.form-select,
+  html[data-theme='dark'] .fish-media-management input[type="file"],
+  html[data-theme='dark'] .fish-media-management textarea.form-control {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
     border: 1px solid rgba(100,150,255,0.25) !important;
     border-radius: 8px;
   }
-  
-  .fish-media-management input.form-control:focus,
-  .fish-media-management select.form-select:focus,
-  .fish-media-management textarea.form-control:focus {
+
+  html[data-theme='dark'] .fish-media-management input.form-control:focus,
+  html[data-theme='dark'] .fish-media-management select.form-select:focus,
+  html[data-theme='dark'] .fish-media-management textarea.form-control:focus {
     background-color: rgba(20, 30, 45, 0.95) !important;
     color: #FFFFFF !important;
     border-color: #1E88E5 !important;
     box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.15) !important;
   }
-  
-  .fish-media-management input.form-control:valid,
-  .fish-media-management select.form-select:valid,
-  .fish-media-management input.form-control:invalid,
-  .fish-media-management select.form-select:invalid {
+
+  html[data-theme='dark'] .fish-media-management input.form-control:valid,
+  html[data-theme='dark'] .fish-media-management select.form-select:valid,
+  html[data-theme='dark'] .fish-media-management input.form-control:invalid,
+  html[data-theme='dark'] .fish-media-management select.form-select:invalid {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
   }
-  
-  .fish-media-management input.form-control::placeholder {
+
+  html[data-theme='dark'] .fish-media-management input.form-control::placeholder {
     color: rgba(255, 255, 255, 0.5) !important;
   }
-  
-  /* Autofill state override */
-  .fish-media-management input:-webkit-autofill,
-  .fish-media-management input:-webkit-autofill:hover,
-  .fish-media-management input:-webkit-autofill:focus,
-  .fish-media-management input:-webkit-autofill:active {
+
+  /* Autofill state override (dark) */
+  html[data-theme='dark'] .fish-media-management input:-webkit-autofill,
+  html[data-theme='dark'] .fish-media-management input:-webkit-autofill:hover,
+  html[data-theme='dark'] .fish-media-management input:-webkit-autofill:focus,
+  html[data-theme='dark'] .fish-media-management input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px rgba(15, 25, 40, 0.95) inset !important;
     -webkit-text-fill-color: #FFFFFF !important;
   }
-  
+
+  /* Light theme overrides: make inputs use light surface */
+  html[data-theme='light'] .fish-media-management input.form-control,
+  html[data-theme='light'] .fish-media-management select.form-select,
+  html[data-theme='light'] .fish-media-management input[type="file"],
+  html[data-theme='light'] .fish-media-management textarea.form-control {
+    background-color: var(--light-surface) !important;
+    color: var(--light-text) !important;
+    border: 1px solid var(--light-border) !important;
+    border-radius: 8px;
+  }
+
+  html[data-theme='light'] .fish-media-management input.form-control::placeholder,
+  html[data-theme='light'] .fish-media-management textarea.form-control::placeholder {
+    color: var(--light-text-soft) !important;
+  }
+
+  html[data-theme='light'] .fish-media-management input.form-control:focus,
+  html[data-theme='light'] .fish-media-management select.form-select:focus,
+  html[data-theme='light'] .fish-media-management textarea.form-control:focus {
+    border-color: var(--light-accent) !important;
+    box-shadow: 0 0 0 0.2rem rgba(25,118,210,0.08) !important;
+    outline: none;
+  }
+
   .fish-media-management .text-muted {
     color: rgba(255, 255, 255, 0.7) !important;
   }
@@ -138,10 +162,10 @@
 
     <div class="row">
       <div class="col-lg-5 mb-4">
-        <div class="card h-100">
-          <div class="card-header"><h5 style="margin:0;">Add Media</h5></div>
+        <div class="card admin-card-light h-100">
+          <div class="card-header"><h5 class="text-white" style="margin:0;">Add Media</h5></div>
           <div class="card-body">
-            <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+            <form method="POST" enctype="multipart/form-data" class="needs-validation admin-form-stable" novalidate>
               {% csrf_token %}
               <div class="mb-3">
                 <label class="form-label">Type</label>
@@ -171,8 +195,8 @@
         </div>
       </div>
       <div class="col-lg-7 mb-4">
-        <div class="card h-100">
-          <div class="card-header"><h5 style="margin:0;">Existing Media</h5></div>
+        <div class="card admin-card-light h-100">
+          <div class="card-header"><h5 class="text-white" style="margin:0;">Existing Media</h5></div>
           <div class="card-body">
             {% if media_items %}
             <div class="row g-3">
@@ -195,10 +219,10 @@
                       {% else %}
                         <a href="{{ m.embed_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">Open Video</a>
                       {% endif %}
-                    {% else %}
-                      <div class="d-flex align-items-center justify-content-center no-preview-area" style="height:170px; border-radius:4px;">
-                        <span class="text-muted">No preview</span>
-                      </div>
+                      {% else %}
+                        <div class="no-preview-area">
+                          <span class="text-muted">No preview</span>
+                        </div>
                     {% endif %}
                     <div class="mt-2" style="flex:1;">
                       <strong style="font-size:0.9rem;">{{ m.title|default:'(Untitled)' }}</strong><br>

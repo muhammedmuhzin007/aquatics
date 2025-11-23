@@ -49,7 +49,6 @@ Thumbs.db
 # Sensitive keys and credentials
 # Ignore any other env variants, private keys, certificates, and service account files
 .env.*
-!.env.example
 *.pem
 *.key
 *.p12

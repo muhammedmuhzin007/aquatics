@@ -28,9 +28,9 @@
             {% endif %}
 
             <!-- Form Card -->
-            <div class="card">
+            <div class="card admin-card-light">
                 <div class="card-body p-4">
-                    <form method="post" id="couponForm">
+                    <form method="post" id="couponForm" class="admin-form-stable">
                         {% csrf_token %}
                         
                         <!-- Coupon Code -->
@@ -211,7 +211,7 @@
             </div>
 
             <!-- Info Card -->
-            <div class="card mt-4">
+            <div class="card admin-card-light mt-4">
                 <div class="card-body">
                     <h6 class="card-title">
                         <i class="fas fa-info-circle me-2"></i>Coupon Guidelines
@@ -231,202 +231,17 @@
 </div>
 
 <style>
-.card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
+/* Minimal theme-aware overrides — general styles live in base.html */
+.card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.06); }
+html[data-theme='light'] .card { background: var(--light-card); border-color: var(--light-border); }
 
-html[data-theme='light'] .card {
-    background: var(--light-card);
-    border-color: var(--light-border);
-}
+.form-label { font-weight: 600; color: var(--text-white); margin-bottom: 0.5rem; }
+html[data-theme='light'] .form-label { color: var(--light-text); }
 
-.form-label {
-    font-weight: 600;
-    color: var(--text-white);
-    margin-bottom: 0.5rem;
-}
-
-html[data-theme='light'] .form-label {
-    color: var(--light-text);
-}
-
-.form-control, .form-select {
-    background: rgba(15, 25, 40, 0.6);
-    border: 2px solid var(--border-color);
-    color: var(--text-white);
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 1rem;
-}
-
-html[data-theme='light'] .form-control,
-html[data-theme='light'] .form-select {
-    background: var(--light-surface);
-    border-color: var(--light-border);
-    color: var(--light-text);
-}
-
-.form-select {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 16px 12px;
-    padding-right: 2.5rem;
-    cursor: pointer;
-    font-weight: 500;
-    height: 50px;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-}
-
-.form-select option {
-    background: rgba(15, 25, 40, 0.95);
-    color: var(--text-white);
-    padding: 1rem;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-html[data-theme='light'] .form-select option {
-    background: var(--light-surface);
-    color: var(--light-text);
-}
-
-.custom-select-icon {
-    position: relative;
-}
-
-.form-control:focus, .form-select:focus {
-    background: rgba(15, 25, 40, 0.8);
-    border-color: #667eea;
-    color: var(--text-white);
-    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25), 
-                0 4px 12px rgba(102, 126, 234, 0.15);
-    outline: none;
-    transform: translateY(-1px);
-}
-
-html[data-theme='light'] .form-control:focus,
-html[data-theme='light'] .form-select:focus {
-    background: var(--light-surface);
-    color: var(--light-text);
-}
-
-.form-control:hover:not(:focus), .form-select:hover:not(:focus) {
-    border-color: rgba(102, 126, 234, 0.5);
-    transform: translateY(-1px);
-}
-
-.form-control:active, .form-select:active {
-    transform: translateY(0);
-}
-
-.form-check-input {
-    width: 3rem;
-    height: 1.5rem;
-    cursor: pointer;
-    background-color: var(--border-color);
-    border-color: var(--border-color);
-}
-
-.form-check-input:checked {
-    background-color: #667eea;
-    border-color: #667eea;
-}
-
-.form-check-label {
-    margin-left: 0.5rem;
-    cursor: pointer;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 10px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.btn-secondary, .btn-outline-secondary {
-    border-radius: 10px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-}
-
-.btn-outline-primary {
-    border: 2px solid #667eea;
-    color: #667eea;
-    border-radius: 10px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-outline-primary:hover {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: transparent;
-    transform: translateY(-2px);
-}
-
-.form-text {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.875rem;
-    color: var(--text-gray);
-}
-
-html[data-theme='light'] .form-text {
-    color: var(--light-text-soft);
-}
-
-input[type="datetime-local"] {
-    cursor: pointer;
-    color-scheme: dark;
-}
-
-html[data-theme='light'] input[type="datetime-local"] {
-    color-scheme: light;
-}
-
-/* Calendar picker styling for dark theme */
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
-}
-
-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
-    opacity: 1;
-}
-
-html[data-theme='light'] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(0);
-    opacity: 0.6;
-}
-
-html[data-theme='light'] input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
-    opacity: 1;
-}
-
-.invalid-feedback {
-    color: #ff6b6b;
-}
-
-html[data-theme='light'] .invalid-feedback {
-    color: #d32f2f;
-}
+/* Select arrow and option background (theme-aware) */
+.form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); background-repeat:no-repeat; background-position:right 0.75rem center; background-size:16px 12px; padding-right:2.5rem; cursor:pointer; font-weight:500; height:50px; appearance:none; }
+html[data-theme='dark'] .form-select option { background: rgba(15,25,40,0.95); color: var(--text-white); }
+html[data-theme='light'] .form-select option { background: var(--light-surface); color: var(--light-text); }
 </style>
 
 <script>

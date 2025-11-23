@@ -3,42 +3,45 @@
 
 {% block content %}
 <style>
-  /* Match input fields to website dark theme */
-  .media-form-stable input.form-control,
-  .media-form-stable select.form-select,
-  .media-form-stable input[type="file"] {
+  /* Match input fields to website dark theme (dark-only) */
+  html[data-theme='dark'] .media-form-stable input.form-control,
+  html[data-theme='dark'] .media-form-stable select.form-select,
+  html[data-theme='dark'] .media-form-stable input[type="file"] {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
-  .media-form-stable input.form-control:focus,
-  .media-form-stable select.form-select:focus {
+  html[data-theme='dark'] .media-form-stable input.form-control:focus,
+  html[data-theme='dark'] .media-form-stable select.form-select:focus {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
     border-color: #1E88E5 !important;
     box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25) !important;
   }
-  .media-form-stable input.form-control:valid,
-  .media-form-stable select.form-select:valid,
-  .media-form-stable input.form-control:invalid,
-  .media-form-stable select.form-select:invalid {
+  html[data-theme='dark'] .media-form-stable input.form-control:valid,
+  html[data-theme='dark'] .media-form-stable select.form-select:valid,
+  html[data-theme='dark'] .media-form-stable input.form-control:invalid,
+  html[data-theme='dark'] .media-form-stable select.form-select:invalid {
     background-color: rgba(15, 25, 40, 0.95) !important;
     color: #FFFFFF !important;
   }
-  .media-form-stable input.form-control::placeholder {
+  html[data-theme='dark'] .media-form-stable input.form-control::placeholder {
     color: rgba(255, 255, 255, 0.5) !important;
   }
-  /* Autofill state override */
-  .media-form-stable input:-webkit-autofill,
-  .media-form-stable input:-webkit-autofill:hover,
-  .media-form-stable input:-webkit-autofill:focus,
-  .media-form-stable input:-webkit-autofill:active {
+  /* Autofill state override (dark) */
+  html[data-theme='dark'] .media-form-stable input:-webkit-autofill,
+  html[data-theme='dark'] .media-form-stable input:-webkit-autofill:hover,
+  html[data-theme='dark'] .media-form-stable input:-webkit-autofill:focus,
+  html[data-theme='dark'] .media-form-stable input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px rgba(15, 25, 40, 0.95) inset !important;
     -webkit-text-fill-color: #FFFFFF !important;
   }
-  .media-form-stable .text-muted {
+  html[data-theme='dark'] .media-form-stable .text-muted {
     color: rgba(255, 255, 255, 0.7) !important;
   }
+  /* No-preview area theme-aware styles */
+  html[data-theme='dark'] .no-preview-area { background: rgba(15,25,40,0.6) !important; border: 1px solid rgba(100,150,255,0.2) !important; }
+  html[data-theme='light'] .no-preview-area { background: #eee !important; border: 1px solid rgba(0,0,0,0.04) !important; }
 </style>
 <section class="section">
   <div class="container-fluid">
@@ -51,7 +54,7 @@
         <div class="card admin-card-light h-100">
           <div class="card-header"><h5 class="text-white" style="margin:0;">Update Media</h5></div>
           <div class="card-body">
-            <form method="POST" enctype="multipart/form-data" class="media-form-stable">
+            <form method="POST" enctype="multipart/form-data" class="media-form-stable admin-form-stable">
               {% csrf_token %}
               <div class="mb-3">
                 <label class="form-label admin-text-black">Type</label>
@@ -99,8 +102,8 @@
               {% else %}
                 <a href="{{ media.embed_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">Open Video</a>
               {% endif %}
-            {% else %}
-              <div class="d-flex align-items-center justify-content-center" style="height:350px; background:#eee; border-radius:4px;">
+              {% else %}
+              <div class="no-preview-area d-flex align-items-center justify-content-center" style="height:350px; border-radius:4px;">
                 <span class="text-muted">No preview available</span>
               </div>
             {% endif %}

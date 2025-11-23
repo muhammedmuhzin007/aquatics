@@ -320,12 +320,12 @@ class LimitedOfferForm(forms.ModelForm):
     end_time = forms.DateTimeField(widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}))
     class Meta:
         model = LimitedOffer
-        fields = ['title', 'description', 'discount_text', 'image', 'bg_color', 'fish', 'start_time', 'end_time', 'is_active', 'show_on_homepage']
+        # Remove the 'image' field from the form so banner images cannot be uploaded here
+        fields = ['title', 'description', 'discount_text', 'bg_color', 'fish', 'start_time', 'end_time', 'is_active', 'show_on_homepage']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'discount_text': forms.TextInput(attrs={'class': 'form-control'}),
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'bg_color': forms.TextInput(attrs={'class': 'form-control form-control-color', 'type': 'color'}),
             'fish': forms.Select(attrs={'class': 'form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -335,7 +335,6 @@ class LimitedOfferForm(forms.ModelForm):
             'title': 'Offer Title',
             'description': 'Details',
             'discount_text': 'Discount Highlight',
-            'image': 'Banner Image (optional)',
             'bg_color': 'Background Color (fallback)',
             'fish': 'Select Fish (optional)',
             'start_time': 'Starts At',

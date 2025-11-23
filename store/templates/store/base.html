@@ -88,6 +88,87 @@
             filter: invert(1) brightness(1.2);
             opacity: 0.95;
         }
+
+        /* Global admin card/form helpers: make admin-card-light themed without repeating CSS in each admin template */
+        html[data-theme='dark'] .card.admin-card-light {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+        html[data-theme='dark'] .card.admin-card-light .card-body {
+            background: transparent !important;
+        }
+        html[data-theme='dark'] .admin-text-black { color: #FFFFFF !important; }
+        /* basic admin form control theming when used */
+        html[data-theme='dark'] .admin-form-stable input.form-control,
+        html[data-theme='dark'] .admin-form-stable select.form-select,
+        html[data-theme='dark'] .admin-form-stable textarea.form-control,
+        html[data-theme='dark'] .admin-form-stable input[type="file"] {
+            background-color: rgba(15, 25, 40, 0.95) !important;
+            color: #FFFFFF !important;
+            border: 1px solid rgba(255,255,255,0.06) !important;
+            border-radius: 8px;
+            padding: .5rem .65rem;
+        }
+        html[data-theme='dark'] .admin-form-stable input.form-control:focus,
+        html[data-theme='dark'] .admin-form-stable select.form-select:focus,
+        html[data-theme='dark'] .admin-form-stable textarea.form-control:focus {
+            border-color: #1E88E5 !important;
+            box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.10) !important;
+            outline: none;
+        }
+        /* Light theme overrides for admin-form-stable controls */
+        html[data-theme='light'] .admin-form-stable input.form-control,
+        html[data-theme='light'] .admin-form-stable select.form-select,
+        html[data-theme='light'] .admin-form-stable textarea.form-control,
+        html[data-theme='light'] .admin-form-stable input[type="file"] {
+            background-color: var(--light-surface) !important;
+            color: var(--light-text) !important;
+            border: 1px solid var(--light-border) !important;
+            border-radius: 8px;
+            padding: .5rem .65rem;
+        }
+        html[data-theme='light'] .admin-form-stable input.form-control::placeholder,
+        html[data-theme='light'] .admin-form-stable textarea.form-control::placeholder {
+            color: var(--light-text-soft) !important;
+        }
+        html[data-theme='light'] .admin-form-stable input.form-control:focus,
+        html[data-theme='light'] .admin-form-stable select.form-select:focus,
+        html[data-theme='light'] .admin-form-stable textarea.form-control:focus {
+            border-color: var(--light-accent) !important;
+            box-shadow: 0 0 0 0.2rem rgba(25,118,210,0.08) !important;
+            outline: none;
+        }
+        /* Ensure labels styled with admin-text-black are readable in light theme */
+        html[data-theme='light'] .admin-text-black { color: var(--light-text) !important; }
+
+        /* Style native file input button to match theme */
+        input[type="file"]::file-selector-button,
+        input[type="file"]::-webkit-file-upload-button {
+            padding: .42rem .65rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        /* Dark theme file button */
+        html[data-theme='dark'] input[type="file"]::file-selector-button,
+        html[data-theme='dark'] input[type="file"]::-webkit-file-upload-button {
+            background: rgba(15,25,40,0.95) !important;
+            color: #FFFFFF !important;
+            border: 1px solid rgba(255,255,255,0.06) !important;
+        }
+
+        /* Light theme file button */
+        html[data-theme='light'] input[type="file"]::file-selector-button,
+        html[data-theme='light'] input[type="file"]::-webkit-file-upload-button {
+            background: var(--light-surface) !important;
+            color: var(--light-text) !important;
+            border: 1px solid var(--light-border) !important;
+        }
+
+        /* Ensure placeholders use theme-appropriate color */
+        html[data-theme='dark'] ::placeholder { color: rgba(255,255,255,0.55) !important; }
+        html[data-theme='light'] ::placeholder { color: var(--light-text-soft) !important; }
     </style>
     {% block extra_css %}{% endblock %}
 </head>

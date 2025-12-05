@@ -41,35 +41,45 @@
                         <p class="text-gray mb-4" style="line-height: 1.8; font-size: 1.05rem;">{{ fish.description }}</p>
                         <div class="divider"></div>
                         <div class="mb-4">
-                            <strong class="text-white">Stock Available:</strong> 
-                            {% if fish.stock_quantity > 0 %}
-                                <span class="badge bg-success ms-2">{{ fish.stock_quantity }} units</span>
+                            <strong class="text-white">Stock Available:</strong>
+                            {% if request.GET.hide_add_to_cart %}
+                                {% if fish.stock_quantity > 0 %}
+                                    <span class="badge bg-success ms-2">In stock</span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-2">Out of Stock</span>
+                                {% endif %}
                             {% else %}
-                                <span class="badge bg-danger ms-2">Out of Stock</span>
+                                {% if fish.stock_quantity > 0 %}
+                                    <span class="badge bg-success ms-2">{{ fish.stock_quantity }} units</span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-2">Out of Stock</span>
+                                {% endif %}
                             {% endif %}
                         </div>
                         
-                        {% if fish.stock_quantity > 0 and fish.is_available %}
-                        <form method="POST" action="{% url 'add_to_cart' fish.id %}">
-                            {% csrf_token %}
-                            <div class="row mb-4">
-                                <div class="col-md-4">
-                                    <label class="form-label">Quantity</label>
-                                    <input type="number" class="form-control" name="quantity" value="{{ fish.minimum_order_quantity }}" 
-                                           min="{{ fish.minimum_order_quantity }}" max="{{ fish.stock_quantity }}" required>
-                                    {% if fish.minimum_order_quantity > 1 %}
-                                    <small class="text-muted">Minimum order: {{ fish.minimum_order_quantity }} units</small>
-                                    {% endif %}
+                        {% if not request.GET.hide_add_to_cart %}
+                            {% if fish.stock_quantity > 0 and fish.is_available %}
+                            <form method="POST" action="{% url 'add_to_cart' fish.id %}">
+                                {% csrf_token %}
+                                <div class="row mb-4">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" name="quantity" value="{{ fish.minimum_order_quantity }}" 
+                                               min="{{ fish.minimum_order_quantity }}" max="{{ fish.stock_quantity }}" required>
+                                        {% if fish.minimum_order_quantity > 1 %}
+                                        <small class="text-muted">Minimum order: {{ fish.minimum_order_quantity }} units</small>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </div>
-                            <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-cart-plus"></i> Add to Cart
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-cart-plus"></i> Add to Cart
+                                </button>
+                            </form>
+                            {% else %}
+                            <button class="btn btn-secondary btn-lg" disabled>
+                                <i class="fas fa-ban"></i> Not Available
                             </button>
-                        </form>
-                        {% else %}
-                        <button class="btn btn-secondary btn-lg" disabled>
-                            <i class="fas fa-ban"></i> Not Available
-                        </button>
+                            {% endif %}
                         {% endif %}
                         
                         <div class="mt-4">
@@ -99,6 +109,29 @@
                 var videos = carousel.querySelectorAll('video');
                 videos.forEach(function(v){ try { v.pause(); v.currentTime = 0; } catch(e) {} });
             });
+        }
+        // Disable page scroll (wheel/touch) while media modal is open
+        var modalEl = document.getElementById('mediaModal{{ fish.id }}');
+        if (modalEl) {
+            const _wheelHandler = function (e) { e.preventDefault(); };
+            function disablePageScroll() {
+                try {
+                    document.body.style.overflow = 'hidden';
+                    window.addEventListener('wheel', _wheelHandler, { passive: false });
+                    window.addEventListener('touchmove', _wheelHandler, { passive: false });
+                } catch (e) {}
+            }
+            function enablePageScroll() {
+                try {
+                    document.body.style.overflow = '';
+                    window.removeEventListener('wheel', _wheelHandler);
+                    window.removeEventListener('touchmove', _wheelHandler);
+                } catch (e) {}
+            }
+
+            // When modal opens, disable page scroll; restore when it closes
+            modalEl.addEventListener('show.bs.modal', function () { try { disablePageScroll(); } catch (e) {} });
+            modalEl.addEventListener('hidden.bs.modal', function () { try { enablePageScroll(); } catch (e) {} });
         }
     });
     </script>

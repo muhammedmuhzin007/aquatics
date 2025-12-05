@@ -9,7 +9,7 @@
       {% if accessory.image %}
         <img src="{{ accessory.image.url }}" class="img-fluid" alt="{{ accessory.name }}">
       {% else %}
-        <img src="{% static 'images/placeholder.png' %}" class="img-fluid" alt="{{ accessory.name }}">
+        <div class="img-fluid" style="min-height:200px;"></div>
       {% endif %}
     </div>
     <div class="col-md-6">

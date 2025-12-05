@@ -80,6 +80,16 @@
     border-color: #1E88E5 !important;
     color: #FFFFFF !important;
   }
+    /* Modal theme adjustments */
+    .modal-content {
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    }
+    .modal-title { color: var(--text-white) !important; }
+    .modal-body .form-label { color: var(--text-white) !important; }
+    html[data-theme='light'] .modal-body .form-label { color: var(--light-text) !important; }
+    /* Ensure modal title is black in light mode */
+    html[data-theme='light'] .modal-title { color: #000 !important; }
 </style>
 <section class="section">
     <div class="container-fluid">
@@ -158,13 +168,13 @@
 
 <!-- Add Breed Modal -->
 <div class="modal fade" id="addBreedModal" tabindex="-1" aria-labelledby="addBreedModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-    <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-white" id="addBreedModalLabel">Add New Breed</h5>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background: var(--card-bg); border:1px solid var(--border-color); color:var(--text-white);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+                <h5 class="modal-title" id="addBreedModalLabel">Add New Breed</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:24px;">
                 <form method="POST" id="breedForm" class="fish-form-stable">
                     {% csrf_token %}
                     <input type="hidden" name="create_breed" value="1">

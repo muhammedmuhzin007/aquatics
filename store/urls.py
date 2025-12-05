@@ -9,6 +9,7 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp_view, name='verify_otp'),
     path('resend-otp/', views.resend_otp_view, name='resend_otp'),
     path('login/', views.login_view, name='login'),
+    path('ajax-login/', views.ajax_login_view, name='ajax_login'),
     path('logout/', views.logout_view, name='logout'),
     # Debug email test endpoint (only works when DEBUG=True)
     path('test-email/', views.test_email_view, name='test_email'),
@@ -25,6 +26,8 @@ urlpatterns = [
     
     # Customer Routes
     path('fishes/', views.customer_fish_list_view, name='fish_list'),
+    path('combos/', views.combos_view, name='combos'),
+    path('combo/<int:combo_id>/', views.combo_detail_view, name='combo_detail'),
     path('fish/<int:fish_id>/', views.fish_detail_view, name='fish_detail'),
     # Accessories (customer)
     path('accessories/', views.customer_accessories_view, name='accessories'),
@@ -33,10 +36,13 @@ urlpatterns = [
     path('accessories/add/', views.accessories_add_view, name='accessories_add'),
     path('cart/', views.cart_view, name='cart'),
     path('add-to-cart/<int:fish_id>/', views.add_to_cart_view, name='add_to_cart'),
+    path('add-combo-to-cart/<int:combo_id>/', views.add_combo_to_cart_view, name='add_combo_to_cart'),
     path('update-cart/<int:cart_id>/', views.update_cart_view, name='update_cart'),
     path('remove-cart/<int:cart_id>/', views.remove_from_cart_view, name='remove_cart'),
     path('update-accessory-cart/<int:accessory_cart_id>/', views.update_accessory_cart_view, name='update_accessory_cart'),
     path('remove-accessory-cart/<int:accessory_cart_id>/', views.remove_accessory_cart_view, name='remove_accessory_cart'),
+        path('remove-bundle/<int:combo_id>/', views.remove_bundle_view, name='remove_bundle'),
+    # Checkout routes
     path('checkout/', views.checkout_view, name='checkout'),
     path('checkout/create-draft/', views.create_draft_order, name='create_draft_order'),
     path('apply-coupon/', views.apply_coupon_view, name='apply_coupon'),
@@ -91,6 +97,11 @@ urlpatterns = [
     path('store-admin/fishes/', views.admin_fishes_view, name='admin_fishes'),
     path('store-admin/add-fish/', views.admin_add_fish_view, name='admin_add_fish'),
     path('store-admin/delete-fish/<int:fish_id>/', views.admin_delete_fish_view, name='admin_delete_fish'),
+        path('store-admin/add-combo/', views.admin_add_combo_view, name='admin_add_combo'),
+    path('store-admin/edit-combo/<int:combo_id>/', views.admin_edit_combo_view, name='admin_edit_combo'),
+    path('store-admin/delete-combo/<int:combo_id>/', views.admin_delete_combo_view, name='admin_delete_combo'),
+
+
     path('store-admin/fish/<int:fish_id>/media/', views.admin_fish_media_view, name='admin_fish_media'),
     path('store-admin/fish/media/delete/<int:media_id>/', views.admin_delete_fish_media_view, name='admin_delete_fish_media'),
     path('store-admin/fish/media/<int:media_id>/edit/', views.admin_edit_fish_media_view, name='admin_edit_fish_media'),
@@ -108,6 +119,8 @@ urlpatterns = [
     path('store-admin/contact/', views.admin_contact_view, name='admin_contact'),
     path('store-admin/add-contact/', views.admin_add_contact_view, name='admin_add_contact'),
     path('store-admin/edit-contact/<int:contact_id>/', views.admin_edit_contact_view, name='admin_edit_contact'),
+    path('store-admin/gallery/', views.admin_gallery_view, name='admin_gallery'),
+    path('store-admin/gallery/delete/<int:media_id>/', views.admin_delete_gallery_media_view, name='admin_delete_gallery_media'),
     # Review Management
     path('store-admin/reviews/', views.admin_reviews_view, name='admin_reviews'),
     path('store-admin/approve-review/<int:review_id>/', views.admin_approve_review, name='admin_approve_review'),
@@ -132,6 +145,11 @@ urlpatterns = [
         path('store-admin/limited-offers/<int:offer_id>/edit/', views.admin_edit_limited_offer_view, name='admin_edit_limited_offer'),
         path('store-admin/limited-offers/<int:offer_id>/toggle/', views.admin_toggle_limited_offer_view, name='admin_toggle_limited_offer'),
         path('store-admin/limited-offers/<int:offer_id>/delete/', views.admin_delete_limited_offer_view, name='admin_delete_limited_offer'),
+            path('store-admin/toggle-combo-banners/', views.admin_toggle_combo_banners_view, name='admin_toggle_combo_banners'),
+            path('store-admin/combo-deals/', views.admin_combo_deals_view, name='admin_combo_deals'),
+            path('store-admin/combo-deals/toggle-banner/', views.ajax_toggle_combo_banner, name='ajax_toggle_combo_banner'),
+            path('store-admin/combo-deals/toggle-banners-ajax/', views.ajax_toggle_combo_banners, name='ajax_toggle_combo_banners'),
+            path('store-admin/combo-deals/toggle-cards-ajax/', views.ajax_toggle_combo_cards, name='ajax_toggle_combo_cards'),
         # Blogs (site-admin)
         path('store-admin/blogs/', views.admin_blogs_view, name='admin_blogs'),
         path('store-admin/blogs/add/', views.admin_add_blog_view, name='admin_add_blog'),
@@ -142,5 +160,8 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('edit-profile/', views.edit_profile_view, name='edit_profile'),
     path('change-password/', views.change_password_view, name='change_password'),
+    # Notifications
+    path('notifications/', views.notifications_center_view, name='notifications'),
+    path('notifications/mark-read/', views.mark_notifications_read_view, name='mark_notifications_read'),
 ]
 

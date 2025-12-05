@@ -1,0 +1,182 @@
+{% extends 'store/base.html' %}
+{% load currency %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h2 class="section-heading">{% if editing %}Edit Combo{% else %}Add Combo{% endif %}</h2>
+    {% if errors %}
+      <div class="alert alert-danger">{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>
+    {% endif %}
+
+    <form method="post" action="{% if editing %}{% url 'admin_edit_combo' combo.id %}{% else %}{% url 'admin_add_combo' %}{% endif %}">
+      {% csrf_token %}
+      <!-- Combo styles moved to global stylesheet: static/css/style.css -->
+      <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input name="title" class="form-control" value="{% if editing %}{{ combo.title }}{% else %}{{ title|default:'' }}{% endif %}" required />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Bundle Price (optional)</label>
+        <input name="bundle_price" class="form-control" value="{% if editing %}{{ combo.bundle_price }}{% else %}{{ bundle_price|default:'' }}{% endif %}" placeholder="e.g. 999.00" />
+      </div>
+      <div class="form-check mb-3">
+        <input type="checkbox" name="is_active" id="is_active" class="form-check-input" {% if editing %}{% if combo.is_active %}checked{% endif %}{% else %}{% if is_active %}checked{% endif %}{% endif %} />
+        <label for="is_active" class="form-check-label">Active</label>
+      </div>
+      <div class="form-check mb-3">
+        <input type="checkbox" name="show_on_homepage" id="show_on_homepage" class="form-check-input" {% if editing %}{% if combo.show_on_homepage %}checked{% endif %}{% else %}{% if show_on_homepage %}checked{% endif %}{% endif %} />
+        <label for="show_on_homepage" class="form-check-label">Show on homepage</label>
+      </div>
+      {# Removed: show_in_limited_offers checkbox - combos are not shown in Limited Offers banner anymore #}
+
+      <h5>Items</h5>
+      <div id="combo-items">
+        {% if editing and combo.items.all %}
+          {% for item in combo.items.all %}
+            <div class="row combo-item mb-2">
+              <div class="col-md-8">
+                <select name="fish_id" class="form-select combo-select">
+                  <option value="">-- select fish --</option>
+                  {% for fish in fishes %}
+                    <option value="{{ fish.id }}" {% if fish.id == item.fish.id %}selected{% endif %}>{{ fish.name }} ({{ fish.price|rupees }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2">
+                <input type="number" name="quantity" class="form-control combo-qty" value="{{ item.quantity }}" min="1" />
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-danger remove-item">Remove</button>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          {% if prefill_fish_ids %}
+            {% for pfid in prefill_fish_ids %}
+              <div class="row combo-item mb-2">
+                <div class="col-md-8">
+                  <select name="fish_id" class="form-select combo-select">
+                    <option value="">-- select fish --</option>
+                    {% for fish in fishes %}
+                      <option value="{{ fish.id }}" {% if fish.id == pfid %}selected{% endif %}>{{ fish.name }} ({{ fish.price|rupees }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <input type="number" name="quantity" class="form-control combo-qty" value="1" min="1" />
+                </div>
+                <div class="col-md-2">
+                  <button type="button" class="btn btn-danger remove-item">Remove</button>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="row combo-item mb-2">
+              <div class="col-md-8">
+                <select name="fish_id" class="form-select combo-select">
+                  <option value="">-- select fish --</option>
+                  {% for fish in fishes %}
+                    <option value="{{ fish.id }}">{{ fish.name }} ({{ fish.price|rupees }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2">
+                <input type="number" name="quantity" class="form-control combo-qty" value="1" min="1" />
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-danger remove-item">Remove</button>
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <button type="button" id="add-item" class="btn btn-secondary">Add another fish</button>
+      </div>
+
+      <div>
+        <button class="btn btn-primary">{% if editing %}Update Combo{% else %}Create Combo{% endif %}</button>
+        <a href="{% url 'admin_fishes' %}" class="btn btn-light">Cancel</a>
+        {% if editing %}
+          <a href="{% url 'admin_add_combo' %}" class="btn btn-outline-secondary ms-2">New Combo</a>
+        {% endif %}
+      </div>
+    </form>
+    
+    <hr />
+    <h5>Existing combo</h5>
+    {% if combos and combos|length > 0 %}
+      <div class="list-group mb-4">
+        {% for c in combos %}
+          <div class="list-group-item d-flex justify-content-between align-items-center combo-list-item{% if not c.is_active %} combo-inactive{% endif %}">
+            <div>
+              <strong>{{ c.title }}</strong>
+              {% if c.bundle_price %}<div class="text-muted">{{ c.bundle_price|rupees }}</div>{% endif %}
+                {% if c.items.all %}
+                <div class="small combo-items-list">
+                  {% for it in c.items.all %}
+                    <span class="combo-fish-name small">{{ it.fish.name }}</span>{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <div class="small text-muted">{{ c.items.count }} items{% if not c.is_active %} — inactive{% endif %}</div>
+            </div>
+            <div>
+              <a href="{% url 'admin_edit_combo' c.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+              <form method="post" action="{% url 'admin_delete_combo' c.id %}" style="display:inline; margin-left:8px;" onsubmit="return confirm('Are you sure you want to delete this combo? This action cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">No combos created yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+(function(){
+  const items = document.getElementById('combo-items');
+  const addBtn = document.getElementById('add-item');
+
+    function makeRow(){
+    const row = document.createElement('div');
+    row.className = 'row combo-item mb-2';
+    row.innerHTML = `
+      <div class="col-md-8">
+        <select name="fish_id" class="form-select combo-select">
+          <option value="">-- select fish --</option>
+          {% for fish in fishes %}
+            <option value="{{ fish.id }}">{{ fish.name }} ({{ fish.price|rupees }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="number" name="quantity" class="form-control combo-qty" value="1" min="1" />
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger remove-item">Remove</button>
+      </div>
+    `;
+    return row;
+  }
+
+  addBtn.addEventListener('click', function(){
+    items.appendChild(makeRow());
+  });
+
+  items.addEventListener('click', function(e){
+    if(e.target && e.target.classList.contains('remove-item')){
+      const row = e.target.closest('.combo-item');
+      if(row) row.remove();
+    }
+  });
+})();
+</script>
+
+{% endblock %}

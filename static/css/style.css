@@ -18,8 +18,13 @@ iframe { max-width: 100%; }
     --dark-bg: #0A0A1A;
     --darker-bg: #050510;
     --text-white: #FFFFFF;
+    /* slightly softer white for headings in dark mode for better readability */
+    --dark-text: #EAF6FF;
+    --dark-text-soft: rgba(234, 246, 255, 0.85);
     --text-gray: rgba(255, 255, 255, 0.7);
     --accent-blue: #1E88E5;
+    /* RGB form of accent color to support rgba(...) usage */
+    --accent-blue-rgb: 30, 136, 229;
     --accent-light-blue: #64B5F6;
     --border-color: rgba(255, 255, 255, 0.1);
     --card-bg: rgba(15, 25, 40, 0.95);
@@ -31,6 +36,10 @@ iframe { max-width: 100%; }
     --light-text-soft: #546E7A;
     --light-accent: #1976D2;
     --light-accent-alt: #42A5F5;
+    /* Badge color for notifications in light theme (centralized) */
+    --badge-bg-light: #1976D2;
+    /* Badge color for notifications in dark theme (centralized) */
+    --badge-bg-dark: #EF5350;
     --light-border: rgba(26,35,50,0.12);
     --light-card: #FFFFFF;    
 }
@@ -316,6 +325,219 @@ body.aquatic-bg {
     .top-nav-logo .site-logo { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; overflow: hidden; }
     .navbar-brand .navbar-logo { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; overflow: hidden; margin-right: 6px; }
 }
+
+/* Combo inputs - theme-aware styling (used by admin combo form) */
+.combo-select, .combo-qty {
+    border-radius: 8px;
+    padding: 8px 10px;
+    height: 44px;
+    box-shadow: none;
+    font-size: 0.95rem;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* Combo card image strip for customer combos page */
+.combo-image-strip {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+.combo-image-strip::-webkit-scrollbar { height: 6px; }
+.combo-image-strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 6px; }
+.combo-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+}
+html[data-theme='light'] .combo-thumb { border-color: var(--light-border); }
+
+/* Combo collage layout: up to 4 images in a compact 2x2 grid */
+.combo-collage {
+    width: 100%;
+    max-width: 240px;
+    height: 140px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    align-items: stretch;
+    justify-items: stretch;
+}
+.combo-collage .collage-item {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    display: block;
+}
+.combo-collage .collage-placeholder {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04));
+}
+html[data-theme='light'] .combo-collage .collage-item { border-color: var(--light-border); }
+
+/* Responsive: shrink collage on small screens */
+@media (max-width: 576px) {
+    .combo-collage { max-width: 180px; height: 110px; }
+}
+
+/* Small carousel for combo preview (autoplay + manual) */
+.combo-carousel {
+    width: 100%;
+    max-width: none;
+    /* use aspect-ratio so carousel scales with card width */
+    aspect-ratio: 16 / 9;
+    height: auto;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    flex-shrink: 0;
+}
+.combo-carousel .carousel-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity .36s ease, transform .36s ease;
+    opacity: 0;
+}
+.combo-carousel .carousel-slide.active { opacity: 1; position: relative; }
+.combo-carousel .carousel-slide.collage-placeholder { display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04)); }
+
+/* Ensure IMG slides fill the container and respect object-fit */
+.combo-carousel img.carousel-slide,
+.combo-carousel .carousel-slide img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+.combo-carousel .carousel-slide.collage-placeholder {
+    background-position: center;
+    background-size: cover;
+}
+.combo-carousel .carousel-controls { position: absolute; inset: 0; pointer-events: none; }
+.combo-carousel .carousel-prev, .combo-carousel .carousel-next {
+    pointer-events: auto;
+    position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.36); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.combo-carousel .carousel-prev { left: 8px; }
+.combo-carousel .carousel-next { right: 8px; }
+html[data-theme='light'] .combo-carousel .carousel-prev, html[data-theme='light'] .combo-carousel .carousel-next { background: rgba(0,0,0,0.12); color: var(--light-text); }
+
+@media (max-width: 576px) {
+    .combo-carousel { width: 100%; aspect-ratio: 4 / 3; }
+}
+
+/* Make combo cards equal height and layout consistent */
+.combo-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.combo-card .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+/* push action buttons to bottom so cards look even */
+.combo-card .mt-3 { margin-top: auto; }
+
+/* Combo inputs: align with global form-control / form-select theme */
+.combo-select, .combo-qty {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-white);
+    border-radius: 4px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.combo-select:focus, .combo-qty:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-blue);
+    color: var(--text-white);
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1);
+    outline: none;
+}
+
+/* Quantity input should visually match but keep centered value */
+.combo-qty { text-align: center; }
+
+/* Light theme overrides (reuse the light variables) */
+html[data-theme='light'] .combo-select,
+html[data-theme='light'] .combo-qty {
+    background: var(--light-surface) !important;
+    color: var(--light-text) !important;
+    border: 1px solid var(--light-border) !important;
+}
+html[data-theme='light'] .combo-select:focus,
+html[data-theme='light'] .combo-qty:focus {
+    background: #fff !important;
+    border-color: var(--light-accent) !important;
+    box-shadow: 0 0 0 3px rgba(25,118,210,0.15) !important;
+    color: var(--light-text) !important;
+}
+
+/* Ensure the select control and its dropdown options are visible in both themes */
+.form-select.combo-select, select.combo-select {
+    /* Ensure higher specificity to override bootstrap defaults */
+    background: var(--card-bg) !important;
+    color: var(--text-white) !important;
+    border: 1px solid var(--border-color) !important;
+    padding-right: 40px; /* leave space for custom arrow */
+}
+.form-select.combo-select option, select.combo-select option {
+    background: var(--card-bg) !important;
+    color: var(--text-white) !important;
+}
+
+/* Add a theme-aware dropdown arrow (SVG) so the control is visible on dark/light */
+.combo-select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M0 0 L5 6 L10 0 Z' fill='%23FFFFFF'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+}
+
+html[data-theme='light'] .form-select.combo-select,
+html[data-theme='light'] select.combo-select {
+    background: var(--light-surface) !important;
+    color: var(--light-text) !important;
+    border: 1px solid var(--light-border) !important;
+}
+html[data-theme='light'] .combo-select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M0 0 L5 6 L10 0 Z' fill='%231A2332'/></svg>");
+}
+
+/* Make option list readable in light theme too (some browsers use native dropdown styling) */
+html[data-theme='light'] .form-select.combo-select option,
+html[data-theme='light'] select.combo-select option {
+    background: var(--light-surface) !important;
+    color: var(--light-text) !important;
+}
+
+/* In some browsers the option background comes from the OS; force the popup's scrollbar and selection color to match theme where possible */
+html[data-theme='light'] select.combo-select::-webkit-scrollbar-thumb { background: var(--light-accent) !important; }
+select.combo-select::-webkit-scrollbar-thumb { background: var(--accent-blue) !important; }
+
+/* For browsers that show a native arrow, hide it so our SVG shows consistently */
+.combo-select::-ms-expand { display: none; }
+
+
 
 .top-nav-link {
     color: var(--text-gray);
@@ -827,6 +1049,70 @@ html[data-theme='light'] .btn-theme-toggle:hover {
     padding: 12px 15px;
     transition: all 0.3s ease;
 }
+
+/* Combo specific styling */
+.combo-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.04);
+}
+.combo-card .card-title {
+    color: var(--dark-text) !important;
+}
+.combo-card .price-badge {
+    background: transparent;
+    /* force brighter badge text in dark mode */
+    color: var(--dark-text) !important;
+    border: 1px solid var(--border-color);
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+.combo-list-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+.combo-list-item .text-muted { color: var(--dark-text) !important; }
+.combo-list-item .small { color: var(--dark-text) !important; }
+.combo-list-item .btn { margin-left: 6px; }
+
+/* Inactive combos look muted */
+.combo-list-item.combo-inactive {
+    opacity: 0.65;
+    filter: grayscale(10%);
+}
+
+/* Light theme overrides */
+html[data-theme='light'] .combo-card {
+    background: var(--light-card);
+    border: 1px solid var(--light-border);
+}
+html[data-theme='light'] .combo-card .card-title { color: var(--light-text); }
+html[data-theme='light'] .combo-card .price-badge { color: var(--light-text); border-color: var(--light-border); }
+html[data-theme='light'] .combo-list-item { background: var(--light-card); border: 1px solid var(--light-border); }
+html[data-theme='light'] .combo-list-item .text-muted { color: var(--light-text-soft); }
+html[data-theme='light'] .combo-list-item.combo-inactive { opacity: 0.85; filter: none; }
+
+/* Force readable combo amount and item-count in light theme (higher specificity) */
+html[data-theme='light'] .combo-card .card-title { color: var(--light-text) !important; }
+html[data-theme='light'] .combo-card .price-badge { color: var(--light-text) !important; }
+html[data-theme='light'] .combo-list-item .text-muted { color: var(--light-text-soft) !important; }
+html[data-theme='light'] .combo-list-item .small { color: var(--light-text) !important; }
+
+/* Ensure combo card and list primary text is visible in dark mode */
+.combo-card, .combo-card .card-body, .combo-list-item {
+    color: var(--dark-text) !important;
+}
+.combo-card a, .combo-list-item a {
+    color: var(--accent-blue) !important;
+}
+html[data-theme='light'] .combo-card, html[data-theme='light'] .combo-card .card-body, html[data-theme='light'] .combo-list-item {
+    color: var(--light-text) !important;
+}
+html[data-theme='light'] .combo-card a, html[data-theme='light'] .combo-list-item a {
+    color: var(--light-accent) !important;
+}
+
 
 .form-control:focus, .form-select:focus {
     background: rgba(255, 255, 255, 0.08);

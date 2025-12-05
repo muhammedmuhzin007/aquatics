@@ -1,0 +1,155 @@
+{% extends 'store/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex align-items-center justify-content-between">
+    <h2 class="section-heading admin-text-black mb-0">Combo Deals</h2>
+    <!-- Global toggles removed: UI switches for global combo cards/banners visibility have been removed per design -->
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="card admin-card-light border-0 shadow-sm mt-3">
+      <div class="card-body admin-form-stable">
+        <div class="table-wrapper">
+        <table class="table table-striped mb-0">
+      <thead>
+        <tr data-has-banner="{% if combo.banner_image %}1{% else %}0{% endif %}">
+          <th class="admin-text-muted" style="width:40px;"></th>
+          <th class="admin-text-muted">Title</th>
+          <th class="admin-text-muted">Items</th>
+          <th class="admin-text-muted">Banner</th>
+          <th class="admin-text-muted" style="width:160px;">Show on homepage</th>
+          <th class="admin-text-muted" style="width:160px;">Show as banner</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for combo in combos %}
+        <tr>
+          <td class="align-middle admin-text-muted">{{ forloop.counter }}</td>
+          <td class="align-middle admin-text-black">{{ combo.title }}</td>
+          <td class="align-middle">
+            <div class="admin-text-muted small">
+            {% for item in combo.items.all %}
+              <div>{{ item.fish.name }} x{{ item.quantity }}</div>
+            {% empty %}
+              <div class="admin-text-muted">No items</div>
+            {% endfor %}
+            </div>
+          </td>
+          <td class="align-middle">
+            {% if combo.banner_image %}
+              <div style="width:160px; height:60px; background-image:url('{{ combo.banner_image.url }}'); background-size:cover; background-position:center; border-radius:6px; border:1px solid rgba(255,255,255,0.03)"></div>
+            {% else %}
+              <div class="admin-text-muted small">No banner</div>
+            {% endif %}
+            <div class="mt-2">
+              <input type="file" name="banner_{{ combo.id }}" accept="image/*" class="form-control form-control-sm" />
+              {% if combo.banner_image %}
+              <div class="form-check mt-1">
+                <input class="form-check-input" type="checkbox" value="1" id="clear-banner-{{ combo.id }}" name="clear_banner_{{ combo.id }}">
+                <label class="form-check-label admin-text-muted small ms-2" for="clear-banner-{{ combo.id }}">Clear image</label>
+              </div>
+              {% endif %}
+            </div>
+          </td>
+          <td class="align-middle text-end">
+            <div class="form-check form-check-inline">
+              <input type="checkbox" id="combo-{{ combo.id }}" name="combos" value="{{ combo.id }}" class="form-check-input" {% if combo.show_on_homepage %}checked{% endif %} />
+              <label class="form-check-label admin-text-black ms-2" for="combo-{{ combo.id }}">Show</label>
+            </div>
+          </td>
+          <td class="align-middle text-end">
+            <div class="form-check form-switch form-check-inline">
+              <input type="checkbox" id="banner-{{ combo.id }}" name="show_as_banner_{{ combo.id }}" class="form-check-input" role="switch" aria-checked="{% if combo.show_as_banner %}true{% else %}false{% endif %}" {% if combo.show_as_banner %}checked{% endif %} />
+              <label class="form-check-label admin-text-black ms-2" for="banner-{{ combo.id }}">Banner</label>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+        </table>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent border-0">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a class="btn btn-outline-secondary admin-btn ms-2" href="{% url 'profile' %}">Back</a>
+      </div>
+    </div>
+  </form>
+</div>
+<!-- Confirmation script for clearing banner images -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  try {
+    var clears = document.querySelectorAll('input[name^="clear_banner_"]');
+    clears.forEach(function (cb) {
+      cb.addEventListener('change', function (e) {
+        if (cb.checked) {
+          var confirmed = window.confirm('Are you sure you want to clear this banner image? This will remove the image from the combo.');
+          if (!confirmed) {
+            // user canceled: revert checkbox
+            cb.checked = false;
+            // optionally focus the file input for convenience
+            var id = cb.id.replace('clear-banner-', '');
+            var fileInput = document.querySelector('input[name="banner_' + id + '"]');
+            if (fileInput) fileInput.focus();
+          }
+        }
+      });
+    });
+  } catch (err) {
+    // fail silently — feature is progressive enhancement
+    console && console.warn && console.warn('Clear-banner confirmation not attached', err);
+  }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  try {
+    const switches = document.querySelectorAll('input[name^="show_as_banner_"]');
+    const csrfEl = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    const csrf = csrfEl ? csrfEl.value : '';
+    const url = '{% url "ajax_toggle_combo_banner" %}';
+
+    switches.forEach(function(sw) {
+      sw.addEventListener('change', async function (e) {
+        const id = sw.id.replace('banner-', '');
+        const value = sw.checked ? 1 : 0;
+        // optimistic UI: disable switch while request in flight
+        sw.disabled = true;
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrf,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ combo_id: id, value: value })
+          });
+          const data = await resp.json();
+          if (!resp.ok || !data.success) {
+            alert(data.message || 'Could not update banner state');
+            // revert switch
+            sw.checked = !sw.checked;
+          }
+        } catch (err) {
+          console.error('AJAX toggle failed', err);
+          alert('Network error while updating banner state');
+          sw.checked = !sw.checked;
+        } finally {
+          sw.disabled = false;
+        }
+      });
+    });
+  } catch (err) {
+    console && console.warn && console.warn('Banner toggle AJAX not attached', err);
+  }
+});
+</script>
+<!-- Global toggles scripts removed: global AJAX toggles for combo cards/banners were removed alongside the UI switches -->
+{% endblock %}

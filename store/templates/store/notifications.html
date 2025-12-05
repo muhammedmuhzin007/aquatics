@@ -1,0 +1,48 @@
+{% extends 'store/base.html' %}
+{% block title %}Notifications - {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card admin-card-light">
+                <div class="card-body">
+                    <h4 class="mb-3">Notifications</h4>
+                    {% if notifications.exists %}
+                        <div class="list-group">
+                            {% for n in notifications %}
+                                <div class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">{{ n.title }}</div>
+                                        <div class="small text-muted">{{ n.message }}</div>
+                                        <div class="small text-muted">{{ n.created_at|date:"M d, Y H:i" }}</div>
+                                    </div>
+                                    <div class="ms-3 text-end">
+                                        {% if not n.is_read %}
+                                            <form method="post" action="{% url 'mark_notifications_read' %}" class="d-inline-block mark-notif-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="id" value="{{ n.id }}">
+                                                <button class="btn btn-sm btn-outline-primary">Mark read</button>
+                                            </form>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Read</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No notifications</div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <form method="post" action="{% url 'mark_notifications_read' %}" id="mark-all-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="all" value="1">
+                        <button class="btn btn-sm btn-primary">Mark all as read</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

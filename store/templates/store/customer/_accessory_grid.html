@@ -6,7 +6,7 @@
       {% if accessory.image %}
         <img src="{{ accessory.image.url }}" class="card-img-top" alt="{{ accessory.name }}">
       {% else %}
-        <img src="{% static 'images/placeholder.png' %}" class="card-img-top" alt="{{ accessory.name }}">
+        <div class="card-img-top" style="min-height:120px;"></div>
       {% endif %}
       <div class="card-body d-flex flex-column">
         <h5 class="card-title">{{ accessory.name }}</h5>

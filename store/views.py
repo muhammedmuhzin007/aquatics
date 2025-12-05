@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect
+from datetime import timedelta
 
 from .payments import razorpay as razorpay_provider
 
@@ -12,11 +13,10 @@ def is_staff(user):
 def is_admin(user):
     return user.is_authenticated and user.role == 'admin'
 
-# Modernized checkout_view with AJAX and draft order logic
 @login_required
 @user_passes_test(is_customer)
-@csrf_protect
 def checkout_view(request):
+    """Render the checkout page with cart, coupons and payment options."""
     cart_items = Cart.objects.filter(user=request.user)
     accessory_items = AccessoryCart.objects.filter(user=request.user)
 
@@ -24,140 +24,21 @@ def checkout_view(request):
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
 
-    if request.method == 'POST':
-        shipping_address = request.POST.get('shipping_address')
-        phone_number = request.POST.get('phone_number')
-        payment_method = request.POST.get('payment_method')
-
-        if not shipping_address or not phone_number or not payment_method:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'error': 'Please fill in all required fields.'}, status=400)
-            messages.error(request, 'Please fill in all required fields.')
-            total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-            return render(request, 'store/customer/checkout.html', {
-                'cart_items': cart_items,
-                'accessory_items': accessory_items,
-                'total': total,
-            })
-
-        # Create or update an Order (reuse a recent draft if present)
-        total_amount = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-
-        # Apply coupon if exists
-        applied_coupon = None
-        discount_amount = 0
-        final_amount = total_amount
-
-        if 'applied_coupon_code' in request.session:
-            try:
-                coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
-                if coupon.is_valid() and coupon.can_use(request.user):
-                    applied_coupon = coupon
-                    discount_amount = (total_amount * coupon.discount_percentage) / 100
-                    if coupon.max_discount_amount:
-                        discount_amount = min(discount_amount, coupon.max_discount_amount)
-                    final_amount = total_amount - discount_amount
-            except Coupon.DoesNotExist:
-                pass
-
-        # Generate transaction ID
-        transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
-
-        # Set initial payment status to pending for all new orders (will be
-        # updated upon payment confirmation/webhook). This avoids provider-
-        # specific branching and keeps draft orders consistent.
-        payment_status = 'pending'
-
-        # Try to find a recent draft order for this user and same cart totals
-        draft_cutoff = timezone.now() - timedelta(minutes=30)
-        draft_order = Order.objects.filter(
-            user=request.user,
-            transaction_id__isnull=True,
-            status='pending',
-            created_at__gte=draft_cutoff,
-        ).order_by('-created_at').first()
-
-        order = None
-        if draft_order and float(draft_order.total_amount) == float(total_amount) and float(draft_order.final_amount) == float(final_amount):
-            # Reuse and update the draft
-            order = draft_order
-            order.shipping_address = shipping_address
-            order.phone_number = phone_number
-            order.payment_method = payment_method
-            order.coupon = applied_coupon
-            order.discount_amount = discount_amount
-            order.final_amount = final_amount
-            order.total_amount = total_amount
-            order.payment_status = payment_status
-            order.transaction_id = transaction_id
-            order.save()
+    # Calculate total taking bundle prices into account when provided
+    total = 0
+    for group in bundle_groups:
+        combo = group.get('combo')
+        if combo and combo.bundle_price:
+            total += float(combo.bundle_price)
         else:
-            # Create a fresh order (no stock changes yet for draft)
-            order = Order.objects.create(
-                user=request.user,
-                order_number=Order.generate_order_number(),
-                total_amount=total_amount,
-                coupon=applied_coupon,
-                discount_amount=discount_amount,
-                final_amount=final_amount,
-                shipping_address=shipping_address,
-                phone_number=phone_number,
-                payment_method=payment_method,
-                payment_status=payment_status,
-                transaction_id=transaction_id,
-            )
-            for cart_item in cart_items:
-                OrderItem.objects.create(
-                    order=order,
-                    fish=cart_item.fish,
-                    quantity=cart_item.quantity,
-                    price=cart_item.fish.price,
-                )
-            for a_item in accessory_items:
-                OrderAccessoryItem.objects.create(
-                    order=order,
-                    accessory=a_item.accessory,
-                    quantity=a_item.quantity,
-                    price=a_item.accessory.price,
-                )
+            total += sum(item.get_total() for item in group.get('items', []))
+    total += sum(item.get_total() for item in standalone_items)
+    total += sum(item.get_total() for item in accessory_items)
 
-        # If AJAX, return order info for payment
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'order_id': order.id,
-                'order_number': order.order_number,
-                'user_name': order.user.get_full_name(),
-                'user_email': order.user.email,
-                'user_phone': order.phone_number,
-            })
-
-        # (Legacy non-AJAX fallback: finalize order, decrement stock, clear cart, etc.)
-        # ...existing code...
-
-    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-    
-    # Get available coupons for the user
-    now = timezone.now()
-    available_coupons = Coupon.objects.filter(
-        is_active=True,
-        show_in_suggestions=True,
-        valid_from__lte=now,
-        valid_until__gte=now
-    ).filter(
-        Q(coupon_type='all') |
-        Q(coupon_type='favorites', user__is_favorite=True) if request.user.is_favorite else Q(coupon_type='normal')
-    ).exclude(
-        usage_limit__isnull=False,
-        times_used__gte=models.F('usage_limit')
-    ).filter(
-        Q(min_order_amount__isnull=True) | Q(min_order_amount__lte=total)
-    ).order_by('-discount_percentage')[:5]  # Show top 5 best coupons
-    
-    # Get applied coupon from session
+    # Applied coupon from session
     applied_coupon = None
     discount = 0
     final_total = total
-    
     if 'applied_coupon_code' in request.session:
         try:
             coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
@@ -168,60 +49,30 @@ def checkout_view(request):
                     discount = min(discount, coupon.max_discount_amount)
                 final_total = total - discount
         except Coupon.DoesNotExist:
-            del request.session['applied_coupon_code']
+            request.session.pop('applied_coupon_code', None)
 
-    # Ensure a draft Order exists for the checkout page so the payment snippet
-    # (client integration) has an `order` to reference.
-    try:
-        draft_cutoff = timezone.now() - timedelta(minutes=30)
-        draft_order = Order.objects.filter(
-            user=request.user,
-            transaction_id__isnull=True,
-            status='pending',
-            created_at__gte=draft_cutoff,
-        ).order_by('-created_at').first()
-
-        if draft_order is None:
-            # Create a lightweight draft (no stock decrement). Use final_total as final amount.
-            draft_order = Order.objects.create(
-                user=request.user,
-                order_number=Order.generate_order_number(),
-                total_amount=total,
-                coupon=applied_coupon,
-                discount_amount=discount,
-                final_amount=final_total,
-                shipping_address=(request.user.address if hasattr(request.user, 'address') else ''),
-                phone_number=(request.user.phone_number if hasattr(request.user, 'phone_number') else ''),
-                payment_method='card',
-                payment_status='pending',
-            )
-            # Mirror cart items into the draft order (no stock change)
-            for cart_item in cart_items:
-                OrderItem.objects.create(
-                    order=draft_order,
-                    fish=cart_item.fish,
-                    quantity=cart_item.quantity,
-                    price=cart_item.fish.price,
-                )
-            for a_item in accessory_items:
-                OrderAccessoryItem.objects.create(
-                    order=draft_order,
-                    accessory=a_item.accessory,
-                    quantity=a_item.quantity,
-                    price=a_item.accessory.price,
-                )
-    except Exception:
-        logging.getLogger(__name__).exception('Failed to create draft order for checkout page')
-        draft_order = None
+    # Available coupon suggestions (simple rules)
+    now = timezone.now()
+    available_coupons = Coupon.objects.filter(
+        is_active=True,
+        show_in_suggestions=True,
+        valid_from__lte=now,
+        valid_until__gte=now
+    ).exclude(
+        usage_limit__isnull=False,
+        times_used__gte=models.F('usage_limit')
+    ).filter(
+        Q(min_order_amount__isnull=True) | Q(min_order_amount__lte=total)
+    ).order_by('-discount_percentage')[:5]
 
     return render(request, 'store/customer/checkout.html', {
         'cart_items': cart_items,
+        'accessory_items': accessory_items,
         'total': total,
         'applied_coupon': applied_coupon,
         'discount': discount,
         'final_total': final_total,
         'available_coupons': available_coupons,
-        'order': draft_order,
     })
 from django.contrib.auth.decorators import login_required, user_passes_test
 
@@ -269,13 +120,18 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import (
-    CustomUser, Category, Breed, Fish, FishMedia, Cart, AccessoryCart, Order, OrderItem, OrderAccessoryItem, OTP, Review, Service, ContactInfo, Coupon, Accessory
+    CustomUser, Category, Breed, Fish, FishMedia, Cart, AccessoryCart, Order, OrderItem, OrderAccessoryItem, OTP, Review, Service, ContactInfo, Coupon, Accessory, ContactGalleryMedia
 )
+from django.contrib import messages
 from .forms import (
     CustomUserCreationForm, StaffCreateForm, CategoryForm, BreedForm, FishForm, FishMediaForm,
     ProfileEditForm, OrderFilterForm, ChangePasswordForm, ReviewForm, ServiceForm, ContactInfoForm, CouponForm,
     LimitedOfferForm
 )
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import user_passes_test
+from django import forms
+from .models import ComboOffer, ComboItem
 from urllib.parse import quote_plus
 from datetime import timedelta
 import openpyxl
@@ -295,6 +151,9 @@ import os
 def is_customer(user):
     return user.is_authenticated and user.role == 'customer'
 
+def is_staff_user(user):
+    return user.is_authenticated and (user.role == 'staff' or user.is_superuser)
+
 
 def is_staff(user):
     return user.is_authenticated and (user.role == 'staff' or user.role == 'admin')
@@ -302,6 +161,84 @@ def is_staff(user):
 
 def is_admin(user):
     return user.is_authenticated and user.role == 'admin'
+
+
+def combos_view(request):
+    """Public page: list active combos for customers."""
+    # Prefetch related fishes to avoid N+1 queries
+    all_combos = ComboOffer.objects.filter(is_active=True).prefetch_related('items__fish').order_by('-created_at')
+
+    visible_combos = []
+    for combo in all_combos:
+        ok = True
+        for item in combo.items.all():
+            fish = item.fish
+            # Require fish to be available and have at least the required quantity
+            req_qty = int(item.quantity or 1)
+            if not getattr(fish, 'is_available', True) or getattr(fish, 'stock_quantity', 0) < req_qty:
+                ok = False
+                break
+        if ok:
+            # prepare up-to-4 preview items for collage (pad with None for placeholders)
+            items_list = list(combo.items.all()[:4])
+            if len(items_list) < 4:
+                items_list = items_list + [None] * (4 - len(items_list))
+            combo.preview_items = items_list
+            visible_combos.append(combo)
+
+    return render(request, 'store/customer/combos.html', {'combos': visible_combos})
+
+
+def combo_detail_view(request, combo_id):
+    """Public combo detail page showing included fishes and bundle price."""
+    combo = get_object_or_404(ComboOffer, id=combo_id, is_active=True)
+    items = combo.items.select_related('fish').all()
+    # Prepare preview items (up to 4) for collage display
+    preview_items = list(items[:4])
+    if len(preview_items) < 4:
+        preview_items = preview_items + [None] * (4 - len(preview_items))
+
+    return render(request, 'store/customer/combo_detail.html', {
+        'combo': combo,
+        'items': items,
+        'preview_items': preview_items,
+    })
+
+
+@login_required
+@user_passes_test(is_staff)
+def notifications_center_view(request):
+    """Staff-only notifications center showing recent notifications."""
+    from .models import Notification
+    qs = Notification.objects.all().order_by('-created_at')
+    return render(request, 'store/notifications.html', {'notifications': qs})
+
+
+@login_required
+@user_passes_test(is_staff)
+@require_POST
+def mark_notifications_read_view(request):
+    """Mark notifications as read. Accepts POST.
+
+    - If `all=1` in POST, mark all unread as read.
+    - Else if `ids[]` provided, mark those ids as read.
+    - Else if `id` provided, mark that one as read.
+    Returns JSON with number marked.
+    """
+    from .models import Notification
+    marked = 0
+    try:
+        if request.POST.get('all') == '1':
+            marked = Notification.objects.filter(is_read=False).update(is_read=True)
+        else:
+            ids = request.POST.getlist('ids[]') or ( [request.POST.get('id')] if request.POST.get('id') else [] )
+            ids = [int(x) for x in ids if x]
+            if ids:
+                marked = Notification.objects.filter(id__in=ids, is_read=False).update(is_read=True)
+    except Exception:
+        return JsonResponse({'success': False, 'marked': 0})
+
+    return JsonResponse({'success': True, 'marked': int(marked)})
 
 
 # Authentication Views
@@ -875,6 +812,27 @@ def login_view(request):
     return render(request, 'store/login.html')
 
 
+@require_POST
+def ajax_login_view(request):
+    """AJAX login endpoint used by the inline login modal.
+
+    Expects `username` and `password` in POST data and returns JSON.
+    """
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+    if not username or not password:
+        return JsonResponse({'success': False, 'message': 'Please provide username and password'}, status=400)
+
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        return JsonResponse({'success': False, 'message': 'Invalid credentials'}, status=400)
+    if getattr(user, 'is_blocked', False):
+        return JsonResponse({'success': False, 'message': 'Your account is blocked'}, status=403)
+
+    login(request, user)
+    return JsonResponse({'success': True, 'message': 'Logged in'})
+
+
 def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
@@ -1011,28 +969,188 @@ def home_view(request):
     fishes = Fish.objects.filter(is_available=True, is_featured=True)[:8]
     # Limited offers currently active and marked to show on homepage
     now = timezone.now()
-    limited_offers = LimitedOffer.objects.filter(
+    limited_offers_qs = LimitedOffer.objects.filter(
         is_active=True,
         show_on_homepage=True,
         start_time__lte=now,
         end_time__gte=now,
     ).order_by('end_time')[:4]
+
+    # Convert LimitedOffer model instances into plain dicts so template can treat
+    # both model-backed offers and combo-generated offers uniformly.
+    limited_offers = []
+    for offer in limited_offers_qs:
+        entry = {
+            'title': offer.title,
+            'description': offer.description,
+            'discount_text': offer.discount_text,
+            'image': (offer.image.url if getattr(offer, 'image', None) else None),
+            'bg_color': offer.bg_color,
+            'fish': offer.fish,
+            'start_time': offer.start_time,
+            'end_time': offer.end_time,
+            'is_combo': False,
+            'combo_id': None,
+            'images': [],
+        }
+
+        if getattr(offer, 'combo', None):
+            combo = offer.combo
+            items = list(combo.items.select_related('fish').all())
+            images = []
+            for it in items:
+                try:
+                    if it.fish.image:
+                        images.append(it.fish.image.url)
+                except Exception:
+                    continue
+                if len(images) >= 3:
+                    break
+
+            entry['is_combo'] = True
+            entry['combo_id'] = combo.id
+            entry['images'] = images
+            # Prefer combo-derived discount text if available
+            if combo.bundle_price:
+                original_total = sum((it.fish.price or 0) * it.quantity for it in items)
+                try:
+                    savings = float(original_total) - float(combo.bundle_price)
+                except Exception:
+                    savings = 0
+                if savings > 0:
+                    entry['discount_text'] = f"Save ₹{int(savings)}"
+
+        limited_offers.append(entry)
+
+    # Build a list of all active combos (used elsewhere) and a separate
+    # `combo_deals` list containing only combos marked for homepage display.
+    combos = ComboOffer.objects.filter(is_active=True)
+    combo_offers = []
+    for combo in combos:
+        # Compute approximate savings if bundle_price set
+        items = list(combo.items.select_related('fish').all())
+        if not items:
+            continue
+        original_total = sum((it.fish.price or 0) * it.quantity for it in items)
+        bundle_price = combo.bundle_price
+        if bundle_price:
+            try:
+                savings = float(original_total) - float(bundle_price)
+            except Exception:
+                savings = 0
+        else:
+            savings = 0
+
+        if savings > 0:
+            # Prefer a rupee saving label
+            discount_text = f"Save ₹{int(savings)}"
+        else:
+            discount_text = 'Bundle Deal'
+
+        first_fish = items[0].fish if items else None
+        # Collect up to three image URLs from the combo fishes for a thumbnail strip
+        images = []
+        for it in items:
+            try:
+                if it.fish.image:
+                    images.append(it.fish.image.url)
+            except Exception:
+                continue
+            if len(images) >= 3:
+                break
+
+        combo_offers.append({
+            'title': combo.title,
+            'description': combo.description,
+            'discount_text': discount_text,
+            'image': None,
+            'bg_color': None,
+            'fish': first_fish,
+            'start_time': now,
+            'end_time': now + timedelta(days=7),
+            'is_combo': True,
+            'combo_id': combo.id,
+            'images': images,
+        })
+    # Build `combo_deals` for homepage (only combos explicitly marked and not banners)
+    combo_deals_qs = ComboOffer.objects.filter(is_active=True, show_on_homepage=True, show_as_banner=False).order_by('-created_at')
+    combo_deals = []
+    # Map to the same dict shape used for limited_offers so templates can use
+    # a consistent structure when rendering banners/cards.
+    combo_map = {c['combo_id']: c for c in combo_offers}
+    for combo in combo_deals_qs:
+        # Try to reuse the already-computed entry if present
+        existing = next((c for c in combo_offers if c['combo_id'] == combo.id), None)
+        if existing:
+            combo_deals.append(existing)
+        else:
+            # fallback mapping if not in combo_offers
+            items = list(combo.items.select_related('fish').all())
+            original_total = sum((it.fish.price or 0) * it.quantity for it in items) if items else 0
+            bundle_price = combo.bundle_price
+            try:
+                savings = float(original_total) - float(bundle_price) if bundle_price else 0
+            except Exception:
+                savings = 0
+            discount_text = f"Save ₹{int(savings)}" if savings > 0 else 'Bundle Deal'
+            images = []
+            for it in items:
+                try:
+                    if it.fish.image:
+                        images.append(it.fish.image.url)
+                except Exception:
+                    continue
+                if len(images) >= 3:
+                    break
+            combo_deals.append({
+                'title': combo.title,
+                'description': combo.description,
+                'discount_text': discount_text,
+                'image': None,
+                'bg_color': None,
+                'fish': items[0].fish if items else None,
+                'start_time': now,
+                'end_time': now + timedelta(days=7),
+                'is_combo': True,
+                'combo_id': combo.id,
+                'images': images,
+            })
+    # Build `combo_banners` for homepage (combos marked to show as banner)
+    combo_banners = []
+    combo_banners_qs = ComboOffer.objects.filter(is_active=True, show_as_banner=True).order_by('-created_at')
+    for combo in combo_banners_qs:
+        img = None
+        try:
+            if getattr(combo, 'banner_image', None):
+                img = combo.banner_image.url
+        except Exception:
+            img = None
+        combo_banners.append({
+            'title': combo.title,
+            'description': combo.description,
+            'image': img,
+            'combo_id': combo.id,
+        })
     first_category = Category.objects.first() if Category.objects.exists() else None
     reviews = (Review.objects.filter(approved=True)
                .select_related('order', 'user')
                .prefetch_related('order__items', 'order__items__fish')[:10])
     return render(request, 'store/home.html', {
-        'categories': categories, 
+        'categories': categories,
         'fishes': fishes,
         'first_category': first_category,
         'reviews': reviews,
-        'limited_offers': list(limited_offers),
+        'limited_offers': limited_offers,
+        'combo_offers': combo_offers,
+        'combo_deals': combo_deals,
+        'combo_banners': combo_banners,
     })
 
 @login_required
 @user_passes_test(is_admin)
 def admin_limited_offers_view(request):
-    offers = LimitedOffer.objects.all().order_by('-created_at')
+    # Avoid ordering by `created_at` in case DB schema hasn't been migrated yet.
+    offers = LimitedOffer.objects.all().order_by('-id')
     return render(request, 'store/admin/limited_offers.html', {'offers': offers})
 
 @login_required
@@ -1071,6 +1189,163 @@ def admin_toggle_limited_offer_view(request, offer_id):
     messages.success(request, f"Offer {'activated' if offer.is_active else 'deactivated'} successfully.")
     return redirect('admin_limited_offers')
 
+
+@login_required
+@user_passes_test(is_admin)
+def admin_toggle_combo_banners_view(request):
+    """Toggle showing combo deals on the homepage for all active combos.
+
+    If any active combo is currently set to show_on_homepage, hide all; otherwise show all.
+    """
+    from .models import ComboOffer
+    combos = ComboOffer.objects.filter(is_active=True)
+    if combos.filter(show_on_homepage=True).exists():
+        combos.update(show_on_homepage=False)
+        messages.success(request, 'Combo banners hidden on the homepage.')
+    else:
+        combos.update(show_on_homepage=True)
+        messages.success(request, 'Combo banners will be shown on the homepage.')
+    return redirect('profile')
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_combo_deals_view(request):
+    """Show a page where admin can select which combos should appear on the homepage.
+
+    GET: render list of combos with checkboxes.
+    POST: expect `combo_ids` (list of ids) — set show_on_homepage True for listed ids, False for others.
+    """
+    from .models import ComboOffer
+    from .forms import ComboDealsForm
+
+    if request.method == 'POST':
+        # Accept POST with possible file uploads for banners
+        form = ComboDealsForm(request.POST, request.FILES)
+        if form.is_valid():
+            selected = form.cleaned_data.get('combos') or ComboOffer.objects.none()
+            # First, set show_on_homepage False for all active combos
+            active_combos = ComboOffer.objects.filter(is_active=True)
+            active_combos.update(show_on_homepage=False)
+
+            # Apply show_on_homepage to selected combos unless they are set to show as banner
+            selected_ids = [c.id for c in selected] if selected.exists() else []
+            if selected_ids:
+                ComboOffer.objects.filter(id__in=selected_ids, is_active=True).update(show_on_homepage=True)
+
+            # Now process per-combo banner flags and uploaded files
+            for combo in ComboOffer.objects.filter(is_active=True):
+                sid = str(combo.id)
+                # Banner toggle input name: show_as_banner_<id>
+                show_banner_val = request.POST.get(f'show_as_banner_{sid}')
+                show_as_banner = True if show_banner_val in ('1', 'on', 'true', 'True') else False
+                # If combo is marked as banner, ensure it will not also show as a card
+                if show_as_banner:
+                    combo.show_on_homepage = False
+                else:
+                    # If not banner, preserve show_on_homepage from selected list
+                    combo.show_on_homepage = combo.id in selected_ids
+
+                # Handle uploaded file for banner image: input name banner_<id>
+                uploaded = request.FILES.get(f'banner_{sid}')
+                # Handle clear image checkbox: name clear_banner_<id>
+                clear_flag = request.POST.get(f'clear_banner_{sid}')
+                # If an uploaded file is provided, prefer it. Otherwise if clear flag is set, delete existing image.
+                if uploaded:
+                    combo.banner_image = uploaded
+                else:
+                    if clear_flag:
+                        try:
+                            if combo.banner_image:
+                                combo.banner_image.delete(save=False)
+                        except Exception:
+                            pass
+                        combo.banner_image = None
+                combo.show_as_banner = show_as_banner
+                combo.save()
+
+            messages.success(request, 'Combo homepage visibility and banners updated.')
+            return redirect('admin_combo_deals')
+    else:
+        # Initialize form with currently selected combos
+        initial_qs = ComboOffer.objects.filter(is_active=True, show_on_homepage=True)
+        form = ComboDealsForm(initial={'combos': initial_qs})
+
+        combos = ComboOffer.objects.order_by('-created_at').all()
+        cards_enabled = ComboOffer.objects.filter(is_active=True, show_on_homepage=True).exists()
+        banners_enabled = ComboOffer.objects.filter(is_active=True, show_as_banner=True).exists()
+        return render(request, 'store/admin/combo_deals.html', {'combos': combos, 'form': form, 'cards_enabled': cards_enabled, 'banners_enabled': banners_enabled})
+
+
+@login_required
+@user_passes_test(is_admin)
+def ajax_toggle_combo_banner(request):
+    """AJAX endpoint to toggle show_as_banner for a combo.
+
+    Expects JSON body: { combo_id: <id>, value: 0|1 }
+    """
+    import json
+    from django.http import JsonResponse
+    from .models import ComboOffer
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+
+    # parse JSON body, fall back to POST form data
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        payload = {}
+
+    combo_id = payload.get('combo_id') or request.POST.get('combo_id')
+    val = payload.get('value') or request.POST.get('value')
+
+    if not combo_id:
+        return JsonResponse({'success': False, 'message': 'combo_id required'}, status=400)
+
+    try:
+        combo = ComboOffer.objects.get(id=int(combo_id))
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'combo not found'}, status=404)
+
+    show_as_banner = True if str(val) in ('1', 'true', 'True', 'on') else False
+    combo.show_as_banner = show_as_banner
+    if show_as_banner:
+        combo.show_on_homepage = False
+    combo.save()
+
+    return JsonResponse({'success': True, 'show_as_banner': combo.show_as_banner})
+
+
+@login_required
+@user_passes_test(is_admin)
+def ajax_toggle_combo_banners(request):
+    """AJAX endpoint to toggle showing combo banners globally.
+
+    Enables `show_as_banner` for combos that have a `banner_image` and disables `show_on_homepage`.
+    When disabling, clears `show_as_banner` for all combos.
+    """
+    from django.http import JsonResponse
+    from .models import ComboOffer
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+
+    active = ComboOffer.objects.filter(is_active=True)
+    enabled = active.filter(show_as_banner=True).exists()
+    if enabled:
+        # disable banners
+        active.update(show_as_banner=False)
+        new_state = False
+    else:
+        # enable banners for combos which have a banner_image and ensure cards are hidden
+        active.update(show_on_homepage=False)
+        active_with_img = active.exclude(banner_image__isnull=True).exclude(banner_image__exact='')
+        active_with_img.update(show_as_banner=True)
+        new_state = True
+
+    return JsonResponse({'success': True, 'enabled': new_state})
+
 @login_required
 @user_passes_test(is_admin)
 def admin_delete_limited_offer_view(request, offer_id):
@@ -1078,6 +1353,33 @@ def admin_delete_limited_offer_view(request, offer_id):
     offer.delete()
     messages.success(request, 'Offer deleted successfully.')
     return redirect('admin_limited_offers')
+
+
+@login_required
+@user_passes_test(is_admin)
+def ajax_toggle_combo_cards(request):
+    """AJAX endpoint to toggle showing combo cards globally.
+
+    Toggles `show_on_homepage` for all active combos and clears any `show_as_banner` flags.
+    """
+    from django.http import JsonResponse
+    from .models import ComboOffer
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST required'}, status=405)
+
+    active = ComboOffer.objects.filter(is_active=True)
+    enabled = active.filter(show_on_homepage=True).exists()
+    if enabled:
+        # disable cards
+        active.update(show_on_homepage=False)
+        new_state = False
+    else:
+        # enable cards and clear banner flags
+        active.update(show_on_homepage=True, show_as_banner=False)
+        new_state = True
+
+    return JsonResponse({'success': True, 'enabled': new_state})
 
 
 def about_view(request):
@@ -1346,6 +1648,50 @@ def add_to_cart_view(request, fish_id):
 @login_required
 @user_passes_test(is_customer)
 @require_POST
+def add_combo_to_cart_view(request, combo_id):
+    """Add all fishes from a combo to the current user's cart.
+
+    Expects POST. Validates stock and minimums before adding.
+    """
+    combo = get_object_or_404(ComboOffer, id=combo_id, is_active=True)
+
+    # Validate all items first
+    errors = []
+    for item in combo.items.select_related('fish').all():
+        fish = item.fish
+        qty = max(1, int(item.quantity or 1))
+        if not fish.is_available or fish.stock_quantity <= 0:
+            errors.append(f"{fish.name} is not available.")
+        elif fish.stock_quantity < qty:
+            errors.append(f"Not enough stock for {fish.name} (requested {qty}).")
+        elif qty < fish.minimum_order_quantity:
+            errors.append(f"Minimum order for {fish.name} is {fish.minimum_order_quantity}.")
+
+    if errors:
+        messages.error(request, 'Could not add combo to cart: ' + ' '.join(errors))
+        return redirect('combos')
+
+    # Add items to cart
+    for item in combo.items.select_related('fish').all():
+        fish = item.fish
+        qty = max(1, int(item.quantity or 1))
+        cart_item, created = Cart.objects.get_or_create(
+            user=request.user,
+            fish=fish,
+            combo=combo,
+            defaults={'quantity': qty}
+        )
+        if not created:
+            cart_item.quantity += qty
+            cart_item.save()
+
+    messages.success(request, f'Combo "{combo.title}" added to your cart.')
+    return redirect('cart')
+
+
+@login_required
+@user_passes_test(is_customer)
+@require_POST
 def add_accessory_to_cart_view(request, accessory_id):
     from .models import AccessoryCart, Accessory
     accessory = get_object_or_404(Accessory, id=accessory_id)
@@ -1394,12 +1740,86 @@ def add_accessory_to_cart_view(request, accessory_id):
 @login_required
 @user_passes_test(is_customer)
 def cart_view(request):
-    cart_items = Cart.objects.filter(user=request.user)
+    cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
     accessory_items = AccessoryCart.objects.filter(user=request.user)
-    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-    
+
+    # Group cart items that belong to the same combo
+    bundle_groups = []
+    standalone_items = []
+    combos_map = {}
+    for item in cart_items:
+        if item.combo_id:
+            combos_map.setdefault(item.combo_id, {'combo': item.combo, 'items': []})['items'].append(item)
+        else:
+            standalone_items.append(item)
+
+    # Convert map to list for template ordering
+    for k, v in combos_map.items():
+        combo = v.get('combo')
+        # compute displayed bundle price (use combo.bundle_price if present)
+        # Determine how many full bundles the user's cart contains for this combo.
+        # For each fish in the combo, compute how many bundles it supports: floor(cart_qty / combo_item_qty)
+        bundle_count = None
+        per_bundle_value = 0
+        if combo:
+            combo_items = {ci.fish_id: ci.quantity for ci in combo.items.all()}
+            # compute per-bundle value (sum of fish.price * qty) as fallback
+            per_bundle_value = 0
+            for ci in combo.items.select_related('fish').all():
+                per_bundle_value += float(ci.fish.price) * int(ci.quantity)
+
+            counts = []
+            for it in v.get('items', []):
+                req = combo_items.get(it.fish_id, 1)
+                # avoid division by zero
+                try:
+                    counts.append(int(it.quantity) // int(req))
+                except Exception:
+                    counts.append(0)
+
+            if counts:
+                bundle_count = min(counts)
+            else:
+                bundle_count = 0
+
+        # Compute display price: prefer combo.bundle_price * bundle_count, else per_bundle_value * bundle_count
+        if combo and combo.bundle_price:
+            v['display_price'] = float(combo.bundle_price) * (bundle_count or 0)
+        else:
+            v['display_price'] = (bundle_count or 0) * per_bundle_value
+
+        v['bundle_count'] = bundle_count or 0
+        bundle_groups.append(v)
+
+    # Compute total considering bundle pricing when applicable.
+    total = 0.0
+    # Add standalone items
+    total += sum(float(item.get_total()) for item in standalone_items)
+    # Add bundles and leftovers
+    for g in bundle_groups:
+        combo = g.get('combo')
+        items = g.get('items', [])
+        bundle_count = g.get('bundle_count', 0)
+        if combo and combo.bundle_price and bundle_count > 0:
+            # Add bundle price for each full bundle
+            total += float(combo.bundle_price) * bundle_count
+            # compute leftovers per fish
+            combo_items = {ci.fish_id: ci.quantity for ci in combo.items.all()}
+            for it in items:
+                req = combo_items.get(it.fish_id, 1)
+                leftover = int(it.quantity) - (int(req) * bundle_count)
+                if leftover > 0:
+                    total += float(it.fish.price) * leftover
+        else:
+            # No bundle pricing; add full item totals
+            total += sum(float(it.get_total()) for it in items)
+
+    # Accessories
+    total += sum(float(item.get_total()) for item in accessory_items)
+
     return render(request, 'store/customer/cart.html', {
-        'cart_items': cart_items,
+        'bundle_groups': bundle_groups,
+        'cart_items': standalone_items,
         'accessory_items': accessory_items,
         'total': total,
     })
@@ -1431,6 +1851,15 @@ def remove_from_cart_view(request, cart_id):
     cart_item = get_object_or_404(Cart, id=cart_id, user=request.user)
     cart_item.delete()
     messages.success(request, 'Item removed from cart.')
+    return redirect('cart')
+
+
+@login_required
+@user_passes_test(is_customer)
+def remove_bundle_view(request, combo_id):
+    """Remove all cart items associated with a combo for the current user."""
+    Cart.objects.filter(user=request.user, combo_id=combo_id).delete()
+    messages.success(request, 'Bundle removed from cart.')
     return redirect('cart')
 
 
@@ -1468,13 +1897,18 @@ def remove_accessory_cart_view(request, accessory_cart_id):
 
 
 
-@login_required
-@user_passes_test(is_customer)
 @require_POST
 def apply_coupon_view(request):
-    """AJAX view to apply coupon code"""
+    """AJAX view to apply coupon code. Allows anonymous users to save a coupon
+    code in session for later application (guest flow). If the cart is empty
+    for anonymous users the coupon will be saved and a friendly message is
+    returned."""
     try:
+        # Allow anonymous users to apply a coupon code (store in session).
+        # Frontend will later use this to show the coupon when/if a cart exists.
+
         coupon_code = request.POST.get('coupon_code', '').strip().upper()
+        preview_flag = str(request.POST.get('preview', '')).lower() in ('1', 'true', 'yes')
 
         if not coupon_code:
             return JsonResponse({'success': False, 'message': 'Please enter a coupon code'})
@@ -1482,48 +1916,69 @@ def apply_coupon_view(request):
         try:
             coupon = Coupon.objects.get(code=coupon_code)
         except Coupon.DoesNotExist:
+            # Allow anonymous users to save arbitrary coupon codes into session
+            # (so they can paste a code before registering/logging-in). For
+            # authenticated users we still require a valid coupon.
+            if not request.user.is_authenticated:
+                if not preview_flag:
+                    request.session['applied_coupon_code'] = coupon_code
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Coupon saved. It will be applied when valid.',
+                        'discount': 0.0,
+                        'final_total': 0.0,
+                        'coupon_code': coupon_code,
+                    })
+                else:
+                    # Preview for unknown coupon: report invalid for preview
+                    return JsonResponse({'success': False, 'message': 'Invalid coupon code'})
             return JsonResponse({'success': False, 'message': 'Invalid coupon code'})
 
-        # Validate coupon
-        if not coupon.is_active:
-            return JsonResponse({'success': False, 'message': 'This coupon is no longer active'})
-
-        # Check validity with detailed error
+        # If not force_apply, validate coupon normally
         now = timezone.now()
-        if coupon.valid_from and now < coupon.valid_from:
-            return JsonResponse({
-                'success': False,
-                'message': f'This coupon is not valid yet. Valid from: {coupon.valid_from.strftime("%d %b %Y, %I:%M %p")}'
-            })
+        if not getattr(coupon, 'force_apply', False):
+            if not coupon.is_active:
+                return JsonResponse({'success': False, 'message': 'This coupon is no longer active'})
 
-        if coupon.valid_until and now > coupon.valid_until:
-            return JsonResponse({
-                'success': False,
-                'message': f'This coupon expired on: {coupon.valid_until.strftime("%d %b %Y, %I:%M %p")}'
-            })
+            # Check validity with detailed error
+            if coupon.valid_from and now < coupon.valid_from:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'This coupon is not valid yet. Valid from: {coupon.valid_from.strftime("%d %b %Y, %I:%M %p")}'
+                })
 
-        # Check usage limit
-        if coupon.usage_limit and coupon.times_used >= coupon.usage_limit:
-            return JsonResponse({'success': False, 'message': 'This coupon has reached its usage limit'})
+            if coupon.valid_until and now > coupon.valid_until:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'This coupon expired on: {coupon.valid_until.strftime("%d %b %Y, %I:%M %p")}'
+                })
 
-        # Check if user can use this coupon
-        if coupon.coupon_type == 'favorites' and not request.user.is_favorite:
-            return JsonResponse({'success': False, 'message': 'This coupon is only for favorite customers'})
+            # Check usage limit
+            if coupon.usage_limit and coupon.times_used >= coupon.usage_limit:
+                return JsonResponse({'success': False, 'message': 'This coupon has reached its usage limit'})
 
-        if coupon.coupon_type == 'normal' and request.user.is_favorite:
-            return JsonResponse({'success': False, 'message': 'This coupon is only for normal users'})
+            # Check if user can use this coupon (treat anonymous as not favorite)
+            is_fav = getattr(request.user, 'is_favorite', False)
+            if coupon.coupon_type == 'favorites' and not is_fav:
+                return JsonResponse({'success': False, 'message': 'This coupon is only for favorite customers'})
 
-        # Calculate cart total including accessories
+            if coupon.coupon_type == 'normal' and is_fav:
+                return JsonResponse({'success': False, 'message': 'This coupon is only for normal users'})
+
+        # Calculate cart total including accessories. For anonymous users the
+        # DB-backed cart will be empty; total will be 0. We still allow saving
+        # the coupon into session so it can be applied later when a cart exists.
         cart_items = Cart.objects.filter(user=request.user)
         accessory_items = AccessoryCart.objects.filter(user=request.user)
         total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
 
-        # Check minimum order amount
-        if coupon.min_order_amount and total < coupon.min_order_amount:
-            return JsonResponse({
-                'success': False,
-                'message': f'Minimum order amount of ₹{coupon.min_order_amount} required'
-            })
+        # Check minimum order amount unless force_apply
+        if not getattr(coupon, 'force_apply', False):
+            if coupon.min_order_amount and total < coupon.min_order_amount:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Minimum order amount of ₹{coupon.min_order_amount} required'
+                })
 
         # Calculate discount
         discount = (total * coupon.discount_percentage) / 100
@@ -1532,23 +1987,38 @@ def apply_coupon_view(request):
 
         final_total = total - discount
 
-        # Store in session
-        request.session['applied_coupon_code'] = coupon_code
+
+        # Store in session so the coupon persists for the visitor (unless preview)
+        if not preview_flag:
+            request.session['applied_coupon_code'] = coupon_code
+
+        # If there's no cart total (guest without DB cart), inform the user
+        # that the coupon is saved for later use. Otherwise return the actual
+        # discount and final total.
+        if total == 0:
+            return JsonResponse({
+                'success': True,
+                'message': 'Coupon saved. It will be applied when you have items in your cart.' if not preview_flag else 'Coupon preview: no items in cart',
+                'discount': 0.0,
+                'final_total': 0.0,
+                'coupon_code': coupon_code,
+                'discount_percentage': float(coupon.discount_percentage),
+                'preview': preview_flag,
+            })
 
         return JsonResponse({
             'success': True,
-            'message': f'Coupon applied! You saved ₹{discount:.2f}',
+            'message': f'Coupon applied! You saved ₹{discount:.2f}' if not preview_flag else f'Coupon preview: you would save ₹{discount:.2f}',
             'discount': float(discount),
             'final_total': float(final_total),
             'coupon_code': coupon_code,
-            'discount_percentage': float(coupon.discount_percentage)
+            'discount_percentage': float(coupon.discount_percentage),
+            'preview': preview_flag,
         })
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
 
 
-@login_required
-@user_passes_test(is_customer)
 @require_POST
 def remove_coupon_view(request):
     """AJAX view to remove applied coupon"""
@@ -1558,11 +2028,15 @@ def remove_coupon_view(request):
     cart_items = Cart.objects.filter(user=request.user)
     accessory_items = AccessoryCart.objects.filter(user=request.user)
     total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
-    
+    # When removed, discount is zero and final_total equals total
     return JsonResponse({
         'success': True,
         'message': 'Coupon removed',
-        'total': float(total)
+        'total': float(total),
+        'final_total': float(total),
+        'discount': 0.0,
+        'coupon_code': '',
+        'discount_percentage': 0.0,
     })
 
 
@@ -1616,9 +2090,9 @@ def create_draft_order(request):
                 coupon=applied_coupon,
                 discount_amount=discount,
                 final_amount=final_total,
-                shipping_address=(request.user.address if hasattr(request.user, 'address') else ''),
-                phone_number=(request.user.phone_number if hasattr(request.user, 'phone_number') else ''),
-                payment_method='card',
+                shipping_address=(request.POST.get('shipping_address') or (request.user.address if hasattr(request.user, 'address') else '')),
+                phone_number=(request.POST.get('phone_number') or (request.user.phone_number if hasattr(request.user, 'phone_number') else '')),
+                payment_method=(request.POST.get('payment_method') or 'card'),
                 payment_status='pending',
             )
             for cart_item in cart_items:
@@ -1729,12 +2203,199 @@ def upi_payment_view(request, order_id):
     # Check if payment is already completed
     if order.payment_status == 'paid':
         messages.info(request, 'This order has already been paid.')
-        return redirect('order_detail', order_id=order.id)
-    
+
     # Check if order is cancelled
     if order.status == 'cancelled':
         messages.error(request, 'Cannot process payment for a cancelled order.')
         return redirect('order_detail', order_id=order.id)
+    
+    # Generate UPI payment string
+    # Format: upi://pay?pa=UPI_ID&pn=MERCHANT_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&cu=INR
+    upi_id = "muhzinmuhammed4@oksbi"  # Replace with your actual UPI ID
+    merchant_name = settings.SITE_NAME
+    amount = str(order.total_amount)
+    transaction_note = f"Order {order.order_number}"
+    
+    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR"
+    
+    # Generate QR Code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(upi_string)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 for embedding in HTML
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    # UPI app deep links
+    upi_apps = {
+        'phonepe': f"phonepe://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+        'googlepay': f"gpay://upi/pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+        'paytm': f"paytmmp://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+    }
+    
+    context = {
+        'order': order,
+        'upi_id': upi_id,
+        'upi_string': upi_string,
+        'qr_code': qr_code_base64,
+        'upi_apps': upi_apps,
+    }
+    
+    return render(request, 'store/customer/upi_payment.html', context)
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(['GET', 'POST'])
+def admin_add_combo_view(request):
+    """Staff-only page: create a ComboOffer with multiple fish items.
+
+    Form fields (simple): title, bundle_price (optional), is_active
+    Items: multiple rows of fish_id[] and quantity[] submitted via JS
+    """
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        bundle_price = request.POST.get('bundle_price') or None
+        is_active = request.POST.get('is_active') == 'on'
+        show_on_homepage = request.POST.get('show_on_homepage') == 'on'
+        fish_ids = request.POST.getlist('fish_id')
+        quantities = request.POST.getlist('quantity')
+        errors = []
+        if not title:
+            errors.append('Title is required.')
+        if not fish_ids:
+            errors.append('Add at least one fish to the combo.')
+
+        if errors:
+            fishes = Fish.objects.all().order_by('name')
+            return render(request, 'store/admin/add_combo.html', {
+                'errors': errors,
+                'fishes': fishes,
+                'title': title,
+                'bundle_price': bundle_price,
+                'is_active': is_active,
+                'show_on_homepage': show_on_homepage,
+            
+            })
+
+        combo = ComboOffer.objects.create(
+            title=title,
+            bundle_price=bundle_price or None,
+            is_active=is_active,
+            show_on_homepage=show_on_homepage,
+        )
+        for idx, fid in enumerate(fish_ids):
+            try:
+                fish = Fish.objects.get(id=int(fid))
+                qty = int(quantities[idx]) if idx < len(quantities) else 1
+                ComboItem.objects.create(combo=combo, fish=fish, quantity=max(1, qty))
+            except Exception:
+                continue
+
+        messages.success(request, f'Combo "{combo.title}" created successfully.')
+        return redirect('admin_fishes')
+
+    # GET
+    fishes = Fish.objects.all().order_by('name')
+    # also include existing combos so staff can edit from the same page
+    combos = ComboOffer.objects.all().order_by('-created_at')
+
+    # Support pre-filling the form from staff links, e.g. ?prefill_fish=12 or ?prefill_fish=12,34
+    prefill_param = request.GET.get('prefill_fish') or request.GET.get('preselect_fish')
+    prefill_fish_ids = []
+    if prefill_param:
+        try:
+            # allow comma separated values
+            parts = [p.strip() for p in str(prefill_param).split(',') if p.strip()]
+            for p in parts:
+                fid = int(p)
+                # ensure fish exists
+                if Fish.objects.filter(id=fid).exists():
+                    prefill_fish_ids.append(fid)
+        except Exception:
+            prefill_fish_ids = []
+
+    return render(request, 'store/admin/add_combo.html', {'fishes': fishes, 'combos': combos, 'prefill_fish_ids': prefill_fish_ids})
+    
+    # Check if order is cancelled
+    if order.status == 'cancelled':
+        messages.error(request, 'Cannot process payment for a cancelled order.')
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_http_methods(['GET', 'POST'])
+def admin_edit_combo_view(request, combo_id):
+    """Edit an existing combo. Replaces items with submitted list."""
+    combo = get_object_or_404(ComboOffer, id=combo_id)
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        bundle_price = request.POST.get('bundle_price') or None
+        is_active = request.POST.get('is_active') == 'on'
+        show_on_homepage = request.POST.get('show_on_homepage') == 'on'
+        fish_ids = request.POST.getlist('fish_id')
+        quantities = request.POST.getlist('quantity')
+        errors = []
+        if not title:
+            errors.append('Title is required.')
+        if not fish_ids:
+            errors.append('Add at least one fish to the combo.')
+
+        if errors:
+            fishes = Fish.objects.all().order_by('name')
+            combos = ComboOffer.objects.all().order_by('-created_at')
+            return render(request, 'store/admin/add_combo.html', {'errors': errors, 'fishes': fishes, 'combos': combos, 'editing': True, 'combo': combo})
+
+        # Update combo fields
+        combo.title = title
+        combo.bundle_price = bundle_price or None
+        combo.is_active = is_active
+        combo.show_on_homepage = show_on_homepage
+        combo.save()
+
+        # Replace items: simple approach - delete existing and recreate
+        ComboItem.objects.filter(combo=combo).delete()
+        for idx, fid in enumerate(fish_ids):
+            try:
+                fish = Fish.objects.get(id=int(fid))
+                qty = int(quantities[idx]) if idx < len(quantities) else 1
+                ComboItem.objects.create(combo=combo, fish=fish, quantity=max(1, qty))
+            except Exception:
+                continue
+
+        messages.success(request, f'Combo "{combo.title}" updated successfully.')
+        return redirect('admin_fishes')
+
+    # GET - render form prefilled
+    fishes = Fish.objects.all().order_by('name')
+    combos = ComboOffer.objects.all().order_by('-created_at')
+    return render(request, 'store/admin/add_combo.html', {'fishes': fishes, 'combos': combos, 'editing': True, 'combo': combo})
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_POST
+def admin_delete_combo_view(request, combo_id):
+    """Delete a combo. Accessible by staff only. Expects POST (CSRF-protected)."""
+    combo = get_object_or_404(ComboOffer, id=combo_id)
+    title = combo.title
+    try:
+        combo.delete()
+        messages.success(request, f'Combo "{title}" deleted successfully.')
+    except Exception:
+        messages.error(request, f'Unable to delete combo "{title}". Please try again.')
+    return redirect('admin_add_combo')
+    
     
     # Generate UPI payment string
     # Format: upi://pay?pa=UPI_ID&pn=MERCHANT_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&cu=INR
@@ -2640,6 +3301,47 @@ def admin_edit_contact_view(request, contact_id):
     else:
         form = ContactInfoForm(instance=contact)
     return render(request, 'store/admin/add_contact.html', {'form': form, 'is_edit': True})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_gallery_view(request):
+    contact = ContactInfo.objects.first()
+    if not contact:
+        messages.error(request, 'Please create Contact Information before adding gallery items.')
+        return redirect('admin_add_contact')
+
+    from .forms import ContactGalleryForm
+    media_items = ContactGalleryMedia.objects.filter(contact=contact)
+
+    if request.method == 'POST':
+        form = ContactGalleryForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.contact = contact
+            if not obj.file and not obj.external_url:
+                messages.error(request, 'Please provide a file or an external URL.')
+            else:
+                obj.save()
+                messages.success(request, 'Gallery media added successfully.')
+                return redirect('admin_gallery')
+    else:
+        form = ContactGalleryForm()
+
+    return render(request, 'store/admin/gallery.html', {
+        'contact': contact,
+        'media_items': media_items,
+        'form': form,
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_gallery_media_view(request, media_id):
+    media = get_object_or_404(ContactGalleryMedia, id=media_id)
+    media.delete()
+    messages.success(request, 'Gallery media deleted successfully.')
+    return redirect('admin_gallery')
 
 
 @login_required

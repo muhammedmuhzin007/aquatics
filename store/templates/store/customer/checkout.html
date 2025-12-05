@@ -100,6 +100,25 @@
         transition: all 0.3s ease;
         cursor: pointer;
     }
+
+    /* Make coupon cards even height and align contents */
+    .available-coupons .row > [class*="col-"] {
+        display: flex; /* ensure columns stretch to same height */
+    }
+    .available-coupons .coupon-suggestion {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        min-height: 110px; /* consistent card height */
+        box-sizing: border-box;
+        padding: 1rem;
+    }
+    .available-coupons .coupon-suggestion > .d-flex {
+        flex: 1 1 auto; /* let inner content take remaining space */
+        align-items: center;
+    }
+    .available-coupons .coupon-suggestion .text-primary { font-size: 1.05rem; }
     
     html[data-theme='light'] .coupon-suggestion {
         background: rgba(102, 126, 234, 0.05);
@@ -130,7 +149,7 @@
                     <div class="card-header">
                         <h5 class="text-white"><i class="fas fa-shopping-cart"></i> Order Summary</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" id="order-summary-body" data-total="{{ total }}">
                         {% for item in cart_items %}
                         <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
                             <div>
@@ -146,8 +165,8 @@
                         </div>
                         {% if applied_coupon %}
                         <div class="d-flex justify-content-between text-success">
-                            <span><i class="fas fa-tag me-1"></i>Discount ({{ applied_coupon.discount_percentage }}%):</span>
-                            <span id="discount-amount">-{{ discount|rupees }}</span>
+                            <span id="discount-label"><i class="fas fa-tag me-1"></i>Coupon <strong>{{ applied_coupon.code }}</strong> ({{ applied_coupon.discount_percentage }}%):</span>
+                            <span id="discount-amount">{{ discount|rupees }}</span>
                         </div>
                         {% endif %}
                         <div class="d-flex justify-content-between mt-2">
@@ -170,42 +189,40 @@
                     <div class="card-header">
                         <h5><i class="fas fa-ticket-alt"></i> Have a Coupon Code?</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" id="coupon-input-body">
                         {% if applied_coupon %}
                         <div class="alert alert-success d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas fa-check-circle me-2"></i>
                                 <strong>{{ applied_coupon.code }}</strong> applied!
-                                <br>
-                                <small>You saved {{ discount|rupees }}</small>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger" id="remove-coupon-btn">
                                 <i class="fas fa-times"></i> Remove
                             </button>
                         </div>
-                        {% else %}
+                        {% endif %}
+
                         <div class="input-group mb-3">
                             <input type="text" class="form-control" id="coupon-code-input" 
-                                   placeholder="Enter coupon code" style="text-transform: uppercase;"
-                                   list="coupon-suggestions">
+                                   placeholder="Enter coupon code" style="text-transform: uppercase;">
                             <button class="btn btn-primary" type="button" id="apply-coupon-btn">
                                 <i class="fas fa-tag me-1"></i>Apply
                             </button>
                         </div>
-                        
+
                         {% if available_coupons %}
                         <datalist id="coupon-suggestions">
                             {% for coupon in available_coupons %}
                             <option value="{{ coupon.code }}">{{ coupon.discount_percentage }}% OFF{% if coupon.max_discount_amount %} (Max {{ coupon.max_discount_amount|rupees }}){% endif %}</option>
                             {% endfor %}
                         </datalist>
-                        
+
                         <div class="available-coupons">
                             <small class="text-muted mb-2 d-block"><i class="fas fa-info-circle me-1"></i>Available Coupons:</small>
                             <div class="row g-2">
                                 {% for coupon in available_coupons %}
                                 <div class="col-md-6">
-                                    <div class="coupon-suggestion" data-code="{{ coupon.code }}">
+                                    <div class="coupon-suggestion {% if applied_coupon and applied_coupon.code == coupon.code %}applied border-success{% endif %}" data-code="{{ coupon.code }}" data-discount-pct="{{ coupon.discount_percentage }}" data-max-discount="{% if coupon.max_discount_amount %}{{ coupon.max_discount_amount }}{% else %}0{% endif %}">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
                                                 <strong class="text-primary">{{ coupon.code }}</strong>
@@ -218,9 +235,15 @@
                                                 <br><small class="text-muted">Min: {{ coupon.min_order_amount|rupees }}</small>
                                                 {% endif %}
                                             </div>
+                                            {% if applied_coupon and applied_coupon.code == coupon.code %}
+                                            <button type="button" class="btn btn-sm btn-success" disabled aria-disabled="true">
+                                                <i class="fas fa-check-circle"></i> Applied
+                                            </button>
+                                            {% else %}
                                             <button type="button" class="btn btn-sm btn-outline-primary apply-suggested-coupon">
                                                 Apply
                                             </button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -228,9 +251,8 @@
                             </div>
                         </div>
                         {% endif %}
-                        
+
                         <div id="coupon-message" class="mt-2"></div>
-                        {% endif %}
                     </div>
                 </div>
                 
@@ -319,12 +341,26 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const applyBtn = document.getElementById('apply-coupon-btn');
-    const removeBtn = document.getElementById('remove-coupon-btn');
-    const couponInput = document.getElementById('coupon-code-input');
-    const messageDiv = document.getElementById('coupon-message');
-    
-    // Get CSRF token
+    // Debug helpers: intercept navigation/reload to trace unexpected reloads
+    try {
+        (function(){
+            const origReload = window.location.reload.bind(window.location);
+            window.location.reload = function(){ console.debug('DEBUG: window.location.reload called'); console.trace(); return origReload(); };
+
+            const origAssign = window.location.assign.bind(window.location);
+            window.location.assign = function(url){ console.debug('DEBUG: window.location.assign called with', url); console.trace(); return origAssign(url); };
+
+            const origReplace = window.location.replace.bind(window.location);
+            window.location.replace = function(url){ console.debug('DEBUG: window.location.replace called with', url); console.trace(); return origReplace(url); };
+
+            // Avoid attempting to redefine location.href (not configurable in many browsers)
+        })();
+    } catch(e) { console.debug('DEBUG: navigation intercept setup failed', e); }
+    // Save the original coupon input area so we can restore it after AJAX removal
+    const couponBody = document.getElementById('coupon-input-body');
+    const originalCouponBodyHTML = couponBody ? couponBody.innerHTML : '';
+
+    // Utility helpers
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -340,118 +376,367 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     }
     const csrftoken = getCookie('csrftoken');
-    
-    // Apply coupon function
+
+    function formatRupees(value) {
+        try { return '₹' + Number(value).toFixed(2); } catch (e) { return value; }
+    }
+    function escapeHtml(unsafe) {
+        return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+    function computeEstimateFromCard(card) {
+        if (!card) return null;
+        const totalEl = document.getElementById('order-summary-body');
+        const total = totalEl ? parseFloat(totalEl.dataset.total || '0') : 0;
+        const pct = parseFloat(card.dataset.discountPct || card.dataset.discountPct === undefined ? (card.dataset.discountPct || card.getAttribute('data-discount-pct')) : card.dataset.discountPct);
+        // fallback: try direct attribute access
+        const pctAttr = card.getAttribute('data-discount-pct');
+        const maxAttr = card.getAttribute('data-max-discount');
+        const pctVal = (!isNaN(parseFloat(pctAttr))) ? parseFloat(pctAttr) : NaN;
+        const maxVal = (!isNaN(parseFloat(maxAttr))) ? parseFloat(maxAttr) : 0;
+        if (isNaN(pctVal)) return null;
+        let discount = (total * pctVal) / 100;
+        if (maxVal && maxVal > 0) discount = Math.min(discount, maxVal);
+        const final_total = Math.max(0, total - discount);
+        return { total, discount, final_total, pct: pctVal, max: maxVal };
+    }
+    function showMessage(message, type) {
+        const msgDiv = document.getElementById('coupon-message');
+        if (!msgDiv) return;
+        msgDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => { msgDiv.innerHTML = ''; }, 5000);
+    }
+
+    // Apply coupon via AJAX and update summary in-place
     function applyCoupon(code) {
+        console.debug('applyCoupon called with', code);
         const formData = new FormData();
         formData.append('coupon_code', code);
-        
-        // Disable all apply buttons
+
+        // Disable suggestion apply buttons during request
         document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = true);
-        if (applyBtn) applyBtn.disabled = true;
-        
+
         fetch('{% url "apply_coupon" %}', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
-                'X-CSRFToken': csrftoken
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.debug('applyCoupon: fetch completed, status', response.status, 'url', response.url);
+            const ct = response.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                if (response.redirected || response.url.includes('{% url "login" %}')) {
+                    console.debug('applyCoupon: detected redirect to login or HTML response');
+                    showMessage('Please login to apply coupons.', 'danger');
+                    setTimeout(() => { window.location.href = '{% url "login" %}?next={% url "checkout" %}'; }, 900);
+                    throw new Error('auth');
+                }
+                return response.text().then(text => { throw { name: 'ParseError', text }; });
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
-                showMessage(data.message, 'success');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
+            console.debug('applyCoupon: response data', data);
+            if (!data.success) {
                 showMessage(data.message, 'danger');
                 document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
-                if (applyBtn) applyBtn.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showMessage('An error occurred. Please try again.', 'danger');
-            document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
-            if (applyBtn) applyBtn.disabled = false;
-        });
-    }
-    
-    // Apply coupon from input
-    if (applyBtn) {
-        applyBtn.addEventListener('click', function() {
-            const code = couponInput.value.trim().toUpperCase();
-            
-            if (!code) {
-                showMessage('Please enter a coupon code', 'danger');
+                const applyBtn = document.getElementById('apply-coupon-btn'); if (applyBtn) applyBtn.disabled = false;
                 return;
             }
-            
-            applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
-            applyCoupon(code);
-        });
-        
-        // Allow Enter key to apply coupon
-        couponInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                applyBtn.click();
-            }
-        });
-    }
-    
-    // Apply suggested coupons
-    document.querySelectorAll('.apply-suggested-coupon').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const code = this.closest('.coupon-suggestion').dataset.code;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            applyCoupon(code);
-        });
-    });
-    
-    // Click on coupon card to fill input
-    document.querySelectorAll('.coupon-suggestion').forEach(card => {
-        card.addEventListener('click', function(e) {
-            if (!e.target.closest('.apply-suggested-coupon')) {
-                const code = this.dataset.code;
-                if (couponInput) {
-                    couponInput.value = code;
-                    couponInput.focus();
+
+            showMessage(data.message, 'success');
+
+            // Update totals and discount UI if server provided values
+            if (typeof data.final_total !== 'undefined') {
+                const finalEl = document.getElementById('final-total');
+                if (finalEl) finalEl.textContent = formatRupees(data.final_total);
+
+                const discountEl = document.getElementById('discount-amount');
+                if (discountEl) discountEl.textContent = formatRupees(data.discount || 0);
+
+                const discountLabel = document.getElementById('discount-label');
+                if (discountLabel && data.coupon_code) {
+                    const pct = data.discount_percentage ? ` (${data.discount_percentage}%)` : '';
+                    discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(data.coupon_code)}</strong>${pct}:`;
+                }
+
+                const youSavedEl = document.getElementById('you-saved');
+                if (youSavedEl) {
+                    youSavedEl.textContent = 'You saved ' + formatRupees(data.discount || 0);
+                    youSavedEl.style.display = (data.discount && Number(data.discount) > 0) ? '' : 'none';
                 }
             }
+
+            // Replace coupon body with applied summary and wire remove handler
+            const body = document.getElementById('coupon-input-body');
+            if (body) {
+                body.innerHTML = `
+                    <div class="alert alert-success d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>${escapeHtml(data.coupon_code)}</strong> applied!
+                            <br>
+                            <small>You saved ${formatRupees(data.discount || 0)}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="remove-coupon-btn">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                `;
+
+                // Re-initialize handlers for new nodes
+                initCouponUI();
+            }
+
+            // Update suggestion buttons appearance
+            try {
+                document.querySelectorAll('.apply-suggested-coupon').forEach(btn => {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-check-circle"></i> Applied';
+                    btn.classList.add('btn-success');
+                    btn.classList.remove('btn-outline-primary');
+                });
+                if (data.coupon_code) {
+                    const appliedCard = document.querySelector(`.coupon-suggestion[data-code="${data.coupon_code}"]`);
+                    if (appliedCard) appliedCard.classList.add('border-success');
+                }
+            } catch (e) { console.warn('Suggestion update failed', e); }
+
+            // If final_total is zero (guest saved), re-enable input controls so user can continue
+            if (data.final_total === 0) {
+                document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
+                const applyBtn = document.getElementById('apply-coupon-btn'); if (applyBtn) applyBtn.disabled = false;
+            }
+            // Refresh the page shortly after applying so server-rendered state is authoritative
+            try { setTimeout(() => { window.location.reload(); }, 800); } catch(e){}
+        })
+        .catch(error => {
+            console.error('Error applying coupon:', error);
+            console.debug('applyCoupon: error object', error);
+            showMessage('An error occurred. Please try again.', 'danger');
+            document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
+            const applyBtn = document.getElementById('apply-coupon-btn'); if (applyBtn) applyBtn.disabled = false;
         });
-    });
-    
-    // Remove coupon
-    if (removeBtn) {
-        removeBtn.addEventListener('click', function() {
-            if (confirm('Remove this coupon?')) {
+    }
+
+    // Preview coupon (server-side calc without persisting)
+    function previewCoupon(code) {
+        console.debug('previewCoupon called with', code);
+        const formData = new FormData();
+        formData.append('coupon_code', code);
+        formData.append('preview', '1');
+
+        return fetch('{% url "apply_coupon" %}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => {
+            console.debug('previewCoupon: fetch completed, status', response.status, 'url', response.url);
+            const ct = response.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                if (response.redirected || response.url.includes('{% url "login" %}')) {
+                    showMessage('Please login to preview coupons.', 'danger');
+                    throw new Error('auth');
+                }
+                return response.text().then(text => { throw { name: 'ParseError', text }; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.debug('previewCoupon: response data', data);
+            if (!data.success) {
+                // show preview error but don't block apply
+                showMessage(data.message, 'danger');
+                return data;
+            }
+
+            // Update UI with authoritative server-side preview values
+            if (typeof data.final_total !== 'undefined') {
+                const finalEl = document.getElementById('final-total');
+                if (finalEl) finalEl.textContent = formatRupees(data.final_total);
+
+                const discountEl = document.getElementById('discount-amount');
+                if (discountEl) discountEl.textContent = formatRupees(data.discount || 0);
+
+                const discountLabel = document.getElementById('discount-label');
+                if (discountLabel && data.coupon_code) {
+                    const pct = data.discount_percentage ? ` (${data.discount_percentage}%)` : '';
+                    discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(data.coupon_code)}</strong>${pct}:`;
+                }
+
+                const youSavedEl = document.getElementById('you-saved');
+                if (youSavedEl) {
+                    youSavedEl.textContent = 'You saved ' + formatRupees(data.discount || 0);
+                    youSavedEl.style.display = (data.discount && Number(data.discount) > 0) ? '' : 'none';
+                }
+            }
+
+            return data;
+        })
+        .catch(err => {
+            console.error('previewCoupon error', err);
+            return Promise.reject(err);
+        });
+    }
+
+    // Initialize coupon UI event bindings. Call after DOM changes to re-wire.
+    function initCouponUI() {
+        const applyBtn = document.getElementById('apply-coupon-btn');
+        const couponInput = document.getElementById('coupon-code-input');
+        const removeBtn = document.getElementById('remove-coupon-btn');
+        const couponsContainer = document.querySelector('.available-coupons');
+
+        if (applyBtn && couponInput) {
+            applyBtn.addEventListener('click', function() {
+                const code = couponInput.value.trim().toUpperCase();
+                if (!code) { showMessage('Please enter a coupon code', 'danger'); return; }
+                // Immediate UI feedback: show applying placeholder in discount area
+                const discountLabel = document.getElementById('discount-label');
+                const discountEl = document.getElementById('discount-amount');
+                const youSavedEl = document.getElementById('you-saved');
+                // If this code matches a suggested coupon, show an immediate numeric estimate
+                const suggestedCard = document.querySelector(`.coupon-suggestion[data-code="${code}"]`);
+                if (suggestedCard) {
+                    const est = computeEstimateFromCard(suggestedCard);
+                    if (est) {
+                        if (discountLabel) discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(code)}</strong> <em>(estimate)</em>:`;
+                        if (discountEl) discountEl.textContent = formatRupees(est.discount);
+                        if (youSavedEl) { youSavedEl.textContent = 'You saved ' + formatRupees(est.discount); youSavedEl.style.display = ''; }
+                    } else {
+                        if (discountLabel) discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(code)}</strong> <em>(applying&hellip;)</em>:`;
+                        if (discountEl) discountEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+                        if (youSavedEl) { youSavedEl.textContent = 'Calculating...'; youSavedEl.style.display = ''; }
+                    }
+                } else {
+                    if (discountLabel) discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(code)}</strong> <em>(applying&hellip;)</em>:`;
+                    if (discountEl) discountEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+                    if (youSavedEl) { youSavedEl.textContent = 'Calculating...'; youSavedEl.style.display = ''; }
+                }
+
+                applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+                applyCoupon(code);
+            });
+            couponInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); applyBtn.click(); }
+            });
+
+            // Debounced preview when typing codes that match suggestions
+            let previewTimer = null;
+            couponInput.addEventListener('input', function(e) {
+                clearTimeout(previewTimer);
+                const code = (couponInput.value || '').trim().toUpperCase();
+                if (!code) return;
+                previewTimer = setTimeout(() => {
+                    // Find matching suggestion (case-insensitive)
+                    const matching = Array.from(document.querySelectorAll('.coupon-suggestion')).find(c => (c.getAttribute('data-code') || '').toUpperCase() === code);
+                    if (matching) {
+                        // Call preview to show server-accurate values but do not persist
+                        previewCoupon(code).catch(err => console.warn('Preview on input failed', err));
+                    }
+                }, 450);
+            });
+        }
+
+        if (couponsContainer) {
+            couponsContainer.addEventListener('click', function(e) {
+                const btn = e.target.closest('.apply-suggested-coupon');
+                if (btn) {
+                    e.preventDefault();
+                    const card = btn.closest('.coupon-suggestion');
+                    if (!card) return;
+                    const code = card.dataset.code;
+                    // Immediate UI feedback for suggestion click — compute numeric estimate
+                    const discountLabel = document.getElementById('discount-label');
+                    const discountEl = document.getElementById('discount-amount');
+                    const youSavedEl = document.getElementById('you-saved');
+                    const est = computeEstimateFromCard(card);
+                    if (est) {
+                        if (discountLabel) discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(code)}</strong> <em>(estimate)</em>:`;
+                        if (discountEl) discountEl.textContent = formatRupees(est.discount);
+                        if (youSavedEl) { youSavedEl.textContent = 'You saved ' + formatRupees(est.discount); youSavedEl.style.display = ''; }
+                    } else {
+                        if (discountLabel) discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(code)}</strong> <em>(applying&hellip;)</em>:`;
+                        if (discountEl) discountEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+                        if (youSavedEl) { youSavedEl.textContent = 'Calculating...'; youSavedEl.style.display = ''; }
+                    }
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                    // Directly apply coupon on suggestion click (single request)
+                    applyCoupon(code);
+                    return;
+                }
+                const card = e.target.closest('.coupon-suggestion');
+                if (card && !e.target.closest('button')) {
+                    const code = card.dataset.code;
+                    const inp = document.getElementById('coupon-code-input');
+                    if (inp) { inp.value = code; inp.focus(); }
+                }
+            });
+        }
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                // Proceed immediately when user clicks Remove (no confirm dialog)
+                console.debug('remove coupon: starting fetch');
                 fetch('{% url "remove_coupon" %}', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
-                        'X-CSRFToken': csrftoken
+                        'X-CSRFToken': csrftoken,
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.debug('remove coupon: fetch completed, status', response.status, 'url', response.url);
+                    const ct = response.headers.get('content-type') || '';
+                    if (!ct.includes('application/json')) {
+                        if (response.redirected || response.url.includes('{% url "login" %}')) {
+                            // Don't use blocking alert(); show inline message and redirect
+                            showMessage('Please login to remove coupons.', 'danger');
+                            setTimeout(() => { window.location.href = '{% url "login" %}?next={% url "checkout" %}'; }, 900);
+                            throw new Error('auth');
+                        }
+                        return response.text().then(text => { throw { name: 'ParseError', text }; });
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.success) {
-                        window.location.reload();
+                    if (!data.success) { showMessage(data.message || 'Could not remove coupon', 'danger'); return; }
+
+                    // Update totals and remove discount display
+                    const finalEl = document.getElementById('final-total');
+                    if (finalEl && typeof data.final_total !== 'undefined') finalEl.textContent = formatRupees(data.final_total);
+
+                    const discountEl = document.getElementById('discount-amount'); if (discountEl) discountEl.textContent = '';
+                    const discountLabel = document.getElementById('discount-label'); if (discountLabel) discountLabel.innerHTML = '';
+                    const youSavedEl = document.getElementById('you-saved'); if (youSavedEl) youSavedEl.style.display = 'none';
+
+                    // Restore original coupon input area and re-bind handlers
+                    const body = document.getElementById('coupon-input-body');
+                    if (body) {
+                        body.innerHTML = originalCouponBodyHTML;
+                        initCouponUI();
                     }
+                    // Refresh page shortly after removing coupon to reflect server-side state
+                    try { setTimeout(() => { window.location.reload(); }, 700); } catch(e){}
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-            }
-        });
+                .catch(err => { if (err.message === 'auth') return; console.error('Remove error', err); showMessage('Could not remove coupon', 'danger'); });
+            });
+        }
     }
-    
-    function showMessage(message, type) {
-        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-        setTimeout(() => {
-            messageDiv.innerHTML = '';
-        }, 5000);
-    }
+
+    // Initialize handlers on first load
+    initCouponUI();
 });
+</script>
 {% if order %}
 <script>
 // AJAX checkout form logic (provider-agnostic).
@@ -580,13 +865,14 @@ if (checkoutForm) {
 
             const rzp = new window.Razorpay(options);
             rzp.open();
-        } catch (err) {
-            showCheckoutMessage(err.message || 'Order failed. Please try again.');
-            if (placeOrderBtn) placeOrderBtn.disabled = false;
-            if (btnText) btnText.style.display = '';
-            if (btnSpinner) btnSpinner.style.display = 'none';
+                } catch (err) {
+                    showCheckoutMessage(err.message || 'Order failed. Please try again.');
+                    if (placeOrderBtn) placeOrderBtn.disabled = false;
+                    if (btnText) btnText.style.display = '';
+                    if (btnSpinner) btnSpinner.style.display = 'none';
+                }
+            });
         }
-    });
-}
-{% endif %}
-{% endblock %}
+        {% endif %}
+        </script>
+        {% endblock %}

@@ -90,7 +90,11 @@
             {% if media.media_type == 'image' and media.source %}
               <img src="{{ media.source }}" alt="{{ media.title|default:fish.name }}" style="width:100%; height:350px; object-fit:contain; border-radius:4px;">
             {% elif media.media_type == 'video' and media.source %}
-              {% if 'youtube.com' in media.embed_url or 'youtu.be' in media.embed_url %}
+              {% if media.embed_url and 'youtube.com' in media.embed_url %}
+                <div class="ratio ratio-16x9">
+                  <iframe src="{{ media.embed_url }}" title="video" allowfullscreen style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+              {% elif media.embed_url and 'youtu.be' in media.embed_url %}
                 <div class="ratio ratio-16x9">
                   <iframe src="{{ media.embed_url }}" title="video" allowfullscreen style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Category, Breed, Fish, Cart, Order, OrderItem, OTP, Review, Service, ContactInfo, LimitedOffer, BlogPost
+from .models import CustomUser, Category, Breed, Fish, Cart, Order, OrderItem, OTP, Review, Service, ContactInfo, LimitedOffer, BlogPost, Coupon, ComboOffer, ComboItem
 
 admin.site.register(CustomUser)
 admin.site.register(Category)
@@ -62,6 +62,31 @@ class LimitedOfferAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ('code', 'discount_percentage', 'max_discount_amount', 'min_order_amount', 'coupon_type', 'is_active', 'show_in_suggestions', 'force_apply', 'valid_from', 'valid_until', 'times_used', 'usage_limit')
+    list_filter = ('is_active', 'show_in_suggestions', 'coupon_type', 'valid_from', 'valid_until')
+    search_fields = ('code',)
+    list_editable = ('is_active', 'show_in_suggestions', 'force_apply')
+    readonly_fields = ('times_used', 'created_at', 'updated_at')
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('code', 'discount_percentage', 'max_discount_amount', 'min_order_amount')
+        }),
+        ('Eligibility', {
+            'fields': ('coupon_type', 'is_active', 'show_in_suggestions', 'force_apply', 'valid_from', 'valid_until', 'usage_limit')
+        }),
+        ('Usage', {
+            'fields': ('times_used', 'created_by'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
 @admin.register(BlogPost)
 class BlogPostAdmin(admin.ModelAdmin):
     list_display = ('title', 'author', 'is_published', 'published_at', 'created_at')
@@ -69,5 +94,32 @@ class BlogPostAdmin(admin.ModelAdmin):
     search_fields = ('title', 'excerpt', 'content', 'author__username')
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('created_at', 'updated_at')
+
+
+# Minimal admin registration for combos so admin add URL exists
+class ComboItemInline(admin.TabularInline):
+    model = ComboItem
+    extra = 1
+
+
+@admin.register(ComboOffer)
+class ComboOfferAdmin(admin.ModelAdmin):
+    list_display = ('title', 'bundle_price', 'is_active', 'show_on_homepage', 'created_at')
+    list_filter = ('is_active', 'show_on_homepage')
+    search_fields = ('title', 'description')
+    list_editable = ('is_active', 'show_on_homepage')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Offer Details', {
+            'fields': ('title', 'description', 'bundle_price')
+        }),
+        ('Display Options', {
+            'fields': ('is_active', 'show_on_homepage')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 

@@ -128,11 +128,14 @@
                             <i class="fas fa-fish"></i> Manage Fishes
                         </a>
                         {% elif user.role == 'admin' %}
-                        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        <a href="{% url 'admin_gallery' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-photo-video"></i> Gallery
                         </a>
                         <a href="{% url 'admin_limited_offers' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-bolt"></i> Limited Offers
+                        </a>
+                        <a href="{% url 'admin_combo_deals' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
+                            <i class="fas fa-layer-group"></i> Combo Deals
                         </a>
                         <a href="{% url 'admin_coupons' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-ticket-alt"></i> Manage Coupons

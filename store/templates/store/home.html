@@ -3,14 +3,18 @@
 
 {% block extra_css %}
 <style>
-/* Reduce space between Limited Offers heading and banner */
+/* Limited Offers Banner Styling - keep banner below heading and spaced */
 .limited-offers-banner {
-    margin-top: -100px !important;
-}
-/* Limited Offers Banner Styling - Large Image Banner with Carousel */
-.limited-offers-banner {
-    margin-bottom: 40px;
+    margin-top: 0 !important;
+    margin-bottom: 24px;
     position: relative;
+}
+
+/* Ensure Combo Deals heading looks consistent for banners and cards */
+.combo-heading-wrapper > h2.section-heading,
+.combo-heading-wrapper.cards-only > h2.section-heading {
+    margin-top: 12px !important;
+    margin-bottom: 18px !important;
 }
 
 .offer-banner-carousel {
@@ -76,6 +80,179 @@
     outline: none;
 }
 
+/* Combo thumbnail strip inside offer banner */
+.combo-thumbs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+}
+.combo-thumb {
+    width: 140px;
+    height: 140px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.08);
+}
+.combo-thumb-empty {
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(0,0,0,0.02));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.combo-banner-bg {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 16px;
+    z-index: 0;
+}
+
+@media (max-width: 768px) {
+    .combo-thumb { width: 90px; height: 90px; }
+    .combo-banner-bg { padding: 0; }
+}
+
+/* Full-banner collage for combo offers */
+.combo-collage {
+    display: grid;
+    /* Magazine-like mosaic: a large tile plus supporting tiles */
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    min-height: 360px;
+}
+.collage-cell {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    box-shadow: 0 10px 36px rgba(0,0,0,0.28);
+    min-height: 120px;
+    overflow: hidden;
+}
+.collage-empty {
+    background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+}
+
+/* Mosaic placement: make first tile large and span two rows/columns */
+.collage-cell:nth-child(1) {
+    grid-column: 1 / span 2;
+    grid-row: 1 / span 2;
+}
+.collage-cell:nth-child(2) {
+    grid-column: 3 / span 1;
+    grid-row: 1 / span 1;
+}
+.collage-cell:nth-child(3) {
+    grid-column: 3 / span 1;
+    grid-row: 2 / span 1;
+}
+.collage-cell:nth-child(n+4) {
+    /* Additional cells will flow into the grid; they will occupy available space below */
+    grid-column: auto;
+    grid-row: auto;
+}
+
+/* Split layout: when we want equal vertical slices across the banner */
+.combo-collage.split-layout {
+    /* Use flex so each image becomes a full-height vertical slice and fills the banner */
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    min-height: 360px;
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden; /* keep slices inside rounded banner */
+}
+.combo-collage.split-layout .collage-cell {
+    flex: 1 1 0;
+    height: 100%;
+    min-height: inherit;
+    background-size: cover;
+    background-position: center;
+    border-radius: 0; /* parent keeps rounding */
+    box-shadow: none;
+    transform: none !important;
+    position: relative; /* needed for divider pseudo */
+}
+.combo-collage.split-layout .collage-cell:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.18));
+    pointer-events: none;
+}
+.combo-collage.split-layout .collage-cell:hover { transform: scale(1.03); z-index: 2; }
+
+/* Layered/rotated styling for a more 'stylish' collage look */
+.collage-cell {
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+    will-change: transform;
+}
+.collage-cell:nth-child(odd) { transform: rotate(-1.5deg); }
+.collage-cell:nth-child(even) { transform: rotate(1.5deg); }
+.collage-cell:hover { transform: scale(1.03) rotate(0deg); box-shadow: 0 18px 40px rgba(0,0,0,0.45); }
+
+/* A subtle dark overlay for combo banners to ensure text readability */
+.offer-banner-item .combo-banner-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.12));
+    z-index: 0;
+    border-radius: 16px;
+    pointer-events: none;
+}
+
+/* Stronger background for text when combo banners are used */
+.offer-banner-content.combo-content {
+    position: absolute;
+    left: 20px;
+    top: 24px;
+    /* keep the panel compact instead of stretching full height */
+    bottom: auto;
+    max-height: 260px;
+    overflow: hidden;
+    /* removed heavy dark background so image shows through */
+    background: transparent;
+    backdrop-filter: none;
+    padding: 20px 22px;
+    border-radius: 12px;
+    /* make overlay compact so split images remain visible */
+    width: min(36%, 720px);
+    z-index: 4;
+    color: #fff;
+    box-shadow: none;
+    /* keep text legible on varied images */
+    text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+
+@media (max-width: 992px) {
+    .offer-banner-content.combo-content { width: 100%; max-width: 100%; padding: 20px; }
+}
+
+@media (max-width: 992px) {
+    .combo-collage { grid-template-columns: repeat(2, 1fr); }
+    .collage-cell { min-height: 180px; }
+}
+
+@media (max-width: 576px) {
+    .combo-collage { grid-template-columns: 1fr; }
+    .collage-cell { min-height: 140px; border-radius: 6px; }
+}
+
 .offer-banner-bg {
     position: absolute;
     inset: 0;
@@ -98,15 +275,20 @@
 .offer-banner-overlay {
     position: absolute;
     inset: 0;
-    /* Remove dark shading so banner images appear brighter.
-       Keep transparent background to preserve readability of overlaid text. */
-    background: transparent;
+    /* stronger left-to-right gradient to preserve image visibility while improving text contrast */
+    background: linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.36) 20%, rgba(0,0,0,0.12) 45%, rgba(0,0,0,0.0) 100%);
     z-index: 1;
+    pointer-events: none;
+}
+
+/* Remove heavy overlay for combo banners so image is visible */
+.offer-banner-item.combo-banner-item .offer-banner-overlay {
+    background: transparent;
 }
 
 .offer-banner-content {
     position: relative;
-    z-index: 2;
+    z-index: 5;
     padding: 48px;
     height: 100%;
     display: flex;
@@ -141,6 +323,13 @@
     gap: 8px;
     box-shadow: 0 4px 16px rgba(239,83,80,0.4);
     animation: badgePulse 2s ease-in-out infinite;
+}
+
+/* Combo-specific badge color (uses accent blue) */
+.offer-banner-content.combo-content .offer-banner-badge {
+    background: rgba(var(--accent-blue-rgb, 30,136,229), 0.95);
+    box-shadow: 0 6px 24px rgba(var(--accent-blue-rgb, 30,136,229), 0.28);
+    animation: none;
 }
 
 @keyframes badgePulse {
@@ -183,6 +372,15 @@
     margin-bottom: 16px;
     text-shadow: 0 4px 12px rgba(0,0,0,0.5);
     line-height: 1.2;
+}
+
+.offer-banner-title,
+.offer-banner-discount,
+.offer-banner-description,
+.offer-banner-fish-info,
+.offer-banner-end-date {
+    color: #fff;
+    text-shadow: 0 6px 18px rgba(0,0,0,0.6);
 }
 
 .offer-banner-discount {
@@ -266,11 +464,18 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    z-index: 9999;
+    z-index: 99999;
     font-size: 1.2rem;
     backdrop-filter: blur(8px);
     outline: none;
 }
+
+/* Ensure inline SVG chevrons in nav buttons are visible */
+.offer-carousel-nav svg { width: 20px; height: 20px; display: block; color: white; }
+.offer-carousel-nav svg path { stroke: rgba(255,255,255,0.95); stroke-width: 2; }
+
+/* Make sure nav buttons are fully opaque and on top of content */
+.offer-carousel-nav { opacity: 1 !important; }
 
 .offer-carousel-nav:hover {
     background: rgba(255, 255, 255, 0.4);
@@ -290,6 +495,20 @@
 .offer-carousel-nav.debug-outline {
     outline: 3px solid rgba(255,0,0,0.7);
     box-shadow: 0 0 0 6px rgba(255,0,0,0.08);
+}
+.offer-carousel-nav:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Reduce visual weight of nav when many slices are visible */
+.offer-carousel-nav { opacity: 0.9; }
+
+/* Small responsive tweaks */
+@media (max-width: 992px) {
+    .offer-banner-carousel { min-height: 300px; }
+    .combo-collage.split-layout { min-height: 260px; }
 }
 
 .offer-carousel-prev {
@@ -486,6 +705,44 @@
     text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
+/* Improve visibility for the small count text inside offer cards */
+.limited-offer-card .card-body small.text-muted {
+    color: rgba(255,255,255,0.92);
+    opacity: 1;
+}
+    .limited-offer-card .card-body .item-count {
+    /* Fallback solid color, then use semi-transparent accent via rgb variable */
+    background: rgba(30,136,229,0.95);
+    background: rgba(var(--accent-blue-rgb), 0.95);
+    color: #ffffff;
+    font-weight: 700;
+    margin: 0 6px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(2,6,23,0.35);
+    font-size: 0.95rem;
+    display: inline-block;
+}
+
+/* Theme-aware tweaks while keeping the accent background */
+html[data-theme='dark'] .limited-offer-card .card-body small.text-muted {
+    color: rgba(255,255,255,0.95) !important;
+}
+html[data-theme='dark'] .limited-offer-card .card-body .item-count {
+    background: var(--accent-blue);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+html[data-theme='light'] .limited-offer-card .card-body small.text-muted {
+    color: rgba(30,30,30,0.88) !important;
+}
+html[data-theme='light'] .limited-offer-card .card-body .item-count {
+    background: var(--accent-blue);
+    color: #ffffff;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
 .limited-offer-card .text-info {
     font-size: 1.1rem;
     font-weight: 700;
@@ -581,6 +838,11 @@ html[data-theme='light'] .limited-offer-card:hover {
 
 html[data-theme='light'] .limited-offer-card .overlay-top {
     background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0.4));
+}
+
+/* Remove underlines for any link text inside the clickable card wrapper */
+.limited-offer-card, .limited-offer-card * {
+    text-decoration: none !important;
 }
 
 /* Categories Carousel Styling */
@@ -729,10 +991,10 @@ html[data-theme='light'] .category-carousel-nav:hover {
             {% elif not user.is_authenticated %}
                 <div class="mt-4">
                     <a href="{% url 'register' %}" class="btn btn-primary btn-lg btn-register">
-                        <i class="fas fa-user-plus"></i> Get Started
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.6"/></svg> Get Started
                     </a>
                     <a href="{% url 'fish_list' %}" class="btn btn-success btn-lg ms-3">
-                        <i class="fas fa-eye"></i> Browse Fishes
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Browse Fishes
                     </a>
                 </div>
             {% endif %}
@@ -813,8 +1075,24 @@ html[data-theme='light'] .category-carousel-nav:hover {
             <div class="container-fluid">
                 <div class="offer-banner-carousel">
                     {% for offer in limited_offers %}
-                    <a href="{% if offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}" class="offer-banner-item {% if forloop.first %}active{% endif %}" data-start-time="{{ offer.start_time|date:'c' }}" data-end-time="{{ offer.end_time|date:'c' }}">
-                        {% if offer.fish and offer.fish.image %}
+                    <a href="{% if offer.is_combo and offer.combo_id %}{% url 'combo_detail' offer.combo_id %}{% elif offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}" class="offer-banner-item {% if forloop.first %}active{% endif %}" data-start-time="{{ offer.start_time|date:'c' }}" data-end-time="{{ offer.end_time|date:'c' }}">
+                        {% if offer.is_combo %}
+                        <div class="offer-banner-bg combo-banner-bg">
+                            <div class="combo-collage {% if offer.images %}split-layout{% endif %}" {% if offer.images %}style="--cols: {{ offer.images|length }};"{% endif %} aria-hidden="true">
+                                {% for img in offer.images %}
+                                <div class="collage-cell" style="background-image: url('{{ img }}')"></div>
+                                {% endfor %}
+                                {% if not offer.images %}
+                                    {% if offer.fish and offer.fish.image %}
+                                    <div class="collage-cell" style="background-image: url('{{ offer.fish.image.url }}')"></div>
+                                    {% else %}
+                                    <div class="collage-cell collage-empty"></div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="offer-banner-overlay"></div>
+                        {% elif offer.fish and offer.fish.image %}
                         <div class="offer-banner-bg" style="background-image: url('{{ offer.fish.image.url }}');"></div>
                         <div class="offer-banner-overlay"></div>
                         {% elif offer.image %}
@@ -828,11 +1106,11 @@ html[data-theme='light'] .category-carousel-nav:hover {
                         <div class="offer-banner-overlay"></div>
                         {% endif %}
                         
-                        <div class="offer-banner-content">
+                        <div class="offer-banner-content{% if offer.is_combo %} combo-content{% endif %}">
                             <div class="offer-banner-top">
                                 <div>
                                     <div class="d-flex align-items-center mb-3">
-                                        <i class="fas fa-bolt text-warning me-2" style="font-size: 1.5rem;"></i>
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2 text-warning" aria-hidden="true" focusable="false"><path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/></svg>
                                         <span style="font-size: 1rem; font-weight: 600; opacity: 0.9;">LIMITED TIME OFFER</span>
                                     </div>
                                     <h2 class="offer-banner-title">{{ offer.title }}</h2>
@@ -842,21 +1120,21 @@ html[data-theme='light'] .category-carousel-nav:hover {
                                     {% endif %}
                                     {% if offer.fish %}
                                     <p class="offer-banner-fish-info" style="font-size: 1rem; margin-top: 12px; opacity: 0.9;">
-                                        <i class="fas fa-fish me-2"></i>{{ offer.fish.name }} - {{ offer.fish.breed.name }}
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" aria-hidden="true" focusable="false"><path d="M22 12c0 0-2-2-6-2s-6 2-8 2-4-1-6-3c2-2 5-4 9-4s7 2 11 6z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 6c.5 1 2 2 3 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ offer.fish.name }} - {{ offer.fish.breed.name }}
                                     </p>
                                     {% endif %}
                                 </div>
                                 <div class="offer-banner-badge">
-                                    <i class="far fa-clock"></i>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     <span class="countdown-banner" data-end-time="{{ offer.end_time|date:'c' }}">--:--:--</span>
                                 </div>
                             </div>
                             
                             <div class="offer-banner-footer">
-                                <div class="offer-banner-end-date">
-                                    <i class="far fa-calendar-alt me-2"></i>
-                                    Ends {{ offer.end_time|date:"M d, Y g:i A" }}
-                                </div>
+                                    <div class="offer-banner-end-date">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        Ends {{ offer.end_time|date:"M d, Y g:i A" }}
+                                    </div>
                             </div>
                             
                             <div class="offer-progress-container">
@@ -868,17 +1146,118 @@ html[data-theme='light'] .category-carousel-nav:hover {
                     
                     <!-- Navigation Arrows (always rendered so client-side can control visibility) -->
                     <button class="offer-carousel-nav offer-carousel-prev" id="offerCarouselPrev" aria-label="Previous offer" title="Previous offer" tabindex="0" aria-controls="offerCarousel">
-                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                     <button class="offer-carousel-nav offer-carousel-next" id="offerCarouselNext" aria-label="Next offer" title="Next offer" tabindex="0" aria-controls="offerCarousel">
-                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
 
                     <!-- Indicator Dots removed: UI simplified by hiding the small dots -->
                 </div>
             </div>
         </section>
-    {% endif %}
+{% endif %}
+
+{# Combo Banners: render wide banners for combos marked as banners, using limited-offer banner layout #}
+{% if combo_banners or combo_deals %}
+<section class="section">
+    <div class="container-fluid">
+        <div class="combo-heading-wrapper {% if combo_banners %}has-banners{% else %}cards-only{% endif %}">
+            <h2 class="section-heading">Combo Deals</h2>
+        </div>
+    </div>
+</section>
+
+{% endif %}
+
+{% if combo_banners %}
+<section class="limited-offers-banner">
+    <div class="container-fluid">
+        <div class="offer-banner-carousel">
+            {% for b in combo_banners %}
+            <a href="{% url 'combo_detail' b.combo_id %}" class="offer-banner-item combo-banner-item {% if forloop.first %}active{% endif %}">
+                {% if b.image %}
+                <div class="offer-banner-bg" style="background-image: url('{{ b.image }}'); height:420px; background-size:cover; background-position:center;"></div>
+                <div class="offer-banner-overlay"></div>
+                {% else %}
+                <div class="offer-banner-bg offer-banner-solid" style="height:420px;"></div>
+                <div class="offer-banner-overlay"></div>
+                {% endif %}
+
+                <div class="offer-banner-content combo-content">
+                    <div class="offer-banner-top">
+                        <div>
+                            <div class="d-flex align-items-center mb-3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" aria-hidden="true" focusable="false"><path d="M20.59 13.41L13.41 20.59a2 2 0 0 1-2.83 0L3.41 13.41a2 2 0 0 1 0-2.83L10.59 3.41a2 2 0 0 1 2.83 0l7.17 7.17a2 2 0 0 1 0 2.83z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span style="font-size: 1rem; font-weight: 600; opacity: 0.9;">COMBO DEAL</span>
+                            </div>
+                            <h2 class="offer-banner-title">{{ b.title }}</h2>
+                            {% if b.discount_text %}
+                            <div class="offer-banner-discount">{{ b.discount_text }}</div>
+                            {% endif %}
+                            {% if b.description %}
+                            <p class="offer-banner-description">{{ b.description|truncatechars:120 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+
+            <button class="offer-carousel-nav offer-carousel-prev" id="comboCarouselPrev" aria-label="Previous combo" title="Previous combo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="offer-carousel-nav offer-carousel-next" id="comboCarouselNext" aria-label="Next combo" title="Next combo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# Combo Deals section: render separately when `combo_deals` exists #}
+{% if combo_deals %}
+<section class="section">
+    <div class="container-fluid">
+        <div class="combos-carousel-container categories-carousel-container">
+            <div class="combos-carousel-track categories-carousel-track">
+                {% for combo in combo_deals %}
+                <div class="category-carousel-item combo-carousel-item">
+                    <a href="{% if combo.is_combo and combo.combo_id %}{% url 'combo_detail' combo.combo_id %}{% else %}{% url 'combos' %}{% endif %}" class="card category-card limited-offer-card">
+                        {% if combo.images and combo.images.0 %}
+                        <div style="height:180px; background-image: url('{{ combo.images.0 }}'); background-size: cover; background-position: center; border-top-left-radius: 12px; border-top-right-radius: 12px;"></div>
+                        {% elif combo.fish and combo.fish.image %}
+                        <div style="height:180px; background-image: url('{{ combo.fish.image.url }}'); background-size: cover; background-position: center; border-top-left-radius: 12px; border-top-right-radius: 12px;"></div>
+                        {% else %}
+                        <div style="height:180px; background: linear-gradient(135deg,#0f1724,#071022); border-top-left-radius: 12px; border-top-right-radius: 12px;"></div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h3 class="card-title">{{ combo.title }}</h3>
+                            <div class="text-info mb-2">{{ combo.discount_text }}</div>
+                            <p class="mb-2" style="opacity:0.9;">{{ combo.description|truncatechars:120 }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Includes {% with combo.images|length as count %}{% if count > 0 %}<span class="item-count">{{ count }}</span>{% elif combo.fish %}<span class="item-count">1</span>{% else %}<span class="item-count">0</span>{% endif %}{% endwith %} items</small>
+                                <span class="btn btn-sm btn-outline-light">View</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Navigation Buttons for combos -->
+            <button class="category-carousel-nav category-carousel-prev" id="comboPrev" aria-label="Previous combos">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="category-carousel-nav category-carousel-next" id="comboNext" aria-label="Next combos">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </div>
+</section>
+{% endif %}
+    
 
 <!-- Categories Section -->
 {% if categories %}
@@ -1340,76 +1719,63 @@ document.addEventListener('DOMContentLoaded', function(){
 
     } // end if(track)
     
-    // Offer Banner Carousel (scoped, single-binding, robust)
+    // Offer Banner Carousel (initialize every .offer-banner-carousel on the page)
     (function(){
-        const offerCarousel = document.querySelector('.offer-banner-carousel');
-        if(!offerCarousel) return;
+        const carousels = Array.from(document.querySelectorAll('.offer-banner-carousel'));
+        if(!carousels.length) return;
 
-        const banners = Array.from(offerCarousel.querySelectorAll('.offer-banner-item'));
-        const prevBtn = offerCarousel.querySelector('#offerCarouselPrev') || document.getElementById('offerCarouselPrev');
-        const nextBtn = offerCarousel.querySelector('#offerCarouselNext') || document.getElementById('offerCarouselNext');
-        const dots = Array.from(offerCarousel.querySelectorAll('.offer-carousel-dot'));
+        carousels.forEach((offerCarousel) => {
+            const banners = Array.from(offerCarousel.querySelectorAll('.offer-banner-item'));
+            const prevBtn = offerCarousel.querySelector('.offer-carousel-prev');
+            const nextBtn = offerCarousel.querySelector('.offer-carousel-next');
+            const dots = Array.from(offerCarousel.querySelectorAll('.offer-carousel-dot'));
 
-        if(banners.length === 0) return;
+            if(banners.length === 0) return;
 
-        let idx = banners.findIndex(b => b.classList.contains('active'));
-        if(idx === -1) idx = 0;
-        let autoInterval = null;
+            let idx = banners.findIndex(b => b.classList.contains('active'));
+            if(idx === -1) idx = 0;
+            let autoInterval = null;
 
-        function show(i){
-            banners.forEach((b, j) => b.classList.toggle('active', j === i));
-            dots.forEach((d, j) => d.classList.toggle('active', j === i));
-        }
+            function show(i){
+                banners.forEach((b, j) => b.classList.toggle('active', j === i));
+                dots.forEach((d, j) => d.classList.toggle('active', j === i));
+            }
 
-        function next(){
-            idx = (idx + 1) % banners.length;
+            function next(){ idx = (idx + 1) % banners.length; show(idx); }
+            function prev(){ idx = (idx - 1 + banners.length) % banners.length; show(idx); }
+
+            function startAuto(){ stopAuto(); if(banners.length > 1) autoInterval = setInterval(next, 5000); }
+            function stopAuto(){ if(autoInterval){ clearInterval(autoInterval); autoInterval = null; } }
+
+            // Defensive binding for controls
+            if(nextBtn && !nextBtn.__offerBound){
+                nextBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); next(); stopAuto(); startAuto(); });
+                nextBtn.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); nextBtn.click(); } });
+                nextBtn.__offerBound = true;
+            }
+
+            if(prevBtn && !prevBtn.__offerBound){
+                prevBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); prev(); stopAuto(); startAuto(); });
+                prevBtn.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); prevBtn.click(); } });
+                prevBtn.__offerBound = true;
+            }
+
+            if(dots.length){
+                dots.forEach((dot, i) => {
+                    if(!dot.__offerBound){
+                        dot.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); idx = i; show(idx); stopAuto(); startAuto(); });
+                        dot.__offerBound = true;
+                    }
+                });
+            }
+
+            offerCarousel.addEventListener('mouseenter', stopAuto);
+            offerCarousel.addEventListener('mouseleave', startAuto);
+
+            // Initialize
             show(idx);
-        }
-
-        function prev(){
-            idx = (idx - 1 + banners.length) % banners.length;
-            show(idx);
-        }
-
-        function startAuto(){
-            stopAuto();
-            if(banners.length > 1) autoInterval = setInterval(next, 5000);
-        }
-
-        function stopAuto(){
-            if(autoInterval){ clearInterval(autoInterval); autoInterval = null; }
-        }
-
-        // Single, defensive binding for controls
-        if(nextBtn && !nextBtn.__offerBound){
-            nextBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); next(); stopAuto(); startAuto(); });
-            nextBtn.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); nextBtn.click(); } });
-            nextBtn.__offerBound = true;
-        }
-
-        if(prevBtn && !prevBtn.__offerBound){
-            prevBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); prev(); stopAuto(); startAuto(); });
-            prevBtn.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); prevBtn.click(); } });
-            prevBtn.__offerBound = true;
-        }
-
-        // Dot bindings
-        if(dots.length){
-            dots.forEach((dot, i) => {
-                if(!dot.__offerBound){
-                    dot.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); idx = i; show(idx); stopAuto(); startAuto(); });
-                    dot.__offerBound = true;
-                }
-            });
-        }
-
-        // Pause on hover for the whole carousel element
-        offerCarousel.addEventListener('mouseenter', stopAuto);
-        offerCarousel.addEventListener('mouseleave', startAuto);
-
-        // Initialize
-        show(idx);
-        startAuto();
+            startAuto();
+        });
     })();
     
     // Limited Offers Banner: countdown + progress bars
@@ -1461,8 +1827,11 @@ document.addEventListener('DOMContentLoaded', function(){
     setInterval(updateOfferBanners, 1000);
 
     // Categories Carousel: Card Switch 1 at a Time (infinite looping)
-    const categoryItems = document.querySelectorAll('.category-carousel-item');
-    const categoryTrack = document.querySelector('.categories-carousel-track');
+    // Scope the category carousel to the real categories container so other carousels
+    // (e.g. combos) that reuse styles do not interfere.
+    const categoryContainer = document.querySelector('.categories-carousel-container:not(.combos-carousel-container)');
+    const categoryTrack = categoryContainer ? categoryContainer.querySelector('.categories-carousel-track') : null;
+    const categoryItems = categoryTrack ? Array.from(categoryTrack.querySelectorAll('.category-carousel-item')) : [];
     const categoryPrevBtn = document.getElementById('categoryPrev');
     const categoryNextBtn = document.getElementById('categoryNext');
 
@@ -1479,7 +1848,7 @@ document.addEventListener('DOMContentLoaded', function(){
         let categoryAutoPlayInterval = null;
 
         // Real (original) items
-        const realItems = Array.from(categoryItems);
+        const realItems = categoryItems; // already an Array
         let clonesPrepended = [];
         let clonesAppended = [];
         const GAP = 30; // px gap used in CSS
@@ -1617,6 +1986,113 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
     // Featured fishes carousel (infinite loop with clones)
+    // Combo Deals carousel (infinite loop with clones)
+    (function(){
+        try {
+            const track = document.querySelector('.combos-carousel-track');
+            const items = track ? Array.from(track.children) : [];
+            const prev = document.getElementById('comboPrev');
+            const next = document.getElementById('comboNext');
+            if(!track || items.length === 0) return;
+
+            const GAP = 30; // reuse same gap as categories
+            let itemsPerPage = () => {
+                if(window.innerWidth > 1200) return 3;
+                if(window.innerWidth > 768) return 2;
+                return 1;
+            };
+
+            let realItems = items;
+            let clonesBefore = [];
+            let clonesAfter = [];
+            let index = 0; // index into realItems
+            let isAnimating = false;
+            let autoInterval = null;
+
+            function getItemWidth(){
+                const el = realItems[0];
+                if(!el) return 0;
+                return el.offsetWidth + GAP;
+            }
+
+            function buildClones(){
+                clonesBefore.forEach(c=>c.remove()); clonesAfter.forEach(c=>c.remove()); clonesBefore=[]; clonesAfter=[];
+                const n = itemsPerPage();
+                for(let i = realItems.length - n; i < realItems.length; i++){
+                    const idx = (i + realItems.length) % realItems.length;
+                    const clone = realItems[idx].cloneNode(true);
+                    clone.classList.add('combo-clone');
+                    track.insertBefore(clone, track.firstChild);
+                    clonesBefore.push(clone);
+                }
+                for(let i = 0; i < n; i++){
+                    const clone = realItems[i].cloneNode(true);
+                    clone.classList.add('combo-clone');
+                    track.appendChild(clone);
+                    clonesAfter.push(clone);
+                }
+            }
+
+            function updateTransform(animate=true){
+                if(isAnimating) return;
+                const w = getItemWidth();
+                if(w === 0) return;
+                const offset = (index + clonesBefore.length) * w;
+                if(animate){
+                    isAnimating = true;
+                    track.style.transition = 'transform 0.45s cubic-bezier(0.4,0,0.2,1)';
+                } else {
+                    track.style.transition = 'none';
+                }
+                track.style.transform = `translateX(-${offset}px)`;
+                if(animate){
+                    setTimeout(()=>{
+                        if(index >= realItems.length){
+                            track.style.transition = 'none';
+                            index = 0;
+                            const realOffset = (index + clonesBefore.length) * w;
+                            track.style.transform = `translateX(-${realOffset}px)`;
+                        }
+                        if(index < 0){
+                            track.style.transition = 'none';
+                            index = realItems.length - 1;
+                            const realOffset = (index + clonesBefore.length) * w;
+                            track.style.transform = `translateX(-${realOffset}px)`;
+                        }
+                        isAnimating = false;
+                    }, 480);
+                }
+            }
+
+            prev?.addEventListener('click', function(){ if(isAnimating) return; index -= 1; updateTransform(true); restartAuto(); });
+            next?.addEventListener('click', function(){ if(isAnimating) return; index += 1; updateTransform(true); restartAuto(); });
+
+            function startAuto(){ stopAuto(); if(realItems.length > 1) autoInterval = setInterval(()=>{ if(!isAnimating) { index += 1; updateTransform(true); } }, 4500); }
+            function stopAuto(){ if(autoInterval){ clearInterval(autoInterval); autoInterval = null; } }
+            function restartAuto(){ stopAuto(); startAuto(); }
+
+            // Pause on hover
+            const container = document.querySelector('.combos-carousel-container');
+            if(container){ container.addEventListener('mouseenter', stopAuto); container.addEventListener('mouseleave', startAuto); }
+
+            // init
+            buildClones();
+            index = 0;
+            setTimeout(()=> updateTransform(false), 50);
+            startAuto();
+
+            // responsive rebuild
+            let t2;
+            window.addEventListener('resize', ()=>{
+                clearTimeout(t2); t2 = setTimeout(()=>{
+                    buildClones();
+                    updateTransform(false);
+                }, 250);
+            });
+        } catch(e) {
+            console && console.warn && console.warn('Combo carousel error', e);
+        }
+    })();
     (function(){
         const track = document.querySelector('.featured-carousel-track');
         const items = track ? Array.from(track.children) : [];

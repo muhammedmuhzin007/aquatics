@@ -7,10 +7,7 @@ class Migration(migrations.Migration):
         ('store', '0024_alter_contactinfo_options_blogpost'),
     ]
 
-    operations = [
-        migrations.AddField(
-            model_name='order',
-            name='provider_order_id',
-            field=models.CharField(max_length=200, null=True, blank=True),
-        ),
-    ]
+    # This migration previously attempted to add `provider_order_id`, but the
+    # same field was already added by migration 0021. Keep this migration as
+    # a no-op to avoid duplicate-column errors in test and CI databases.
+    operations = []

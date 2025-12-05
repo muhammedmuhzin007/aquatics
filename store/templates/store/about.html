@@ -55,6 +55,342 @@
 </section>
 {% endif %}
 
+{% if contact and contact.gallery_media.exists %}
+<section class="section gallery-section">
+    <div class="container-fluid">
+        <h2 class="section-heading mb-4">Gallery</h2>
+        <div class="gallery-slider-container position-relative">
+            <button class="gallery-nav gallery-prev" aria-label="Previous">
+                <span class="nav-circle"><i class="fas fa-chevron-left"></i></span>
+            </button>
+            <div id="gallerySlider" class="gallery-slider d-flex align-items-stretch">
+                {% for item in contact.gallery_media.all %}
+                <div class="gallery-thumb gallery-card" data-index="{{ forloop.counter0 }}" data-type="{{ item.media_type }}" data-src="{{ item.source }}" data-embed="{{ item.embed_url }}">
+                    <div class="gallery-image-wrap">
+                        {% if item.media_type == 'image' and item.source %}
+                            <img src="{{ item.source }}" alt="{{ item.title|default:'Gallery' }}">
+                        {% elif item.media_type == 'video' and item.source %}
+                            {% if item.embed_url and 'youtube.com' in item.embed_url or item.embed_url and 'youtu.be' in item.embed_url %}
+                                <div class="video-placeholder"><i class="fas fa-play"></i></div>
+                            {% else %}
+                                <video muted>
+                                    <source src="{{ item.embed_url }}" type="video/mp4">
+                                </video>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {# captions removed: show images only #}
+                </div>
+                {% endfor %}
+            </div>
+            <button class="gallery-nav gallery-next" aria-label="Next">
+                <span class="nav-circle"><i class="fas fa-chevron-right"></i></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for carousel -->
+    <div class="modal fade" id="galleryModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark text-white">
+          <div class="modal-body p-0">
+                        <div id="galleryCarousel" class="carousel slide">
+              <div class="carousel-inner" id="galleryCarouselInner"></div>
+              <button class="carousel-control-prev" type="button" data-bs-target="#galleryCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#galleryCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+              </button>
+            </div>
+                    </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+        const thumbs = document.querySelectorAll('.gallery-thumb');
+        const carouselInner = document.getElementById('galleryCarouselInner');
+        const modalEl = document.getElementById('galleryModal');
+        if (!thumbs.length) return;
+
+        // Build carousel slides from thumbnails
+        function buildSlides(startIdx) {
+            carouselInner.innerHTML = '';
+            thumbs.forEach(function(tt, i){
+                const type = tt.getAttribute('data-type');
+                const src = tt.getAttribute('data-src');
+                const embed = tt.getAttribute('data-embed');
+                const active = (i === startIdx) ? ' active' : '';
+                let slide = document.createElement('div');
+                slide.className = 'carousel-item' + active;
+                slide.style.minHeight = '60vh';
+                slide.style.display = 'flex';
+                slide.style.alignItems = 'center';
+                slide.style.justifyContent = 'center';
+
+                if (type === 'image' && src) {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '80vh';
+                    img.style.objectFit = 'contain';
+                    slide.appendChild(img);
+                } else if (type === 'video') {
+                    if (embed && (embed.includes('youtube.com') || embed.includes('youtu.be') || embed.includes('vimeo.com'))) {
+                        const iframe = document.createElement('iframe');
+                        iframe.src = embed;
+                        iframe.width = '100%';
+                        iframe.height = '80%';
+                        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                        iframe.allowFullscreen = true;
+                        iframe.style.border = '0';
+                        slide.appendChild(iframe);
+                    } else if (embed) {
+                        const video = document.createElement('video');
+                        video.controls = true;
+                        video.style.maxWidth = '100%';
+                        video.style.maxHeight = '80vh';
+                        const source = document.createElement('source');
+                        source.src = embed;
+                        source.type = 'video/mp4';
+                        video.appendChild(source);
+                        slide.appendChild(video);
+                    } else if (src) {
+                        const video = document.createElement('video');
+                        video.controls = true;
+                        video.style.maxWidth = '100%';
+                        video.style.maxHeight = '80vh';
+                        const source = document.createElement('source');
+                        source.src = src;
+                        source.type = 'video/mp4';
+                        video.appendChild(source);
+                        slide.appendChild(video);
+                    } else {
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'video-placeholder';
+                        placeholder.innerHTML = '<i class="fas fa-play"></i>';
+                        slide.appendChild(placeholder);
+                    }
+                }
+
+                carouselInner.appendChild(slide);
+            });
+        }
+
+        let manualInterval = null;
+        function clearManualInterval(){ if (manualInterval){ clearInterval(manualInterval); manualInterval = null; } }
+
+        // Prevent page scroll (wheel/touch) while modal is open
+        const _wheelHandler = function (e) { e.preventDefault(); };
+        function disablePageScroll() {
+            try {
+                document.body.style.overflow = 'hidden';
+                window.addEventListener('wheel', _wheelHandler, { passive: false });
+                window.addEventListener('touchmove', _wheelHandler, { passive: false });
+            } catch (e) {}
+        }
+        function enablePageScroll() {
+            try {
+                document.body.style.overflow = '';
+                window.removeEventListener('wheel', _wheelHandler);
+                window.removeEventListener('touchmove', _wheelHandler);
+            } catch (e) {}
+        }
+
+        function initGalleryCarousel(startIndex){
+            const carouselEl = document.getElementById('galleryCarousel');
+            if (!carouselEl) return;
+            const slides = carouselInner.querySelectorAll('.carousel-item');
+            let carouselInstance = null;
+            try {
+                if (window.bootstrap && typeof bootstrap.Carousel === 'function') {
+                    // Ensure the correct slide is active before starting
+                    slides.forEach((s, idx) => s.classList.toggle('active', idx === startIndex));
+                    // Disable automatic cycling in the modal: user should navigate manually
+                    carouselInstance = new bootstrap.Carousel(carouselEl, { interval: false, wrap: true, pause: false });
+                    try { if (typeof carouselInstance.to === 'function') carouselInstance.to(startIndex); } catch(e){}
+                    carouselEl.addEventListener('slid.bs.carousel', function () { carouselEl.querySelectorAll('video').forEach(v => v.pause()); });
+                }
+            } catch(e) {
+                console.warn('Carousel init failed', e);
+                carouselInstance = null;
+            }
+
+            if (!carouselInstance) {
+                // fallback manual rotation
+                slides.forEach((s, idx) => s.classList.toggle('active', idx === startIndex));
+                clearManualInterval();
+                // Do not auto-advance slides in the modal. User navigates manually.
+                if (slides.length) {
+                    // keep slides set to startIndex but do not start any interval
+                    slides.forEach((s, idx) => s.classList.toggle('active', idx === startIndex));
+                }
+            }
+
+            // Cleanup on modal hide
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                try { if (carouselInstance && typeof carouselInstance.dispose === 'function') carouselInstance.dispose(); } catch(e){}
+                clearManualInterval();
+                carouselEl.querySelectorAll('video').forEach(v => { v.pause(); v.currentTime = 0; });
+                carouselEl.querySelectorAll('iframe').forEach(iframe => { iframe.src = iframe.src; });
+                // restore page scroll
+                enablePageScroll();
+            }, { once: true });
+        }
+
+        thumbs.forEach(function(t, idx){
+            t.addEventListener('click', function(){
+                buildSlides(idx);
+                function onShown(){ initGalleryCarousel(idx); modalEl.removeEventListener('shown.bs.modal', onShown); }
+                modalEl.addEventListener('shown.bs.modal', onShown);
+                if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                    const m = new bootstrap.Modal(modalEl);
+                    m.show();
+                    // disable page scroll while modal is open
+                    disablePageScroll();
+                    // Always ensure page scroll is restored when the modal closes
+                    modalEl.addEventListener('hidden.bs.modal', function () { try { enablePageScroll(); } catch (e) {} }, { once: true });
+                } else {
+                    // fallback display and disable scroll
+                    modalEl.style.display = 'block';
+                    disablePageScroll();
+                    // allow backdrop click to close the fallback modal and restore scroll
+                    const onFallbackClick = function (ev) {
+                        if (ev.target === modalEl) {
+                            modalEl.style.display = 'none';
+                            enablePageScroll();
+                            try { clearManualInterval(); } catch (e) {}
+                            try {
+                                const carouselEl = document.getElementById('galleryCarousel');
+                                const vids = carouselEl.querySelectorAll('video'); vids.forEach(v => { v.pause(); v.currentTime = 0; });
+                                const iframes = carouselEl.querySelectorAll('iframe'); iframes.forEach(iframe => { iframe.src = iframe.src; });
+                            } catch (e) {}
+                            modalEl.removeEventListener('click', onFallbackClick);
+                        }
+                    };
+                    modalEl.addEventListener('click', onFallbackClick);
+                }
+            });
+        });
+    });
+    </script>
+
+<script>
+// Slider behaviour: infinite loop via clones, autoplay, prev/next controls
+document.addEventListener('DOMContentLoaded', function () {
+    const slider = document.getElementById('gallerySlider');
+    if (!slider) return;
+    const prev = document.querySelector('.gallery-prev');
+    const next = document.querySelector('.gallery-next');
+
+    let cards = Array.from(slider.querySelectorAll('.gallery-card'));
+    const originalLength = cards.length;
+    if (originalLength === 0) return;
+
+    // If only one card, keep simple behavior
+    if (originalLength === 1) {
+        // center single card horizontally without affecting page vertical scroll
+        setTimeout(() => {
+            try {
+                const card = cards[0];
+                const left = card.offsetLeft - (slider.clientWidth - card.clientWidth) / 2;
+                slider.scrollTo({ left: left, behavior: 'auto' });
+                card.classList.add('centered');
+            } catch (e) {
+                try { cards[0].classList.add('centered'); } catch (e) {}
+            }
+        }, 50);
+        return;
+    }
+
+    const CLONES = Math.min(2, originalLength);
+
+    // create clones for seamless looping
+    const prepend = cards.slice(-CLONES).map(n => n.cloneNode(true));
+    const append = cards.slice(0, CLONES).map(n => n.cloneNode(true));
+    prepend.forEach(n => { n.classList.add('clone'); slider.insertBefore(n, slider.firstChild); });
+    append.forEach(n => { n.classList.add('clone'); slider.appendChild(n); });
+
+    // refresh cards list to include clones
+    cards = Array.from(slider.querySelectorAll('.gallery-card'));
+
+    let currentIndex = CLONES; // start at first real slide (after prepended clones)
+    let autoplayId = null;
+
+    function getCard(i) { return cards[(i + cards.length) % cards.length]; }
+
+    function setCenteredByIndex() {
+        const center = slider.scrollLeft + slider.clientWidth / 2;
+        let closest = 0; let closestDist = Infinity;
+        cards.forEach((c, idx) => {
+            const cCenter = c.offsetLeft + c.clientWidth / 2;
+            const dist = Math.abs(cCenter - center);
+            if (dist < closestDist) { closestDist = dist; closest = idx; }
+        });
+        cards.forEach((c, idx) => c.classList.toggle('centered', idx === closest));
+    }
+
+    function scrollToIndex(i, smooth = true) {
+        const card = getCard(i);
+        try {
+            const left = card.offsetLeft - (slider.clientWidth - card.clientWidth) / 2;
+            slider.scrollTo({ left: left, behavior: smooth ? 'smooth' : 'auto' });
+        } catch (e) {
+            try {
+                // fallback to scrollIntoView but prefer not to change vertical scroll
+                card.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', inline: 'center', block: 'nearest' });
+            } catch (e) {}
+        }
+        setTimeout(setCenteredByIndex, smooth ? 420 : 20);
+    }
+
+    function nextSlide() {
+        currentIndex++;
+        scrollToIndex(currentIndex, true);
+        // If moved past the last real slide, jump back to first real slide without animation
+        if (currentIndex >= CLONES + originalLength) {
+            setTimeout(function () { currentIndex = CLONES; scrollToIndex(currentIndex, false); }, 440);
+        }
+    }
+
+    function prevSlide() {
+        currentIndex--;
+        scrollToIndex(currentIndex, true);
+        if (currentIndex < CLONES) {
+            setTimeout(function () { currentIndex = CLONES + originalLength - 1; scrollToIndex(currentIndex, false); }, 440);
+        }
+    }
+
+    next.addEventListener('click', function (ev) { ev.preventDefault(); stopAutoplay(); nextSlide(); startAutoplay(); });
+    prev.addEventListener('click', function (ev) { ev.preventDefault(); stopAutoplay(); prevSlide(); startAutoplay(); });
+
+    function startAutoplay() { stopAutoplay(); autoplayId = setInterval(nextSlide, 4000); }
+    function stopAutoplay() { if (autoplayId) { clearInterval(autoplayId); autoplayId = null; } }
+
+    // update center class while user scrolls (throttled)
+    let scrollTimeout = null;
+    slider.addEventListener('scroll', function () { if (scrollTimeout) clearTimeout(scrollTimeout); scrollTimeout = setTimeout(setCenteredByIndex, 120); });
+
+    // Initialize position to the first real slide
+    setTimeout(function () { scrollToIndex(currentIndex, false); setCenteredByIndex(); startAutoplay(); }, 120);
+});
+</script>
+
+<style>
+/* Ensure carousel shows a single slide at a time even if Bootstrap styles are missing
+    (defensive). Force only active item to display and center content. */
+.carousel-inner { overflow: hidden; }
+.carousel-item { display: none !important; align-items: center; justify-content: center; }
+.carousel-item.active { display: flex !important; }
+.carousel-item img, .carousel-item iframe, .carousel-item video { max-width: 100%; max-height: 80vh; }
+</style>
+
+</section>
+{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const LIMIT = 220; // characters to show before truncation
@@ -369,5 +705,36 @@ html[data-theme='light'] .contact-card .text-gray { color: var(--light-text-soft
 /* Gallery thumbnails (if present) should use themed cards */
 .gallery-thumb { background: var(--card-bg); border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; }
 html[data-theme='light'] .gallery-thumb { background: var(--light-card); border: 1px solid var(--light-border); }
+
+
+/* Slider specific styles */
+.gallery-slider-container { position: relative; padding: 12px 40px; }
+.gallery-slider { gap: 24px; overflow: hidden; scroll-behavior: smooth; }
+.gallery-slider .gallery-card { min-width: 360px; flex: 0 0 360px; border-radius: 10px; overflow: hidden; background: var(--card-bg); border: 1px solid var(--border-color); display:flex; flex-direction:column; transition: transform 320ms ease, box-shadow 320ms ease; }
+.gallery-image-wrap { height: 420px; display:flex; align-items:center; justify-content:center; background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.05)); }
+.gallery-image-wrap img { width:100%; height:100%; object-fit:cover; transition: transform 400ms ease; }
+.gallery-image-wrap video { width:100%; height:100%; object-fit:cover; }
+.video-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#000; color:#fff; font-size:28px; }
+.gallery-card:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+.gallery-card.centered { transform: scale(1.06); box-shadow: 0 18px 40px rgba(0,0,0,0.35); }
+.gallery-card { cursor: pointer; }
+.gallery-card.centered .gallery-image-wrap img { transform: scale(1.03); }
+.gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); width:44px; height:44px; border-radius:50%; background: transparent; border: none; display:flex; align-items:center; justify-content:center; z-index:10; }
+.gallery-prev { left:8px; }
+.gallery-next { right:8px; }
+.nav-circle { width:40px; height:40px; border-radius:50%; background: rgba(8,24,40,0.6); display:flex; align-items:center; justify-content:center; color:#fff; border:2px solid rgba(100,150,255,0.25); }
+@media (max-width: 768px) {
+    /* On small screens show a single full-width card at a time */
+    .gallery-slider { gap: 0; padding: 12px; overflow: hidden; scroll-snap-type: x mandatory; }
+    .gallery-slider .gallery-card { min-width: 100%; flex: 0 0 100%; border-radius: 8px; margin: 0 auto; scroll-snap-align: center; }
+    /* Use viewport-based height so images are large but responsive */
+    .gallery-image-wrap { height: 60vw; max-height: 420px; }
+    .gallery-thumb img, .gallery-thumb video { height:60vw; max-height:420px; }
+    /* Slightly smaller nav buttons on mobile */
+    .gallery-nav { width:40px; height:40px; }
+}
+
+/* Make gallery image cards larger on desktop, but keep them compact on small screens */
+.gallery-thumb img, .gallery-thumb video { width:100%; height:420px; object-fit:cover; border-radius:6px; }
 </style>
 {% endblock %}

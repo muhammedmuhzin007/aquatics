@@ -1,4 +1,7 @@
 from django.db import models
+from django.conf import settings
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils import timezone
 import random
@@ -86,11 +89,80 @@ class Fish(models.Model):
     image = models.ImageField(upload_to='fishes/', blank=True, null=True)
     is_available = models.BooleanField(default=True)
     is_featured = models.BooleanField(default=False, help_text='If checked, this fish appears in Featured Fishes section')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     
     def __str__(self):
         return f"{self.name} - {self.breed.name}"
+    def __str__(self):
+        return f"{self.name} - {self.breed.name}"
+
+
+class Notification(models.Model):
+    LEVEL_CHOICES = (
+        ('info', 'Info'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES, default='info')
+    # Optional related fish
+    fish = models.ForeignKey(Fish, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.level})"
+
+
+# Signals to create notifications when fish stock changes
+@receiver(pre_save, sender=Fish)
+def fish_pre_save(sender, instance, **kwargs):
+    if not instance.pk:
+        instance._previous_stock = None
+        return
+    try:
+        prev = sender.objects.get(pk=instance.pk)
+        instance._previous_stock = prev.stock_quantity
+    except sender.DoesNotExist:
+        instance._previous_stock = None
+
+
+@receiver(post_save, sender=Fish)
+def fish_post_save(sender, instance, created, **kwargs):
+    # Only care about updates
+    if created:
+        return
+
+    prev = getattr(instance, '_previous_stock', None)
+    curr = instance.stock_quantity or 0
+    threshold = getattr(settings, 'LOW_STOCK_THRESHOLD', 5)
+
+    # Out of stock
+    if curr <= 0 and (prev is None or prev > 0):
+        # avoid duplicate unread critical notification for same fish
+        exists = Notification.objects.filter(fish=instance, level='critical', is_read=False).exists()
+        if not exists:
+            Notification.objects.create(
+                title=f"{instance.name} is out of stock",
+                message=f"{instance.name} has run out of stock.",
+                level='critical',
+                fish=instance,
+            )
+    # Low stock threshold crossed
+    elif curr <= threshold and (prev is None or (prev is not None and prev > threshold)):
+        exists = Notification.objects.filter(fish=instance, level='warning', is_read=False).exists()
+        if not exists:
+            Notification.objects.create(
+                title=f"{instance.name} stock is low",
+                message=f"{instance.name} stock is low (only {curr} left).",
+                level='warning',
+                fish=instance,
+            )
 
 
 class FishMedia(models.Model):
@@ -185,17 +257,53 @@ class FishMedia(models.Model):
 class Cart(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='cart_items')
     fish = models.ForeignKey(Fish, on_delete=models.CASCADE)
+    combo = models.ForeignKey('ComboOffer', on_delete=models.SET_NULL, null=True, blank=True, related_name='cart_items')
     quantity = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        unique_together = ['user', 'fish']
+        unique_together = [('user', 'fish', 'combo')]
     
     def __str__(self):
         return f"{self.user.username} - {self.fish.name}"
     
     def get_total(self):
         return self.fish.price * self.quantity
+
+
+# Combo / bundle models
+class ComboOffer(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    bundle_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    # Whether to show this combo on the homepage or promotional spots.
+    # Added to match existing DB schema where this column may already exist.
+    show_on_homepage = models.BooleanField(default=False)
+    # Optional banner image to display on the homepage as a wide banner
+    banner_image = models.ImageField(upload_to='combo_banners/', null=True, blank=True)
+    # If true, present this combo as a homepage banner (not as a card in Combo Deals)
+    show_as_banner = models.BooleanField(default=False)
+    # Whether to include this combo in the Limited Offers banner/rotation
+    # NOTE: `show_in_limited_offers` removed — combos are managed separately and
+    # presented only in the dedicated "Combo Deals" section on the homepage.
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+
+class ComboItem(models.Model):
+    combo = models.ForeignKey(ComboOffer, on_delete=models.CASCADE, related_name='items')
+    fish = models.ForeignKey(Fish, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ('combo', 'fish')
+
+    def __str__(self):
+        return f"{self.combo.title} - {self.fish.name} x{self.quantity}"
 
 
 class AccessoryCart(models.Model):
@@ -420,6 +528,85 @@ class BlogPost(models.Model):
         return f"{base} ({self.city or ''})".strip()
 
 
+class ContactGalleryMedia(models.Model):
+    MEDIA_TYPES = [
+        ("image", "Image"),
+        ("video", "Video"),
+    ]
+    contact = models.ForeignKey(ContactInfo, on_delete=models.CASCADE, related_name='gallery_media')
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
+    file = models.FileField(upload_to='contact_gallery/', blank=True, null=True)
+    external_url = models.URLField(blank=True, null=True, help_text='Optional external video URL (YouTube/Vimeo)')
+    title = models.CharField(max_length=150, blank=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+
+    def __str__(self):
+        return f"Gallery Media - {self.media_type} - {self.title or self.id}"
+
+    @property
+    def is_video(self):
+        return self.media_type == 'video'
+
+    @property
+    def source(self):
+        if self.file:
+            try:
+                return self.file.url
+            except Exception:
+                return None
+        return self.external_url
+
+    @property
+    def embed_url(self):
+        # Mirror FishMedia.embed_url logic for known providers
+        if self.file:
+            try:
+                return self.file.url
+            except Exception:
+                return None
+
+        url = (self.external_url or '').strip()
+        if not url:
+            return None
+
+        try:
+            if not url.startswith(('http://', 'https://')):
+                url = f'https://{url}'
+            parsed = urlparse(url)
+            host = (parsed.netloc or '').lower()
+
+            if 'youtube.com' in host:
+                if parsed.path == '/watch':
+                    vid = parse_qs(parsed.query).get('v', [None])[0]
+                    if vid:
+                        return f"https://www.youtube.com/embed/{vid}"
+                elif parsed.path.startswith('/shorts/'):
+                    vid = parsed.path.split('/shorts/')[-1].split('/')[0]
+                    if vid:
+                        return f"https://www.youtube.com/embed/{vid}"
+                elif parsed.path.startswith('/embed/'):
+                    return url
+            if 'youtu.be' in host:
+                vid = parsed.path.lstrip('/')
+                if vid:
+                    return f"https://www.youtube.com/embed/{vid}"
+
+            if 'vimeo.com' in host:
+                if 'player.vimeo.com' in host and parsed.path.startswith('/video/'):
+                    return url
+                vid = parsed.path.lstrip('/').split('/')[0]
+                if vid.isdigit():
+                    return f"https://player.vimeo.com/video/{vid}"
+
+            return url
+        except Exception:
+            return url
+
+
 class Coupon(models.Model):
     COUPON_TYPE_CHOICES = [
         ('all', 'All Users'),
@@ -441,51 +628,8 @@ class Coupon(models.Model):
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='created_coupons')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-class LimitedOffer(models.Model):
-    """Time-bound marketing offer displayed on landing page with countdown."""
-    title = models.CharField(max_length=120)
-    description = models.TextField(blank=True)
-    discount_text = models.CharField(max_length=80, help_text="Short highlight like 'Save 25%' or 'Flat ₹500 Off'")
-    image = models.ImageField(upload_to='offers/', null=True, blank=True, help_text='Optional banner image for the card background')
-    bg_color = models.CharField(max_length=7, blank=True, help_text="Optional hex color (e.g. #1e90ff) used when no image")
-    fish = models.ForeignKey(Fish, on_delete=models.SET_NULL, null=True, blank=True, related_name='limited_offers', help_text='Optional: Select a fish to redirect users when they click the banner')
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
-    show_on_homepage = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['end_time']
-
-    def __str__(self):
-        return f"{self.title} ({self.discount_text})"
-
-    def is_current(self):
-        now = timezone.now()
-        return self.is_active and self.start_time <= now <= self.end_time
-
-    def remaining_seconds(self):
-        now = timezone.now()
-        if self.end_time > now:
-            return int((self.end_time - now).total_seconds())
-        return 0
-    
-    def get_redirect_url(self):
-        """Get the URL to redirect when banner is clicked"""
-        if self.fish:
-            from django.urls import reverse
-            return reverse('fish_detail', args=[self.fish.id])
-        from django.urls import reverse
-        return reverse('fish_list')
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.code} - {self.discount_percentage}% off ({self.get_coupon_type_display()})"
+# Add coupon control fields and methods
+    force_apply = models.BooleanField(default=False, help_text='If set, this coupon bypasses normal validity checks when applied (admin use only)')
     
     def is_valid(self):
         """Check if coupon is currently valid"""
@@ -508,11 +652,64 @@ class LimitedOffer(models.Model):
         return True
     
     def can_use(self, user):
+        # If force_apply is enabled, allow use regardless of normal checks
+        if self.force_apply:
+            return True
+
         if not self.is_valid():
             return False
-        if self.coupon_type == 'favorites' and not user.is_favorite:
+
+        # If user is anonymous, treat as not favorite
+        is_fav = getattr(user, 'is_favorite', False)
+        if self.coupon_type == 'favorites' and not is_fav:
             return False
-        if self.coupon_type == 'normal' and user.is_favorite:
+        if self.coupon_type == 'normal' and is_fav:
             return False
         return True
+
+class LimitedOffer(models.Model):
+    """Time-bound marketing offer displayed on landing page with countdown."""
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    discount_text = models.CharField(max_length=80, help_text="Short highlight like 'Save 25%' or 'Flat ₹500 Off'")
+    image = models.ImageField(upload_to='offers/', null=True, blank=True, help_text='Optional banner image for the card background')
+    bg_color = models.CharField(max_length=7, blank=True, help_text="Optional hex color (e.g. #1e90ff) used when no image")
+    fish = models.ForeignKey(Fish, on_delete=models.SET_NULL, null=True, blank=True, related_name='limited_offers', help_text='Optional: Select a fish to redirect users when they click the banner')
+    # Scheduling/display fields: re-added so admin can set start/end and visibility
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    show_on_homepage = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.discount_text})"
+    def is_current(self):
+        now = timezone.now()
+        if not self.is_active:
+            return False
+        if self.start_time and self.end_time:
+            return self.start_time <= now <= self.end_time
+        # If scheduling not set, consider active
+        return True
+
+    def remaining_seconds(self):
+        now = timezone.now()
+        if self.end_time and self.end_time > now:
+            return int((self.end_time - now).total_seconds())
+        return 0
+    
+    def get_redirect_url(self):
+        """Get the URL to redirect when banner is clicked"""
+        if self.fish:
+            from django.urls import reverse
+            return reverse('fish_detail', args=[self.fish.id])
+        from django.urls import reverse
+        return reverse('fish_list')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    
 

@@ -1,7 +1,9 @@
 from django import forms
+from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon, LimitedOffer
-from .models import FishMedia, Accessory
+from .models import ComboOffer
+from .models import FishMedia, Accessory, ContactGalleryMedia
 from .models import FishMedia
 from .models import BlogPost
 
@@ -156,6 +158,31 @@ class FishMediaForm(forms.ModelForm):
             'external_url': 'External Video URL',
             'display_order': 'Order',
         }
+
+
+class ContactGalleryForm(forms.ModelForm):
+    class Meta:
+        model = ContactGalleryMedia
+        # Restrict gallery additions to images only: remove media_type and external_url from the form
+        fields = ['file', 'title', 'display_order']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional title'}),
+            'display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+        }
+        labels = {
+            'file': 'Upload Image',
+            'display_order': 'Order',
+        }
+
+    def clean_file(self):
+        f = self.cleaned_data.get('file')
+        if not f:
+            return f
+        # Basic content type validation: allow only image/*
+        content_type = getattr(f, 'content_type', '')
+        if content_type and not content_type.startswith('image/'):
+            raise forms.ValidationError('Only image files are allowed for the gallery.')
+        return f
 
 
 class ChangePasswordForm(forms.Form):
@@ -321,6 +348,7 @@ class LimitedOfferForm(forms.ModelForm):
     class Meta:
         model = LimitedOffer
         # Remove the 'image' field from the form so banner images cannot be uploaded here
+        # Note: `combo` is intentionally omitted from this form — limited offers no longer reference combos.
         fields = ['title', 'description', 'discount_text', 'bg_color', 'fish', 'start_time', 'end_time', 'is_active', 'show_on_homepage']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
@@ -350,3 +378,33 @@ class LimitedOfferForm(forms.ModelForm):
             self.fields['fish'].queryset = Fish.objects.select_related('breed', 'category').filter(is_available=True)
             self.fields['fish'].label_from_instance = lambda obj: f"{obj.name} - {obj.breed.name} ({obj.category.name})"
             self.fields['fish'].empty_label = "-- No specific fish (general offer) --"
+
+    def clean(self):
+        cleaned = super().clean()
+        s = cleaned.get('start_time')
+        e = cleaned.get('end_time')
+
+        # Convert naive datetimes (from datetime-local inputs) to aware using current timezone
+        if s and timezone.is_naive(s):
+            cleaned['start_time'] = timezone.make_aware(s, timezone.get_current_timezone())
+            s = cleaned['start_time']
+        if e and timezone.is_naive(e):
+            cleaned['end_time'] = timezone.make_aware(e, timezone.get_current_timezone())
+            e = cleaned['end_time']
+
+        if s and e and s > e:
+            self.add_error('end_time', 'End time must be after start time.')
+
+        return cleaned
+
+
+class ComboDealsForm(forms.Form):
+    """Form for selecting ComboOffer items to show on the homepage.
+
+    Provides a ModelMultipleChoiceField rendered as checkboxes.
+    """
+    combos = forms.ModelMultipleChoiceField(
+        queryset=ComboOffer.objects.filter(is_active=True).order_by('-created_at'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'})
+    )

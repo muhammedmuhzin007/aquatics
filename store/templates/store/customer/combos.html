@@ -1,0 +1,112 @@
+{% extends 'store/base.html' %}
+{% load currency %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h2 class="section-heading">Combos & Bundles</h2>
+    {% if combos and combos|length > 0 %}
+      <div class="row">
+        {% for combo in combos %}
+          <div class="col-md-6 mb-4 d-flex">
+            <div class="card combo-card w-100">
+              <div class="card-body">
+                <div class="combo-carousel" data-combo-id="{{ combo.id }}">
+                  {% for item in combo.preview_items %}
+                    {% if item and item.fish and item.fish.image %}
+                      <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" class="carousel-slide{% if forloop.first %} active{% endif %}" loading="lazy">
+                    {% endif %}
+                  {% endfor %}
+                  <div class="carousel-controls">
+                    <button class="carousel-prev" aria-label="Previous">‹</button>
+                    <button class="carousel-next" aria-label="Next">›</button>
+                  </div>
+                </div>
+                <h5 class="card-title">{{ combo.title }}</h5>
+                {% if combo.bundle_price %}
+                  <p class="price-badge">Bundle: {{ combo.bundle_price|rupees }}</p>
+                {% endif %}
+                <ul class="list-unstyled">
+                  {% for item in combo.items.all %}
+                    <li class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span class="combo-fish-name">{{ item.fish.name }}</span>
+                        <span class="mx-1">x{{ item.quantity }}</span>
+                        <small class="text-muted">({{ item.fish.price|rupees }})</small>
+                      </div>
+                      <div>
+                        <a href="{% url 'fish_detail' item.fish.id %}?hide_add_to_cart=1" class="btn btn-sm btn-outline-primary">View details</a>
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+                <div class="mt-3">
+                  <form method="post" action="{% url 'add_combo_to_cart' combo.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Add Combo to Cart</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No combos available right now. Check back later.</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const carousels = document.querySelectorAll('.combo-carousel');
+  carousels.forEach(function(root){
+    let slides = Array.from(root.querySelectorAll('.carousel-slide'));
+
+    const controls = root.querySelector('.carousel-controls');
+
+    // If there are no image slides, create a lightweight placeholder and hide controls
+    if (!slides.length) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'carousel-slide';
+      placeholder.style.minHeight = '160px';
+      root.appendChild(placeholder);
+      if (controls) controls.style.display = 'none';
+      slides = [placeholder];
+      slides.forEach((s, k) => s.classList.toggle('active', k === 0));
+      return;
+    }
+
+    // If only one slide, hide controls and do not autoplay
+    if (slides.length <= 1) {
+      if (controls) controls.style.display = 'none';
+      slides.forEach((s, k) => s.classList.toggle('active', k === 0));
+      return;
+    }
+
+    let idx = slides.findIndex(s=>s.classList.contains('active'));
+    if (idx < 0) idx = 0;
+    let timer = null;
+    function show(i){
+      slides.forEach((s, k) => s.classList.toggle('active', k===i));
+      idx = i;
+    }
+    function next(){ show((idx+1)%slides.length); }
+    function prev(){ show((idx-1+slides.length)%slides.length); }
+    const nextBtn = root.querySelector('.carousel-next');
+    const prevBtn = root.querySelector('.carousel-prev');
+    if (nextBtn) nextBtn.addEventListener('click', function(e){ e.preventDefault(); stop(); next(); start(); });
+    if (prevBtn) prevBtn.addEventListener('click', function(e){ e.preventDefault(); stop(); prev(); start(); });
+    function start(){ if (timer) clearInterval(timer); timer = setInterval(next, 3000); }
+    function stop(){ if (timer) { clearInterval(timer); timer = null; } }
+    // pause on hover
+    root.addEventListener('mouseenter', stop);
+    root.addEventListener('mouseleave', start);
+    start();
+  });
+});
+</script>
+{% endblock %}

@@ -20,8 +20,43 @@
         })();
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link id="fa-cdn-css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script>
+        // Fallback loader for FontAwesome: if CDN fails, load local copy from static/vendor/fontawesome/
+        (function(){
+            try{
+                var cdn = document.getElementById('fa-cdn-css');
+                function loadLocal(){
+                    if(document.getElementById('fa-local-css')) return;
+                    var l = document.createElement('link');
+                    l.rel = 'stylesheet';
+                    l.id = 'fa-local-css';
+                    l.href = '{% static "vendor/fontawesome/css/all.min.css" %}';
+                    document.head.appendChild(l);
+                }
+                if(cdn){
+                    cdn.addEventListener('error', loadLocal);
+                }
+                // Timeout check after load: if font family doesn't look like FontAwesome, load local
+                window.addEventListener('load', function(){
+                    setTimeout(function(){
+                        try{
+                            var test = document.createElement('i');
+                            test.className = 'fa fa-check';
+                            test.style.position = 'absolute'; test.style.left='-9999px';
+                            document.body.appendChild(test);
+                            var fam = window.getComputedStyle(test).fontFamily || '';
+                            document.body.removeChild(test);
+                            if(fam.toLowerCase().indexOf('fontawesome') === -1 && fam.toLowerCase().indexOf('font awesome') === -1){
+                                loadLocal();
+                            }
+                        }catch(e){ loadLocal(); }
+                    }, 1800);
+                });
+            }catch(e){ /* noop */ }
+        })();
+    </script>
     <style>
         /* Category select styling site-wide when widget uses .category-select
            Uses theme variables so the dropdown follows light/dark and accent colors */
@@ -141,6 +176,25 @@
         /* Ensure labels styled with admin-text-black are readable in light theme */
         html[data-theme='light'] .admin-text-black { color: var(--light-text) !important; }
 
+        /* Admin helper: muted text that adapts to theme */
+        html[data-theme='dark'] .admin-text-muted { color: rgba(255,255,255,0.65) !important; }
+        html[data-theme='light'] .admin-text-muted { color: var(--light-text-soft) !important; }
+
+        /* Button used in admin pages that should adapt to theme */
+        html[data-theme='dark'] .admin-btn { color: #FFFFFF !important; border-color: rgba(255,255,255,0.06) !important; }
+        html[data-theme='light'] .admin-btn { color: var(--light-text) !important; border-color: var(--light-border) !important; }
+
+        /* Table wrapper adapts to theme so white backgrounds are avoided in dark mode */
+        .table-wrapper { border-radius: 8px; overflow: hidden; }
+        html[data-theme='dark'] .table-wrapper {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+        html[data-theme='dark'] .table { background: transparent !important; color: var(--text-white) !important; }
+        html[data-theme='dark'] .table thead th { background: transparent !important; color: rgba(255,255,255,0.75) !important; border-bottom-color: var(--border-color) !important; }
+        html[data-theme='dark'] .table tbody td { background: transparent !important; color: rgba(255,255,255,0.95) !important; border-bottom-color: rgba(255,255,255,0.03) !important; }
+        html[data-theme='light'] .table-wrapper { background: var(--light-card) !important; border: 1px solid var(--light-border) !important; }
+
         /* Style native file input button to match theme */
         input[type="file"]::file-selector-button,
         input[type="file"]::-webkit-file-upload-button {
@@ -169,6 +223,49 @@
         /* Ensure placeholders use theme-appropriate color */
         html[data-theme='dark'] ::placeholder { color: rgba(255,255,255,0.55) !important; }
         html[data-theme='light'] ::placeholder { color: var(--light-text-soft) !important; }
+        /* Admin notification icon */
+        .nav-notifications { display: inline-block; position: relative; margin-left: 10px; }
+        .nav-notifications .notif-badge {
+            position: absolute; top: -6px; right: -6px; background: var(--badge-bg-dark, #EF5350); color: #fff; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:0.65rem; transition: opacity .18s ease; box-shadow: 0 2px 6px rgba(2,6,23,0.12);
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        /* Light theme badge override — use centralized light badge color and darker border for contrast */
+        html[data-theme='light'] .nav-notifications .notif-badge {
+            background: var(--badge-bg-light, var(--light-accent, #1E88E5)) !important;
+            color: #fff !important;
+            border: 1px solid rgba(0,0,0,0.08) !important;
+            box-shadow: 0 2px 6px rgba(26,35,50,0.06);
+        }
+        /* small fade used when removing notifications from dropdown */
+        .notif-fade {
+            opacity: 0 !important;
+            transform: translateY(-6px) scale(.98) !important;
+            transition: opacity .22s ease, transform .22s ease;
+        }
+        .nav-notifications .btn { padding: 6px 8px; }
+        /* Theme-aware dropdown colors for notifications */
+        .nav-notifications .dropdown-menu {
+            background: var(--card-bg);
+            color: var(--text-white);
+            border: 1px solid var(--border-color);
+        }
+          /* Ensure dropdown item text follows theme: dark uses white, light uses light-text
+              and remove any default white background so items remain readable */
+          .nav-notifications .dropdown-item { background: transparent !important; padding: .5rem 0.85rem; }
+          html[data-theme='dark'] .nav-notifications .dropdown-item { color: var(--text-white) !important; }
+          html[data-theme='light'] .nav-notifications .dropdown-item { color: var(--light-text) !important; }
+          /* Ensure the flex-fill container doesn't introduce a solid background */
+          .nav-notifications li .dropdown-item.flex-fill { background: transparent !important; }
+          /* Make the dropdown header slightly muted but visible */
+          .nav-notifications .dropdown-header { color: var(--text-white); }
+          html[data-theme='light'] .nav-notifications .dropdown-header { color: var(--light-text); }
+        .nav-notifications .dropdown-item .small.text-muted { color: var(--dark-text-soft, rgba(255,255,255,0.7)) !important; }
+        html[data-theme='light'] .nav-notifications .dropdown-item .small.text-muted { color: var(--light-text-soft) !important; }
+        html[data-theme='light'] .nav-notifications .dropdown-menu {
+            background: var(--light-surface);
+            color: var(--light-text);
+            border-color: var(--light-border);
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -195,17 +292,49 @@
                     <!-- Global theme toggle (compact) -->
                     <button type="button" class="nav-theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
                         <span class="toggle-icon">
-                            <i class="fas fa-moon"></i>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/></svg>
                         </span>
                     </button>
                     {# search icon removed as requested #}
-                    <a href="{% url 'profile' %}" style="color: inherit;"><i class="fas fa-user"></i></a>
+                    <a href="{% url 'profile' %}" style="color: inherit;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
                     {% if user.is_authenticated and user.role == 'customer' %}
                         <a href="{% url 'cart' %}" style="color: inherit; position: relative;">
-                            <i class="fas fa-shopping-cart"></i>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M6 6h15l-1.5 9h-11L6 6z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 20a1 1 0 100-2 1 1 0 000 2zM18 20a1 1 0 100-2 1 1 0 000 2z" fill="currentColor"/></svg>
                             {% cart_count as cart_total %}
                             <span id="cart-badge" style="font-size:0.7rem; position: absolute; background:#EF5350; color:white; border-radius:50%; width:16px; height:16px; display: inline-flex; align-items:center; justify-content:center; left:18px; top:-6px; {% if not cart_total or cart_total|add:0 == 0 %}display:none;{% endif %}">{{ cart_total|default:0 }}</span>
                         </a>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                        {% if user.role == 'staff' or user.role == 'admin' %}
+                        <div class="nav-notifications dropdown">
+                            <button id="notifDropdown" class="btn btn-link p-0" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                {% if unread_notifications_count and unread_notifications_count|add:0 > 0 %}
+                                    <span id="notif-badge" class="notif-badge">{{ unread_notifications_count }}</span>
+                                {% endif %}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notifDropdown" style="min-width: 280px;">
+                                <li class="dropdown-header">Notifications</li>
+                                {% if recent_notifications %}
+                                    {% for n in recent_notifications %}
+                                        <li class="d-flex align-items-start" data-notif-id="{{ n.id }}">
+                                            <div class="dropdown-item flex-fill">
+                                                <div class="fw-medium">{{ n.title }}</div>
+                                                <div class="small text-muted">{{ n.created_at|date:"M d, H:i" }}</div>
+                                            </div>
+                                            <button class="btn btn-sm btn-link text-muted notif-dismiss" data-id="{{ n.id }}" title="Mark read" aria-label="Dismiss notification">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li><div class="dropdown-item small text-muted">No new notifications</div></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -229,8 +358,13 @@
                                 <a class="nav-link" href="{% url 'home' %}">Home</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'fish_list' %}">Browse Fishes</a>
+                                <a class="nav-link" href="{% url 'fish_list' %}">Fishes</a>
                             </li>
+                            {% if has_active_combos %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'combos' %}">Combo</a>
+                            </li>
+                            {% endif %}
                             <li class="nav-item">
                                 {% if has_active_accessories %}
                                 <li class="nav-item">
@@ -390,6 +524,34 @@
                     <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.1);">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="button" class="btn btn-dark" id="confirmActionOkBtn">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inline Login Modal for AJAX 401 -->
+        <div class="modal fade" id="inlineLoginModal" tabindex="-1" aria-labelledby="inlineLoginModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="background: rgba(15,25,40,0.95); border: 1px solid rgba(255,255,255,0.15);">
+                    <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <h5 class="modal-title text-white" id="inlineLoginModalLabel"><i class="fas fa-sign-in-alt"></i> Login</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="inlineLoginError" class="mb-2 text-danger" style="display:none"></div>
+                        <form id="inlineLoginForm">
+                            <div class="mb-3">
+                                <label class="form-label text-white">Username or Email</label>
+                                <input type="text" name="username" class="form-control" required autocomplete="username" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">Password</label>
+                                <input type="password" name="password" class="form-control" required autocomplete="current-password" />
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary">Login</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -563,6 +725,106 @@
                     });
                 })();
 
+                // Global fetch wrapper: intercept 401 JSON auth responses and show inline login modal.
+                (function(){
+                    const originalFetch = window.fetch.bind(window);
+                    // small helper to get csrf token from cookie
+                    function getCSRF() {
+                        const name = 'csrftoken=';
+                        const parts = document.cookie.split(';');
+                        for (let i=0;i<parts.length;i++){
+                            const c = parts[i].trim();
+                            if (c.indexOf(name)===0) return decodeURIComponent(c.substring(name.length));
+                        }
+                        const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                        return el ? el.value : '';
+                    }
+
+                    let pendingRequests = [];
+                    function showLoginModal(retryFn){
+                        const modalEl = document.getElementById('inlineLoginModal');
+                        const form = document.getElementById('inlineLoginForm');
+                        const err = document.getElementById('inlineLoginError');
+                        const bsModal = new bootstrap.Modal(modalEl);
+                        err.style.display = 'none'; err.textContent = '';
+
+                        // clear previous submit handlers
+                        const newForm = form.cloneNode(true);
+                        form.parentNode.replaceChild(newForm, form);
+
+                        newForm.addEventListener('submit', async function(ev){
+                            ev.preventDefault();
+                            const fd = new FormData(newForm);
+                            try{
+                                const resp = await originalFetch('{% url "ajax_login" %}', {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'X-CSRFToken': getCSRF(),
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    body: fd
+                                });
+                                const ct = resp.headers.get('content-type') || '';
+                                if (resp.ok && ct.includes('application/json')){
+                                    const j = await resp.json();
+                                    if (j.success){
+                                        bsModal.hide();
+                                        // retry pending requests
+                                        const items = pendingRequests.slice();
+                                        pendingRequests = [];
+                                        for (const fn of items) fn();
+                                        return;
+                                    } else {
+                                        err.style.display = ''; err.textContent = j.message || 'Login failed';
+                                    }
+                                } else {
+                                    // treat non-JSON as failure
+                                    const txt = await resp.text();
+                                    err.style.display = ''; err.textContent = 'Login failed';
+                                }
+                            } catch(e){
+                                err.style.display = ''; err.textContent = 'Network error';
+                            }
+                        });
+
+                        bsModal.show();
+                        return bsModal;
+                    }
+
+                    window.fetch = async function(input, init){
+                        // build a retryable wrapper that preserves original args
+                        const attempt = async () => {
+                            try{
+                                const resp = await originalFetch(input, init);
+                                // If server returned a JSON 401 (our middleware + views use this)
+                                const ct = resp.headers.get ? (resp.headers.get('content-type')||'') : '';
+                                if ((resp.status === 401) || (resp.status === 200 && ct.includes('application/json'))) {
+                                    // Try to parse JSON body to see if it's an auth required message
+                                    try{
+                                        const j = await resp.clone().json();
+                                        const msg = (j && j.message) || '';
+                                        if (resp.status === 401 || /auth/i.test(msg)){
+                                            // queue retry and show modal
+                                            return new Promise((resolve, reject) => {
+                                                pendingRequests.push(async () => {
+                                                    try{
+                                                        const retr = await originalFetch(input, init);
+                                                        resolve(retr);
+                                                    } catch(er){ reject(er); }
+                                                });
+                                                showLoginModal();
+                                            });
+                                        }
+                                    } catch(e){ /* not JSON */ }
+                                }
+                                return resp;
+                            } catch(e){ throw e; }
+                        };
+                        return attempt();
+                    };
+                })();
+
                 // Make cards clickable: any element with .card[data-href] will navigate
                 // unless the click originated inside an interactive element (a, button, form, input, select, textarea, label)
                 (function(){
@@ -603,6 +865,56 @@
                 // (Removed category-select replacement behavior) 
             });
         </script>
-        {% block extra_js %}{% endblock %}
+                <script>
+                    (function(){
+                        function getCookie(name) {
+                            const value = `; ${document.cookie}`;
+                            const parts = value.split(`; ${name}=`);
+                            if (parts.length === 2) return parts.pop().split(';').shift();
+                        }
+
+                        // Delegated handler for dismissing individual notifications
+                        document.addEventListener('click', function(e){
+                            const btn = e.target.closest && e.target.closest('.notif-dismiss');
+                            if (!btn) return;
+                            e.preventDefault();
+                            const id = btn.getAttribute('data-id');
+                            if (!id) return;
+                            const url = '{% url "mark_notifications_read" %}';
+                            const csrftoken = getCookie('csrftoken') || '';
+                            fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'X-CSRFToken': csrftoken,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: 'id=' + encodeURIComponent(id),
+                                credentials: 'same-origin'
+                            }).then(function(resp){ return resp.json().catch(function(){ return null; }); }).then(function(j){
+                                if (j && j.success){
+                                    // remove the notification from dropdown with a fade
+                                    const selector = 'li[data-notif-id="' + id + '"]';
+                                    const li = document.querySelector(selector);
+                                    if (li){
+                                        li.classList.add('notif-fade');
+                                        setTimeout(()=>{ try{ li.remove(); }catch(e){} }, 240);
+                                    }
+                                    // update badge count
+                                    const badge = document.getElementById('notif-badge');
+                                    if (badge){
+                                        let count = parseInt(badge.textContent || '0') || 0;
+                                        count = Math.max(0, count - 1);
+                                        if (count <= 0) { badge.style.opacity = '0'; setTimeout(()=>{ badge.style.display = 'none'; badge.textContent = '0'; }, 180); }
+                                        else { badge.textContent = count; }
+                                    }
+                                } else {
+                                    btn.classList.add('text-danger');
+                                }
+                            }).catch(function(){ btn.classList.add('text-danger'); });
+                        });
+                    })();
+                </script>
+                {% block extra_js %}{% endblock %}
 </body>
 </html>

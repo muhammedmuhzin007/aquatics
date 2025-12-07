@@ -27,9 +27,19 @@
                     </td>
                     <td class="admin-text-black">{{ order.created_at|date:"M d, Y h:i A" }}</td>
                     <td>
-                        <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-eye"></i> View
-                        </a>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            {% if order.status != 'cancelled' and order.status != 'delivered' %}
+                            <form method="post" action="{% url 'cancel_order' order.id %}" onsubmit="return confirm('Cancel this order?');" style="display:inline-block;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times-circle"></i> Cancel
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

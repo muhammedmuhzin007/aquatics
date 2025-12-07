@@ -54,20 +54,31 @@
             html[data-theme='light'] .manage-fish-minimal .form-control::placeholder { color: var(--light-text-soft)!important; opacity:.7; }
             html[data-theme='dark'] .manage-fish-minimal .form-control::placeholder { color: rgba(255,255,255,0.6)!important; }
 
-            /* Responsive table improvements (already globally scrollable) */
-            @media (max-width: 576px) {
-                .manage-fish-minimal table.table thead { display: none; }
-                .manage-fish-minimal table.table tbody tr { display: block; margin-bottom: 12px; border:1px solid var(--border-color); border-radius:8px; padding:8px 10px; }
-                html[data-theme='light'] .manage-fish-minimal table.table tbody tr { border-color: var(--light-border); }
-                .manage-fish-minimal table.table tbody td { display: flex; justify-content: space-between; align-items: center; padding:6px 8px; font-size:0.85rem; }
-                .manage-fish-minimal table.table tbody td:before { content: attr(data-label); font-weight:600; opacity:.8; margin-right:8px; }
-            }
+            /* Keep table layout on small screens: allow horizontal scroll instead of card conversion */
+            .manage-table-scroll { width: 100%; overflow-x: auto; }
+            .manage-table-scroll table { width: 100%; min-width: 0; table-layout: auto; }
+            .manage-table-scroll table td, .manage-table-scroll table th { word-break: break-word; }
+            /* Compact staff UI adjustments to match admin/customer sizing */
+            .manage-fish-minimal .section-heading { font-size: 1.125rem; letter-spacing: 0.02em; }
+            .manage-fish-minimal .card.admin-card-light .card-body { padding: 0.6rem 0.75rem; }
+            .manage-fish-minimal .table { margin-bottom: 0; }
+            .manage-fish-minimal .table td, .manage-fish-minimal .table th { padding: 0.45rem 0.6rem; font-size: 0.92rem; }
+            .manage-fish-minimal .form-control { padding: 0.4rem 0.6rem; font-size: 0.95rem; }
+            .manage-fish-minimal .btn { padding: 0.32rem 0.6rem; font-size: 0.9rem; }
+            .manage-fish-minimal .btn.btn-success, .manage-fish-minimal .btn.btn-primary { font-size: 0.95rem; }
+            /* Slightly smaller modal content */
+            .manage-fish-minimal .modal-content { font-size: 0.95rem; }
         </style>
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="section-heading" style="margin-bottom: 0;">Manage Fishes</h2>
-            <a href="{% url 'add_fish' %}" class="btn btn-success">
-                <i class="fas fa-plus"></i> Add New Fish
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{% url 'add_fish' %}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Add New Fish
+                </a>
+                <a href="{% url 'admin_add_combo' %}" class="btn btn-primary">
+                    <i class="fas fa-layer-group"></i> Add Combo
+                </a>
+            </div>
         </div>
 
         <div class="search-container mb-4">

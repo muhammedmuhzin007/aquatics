@@ -1075,7 +1075,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
             <div class="container-fluid">
                 <div class="offer-banner-carousel">
                     {% for offer in limited_offers %}
-                    <a href="{% if offer.is_combo and offer.combo_id %}{% url 'combo_detail' offer.combo_id %}{% elif offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}" class="offer-banner-item {% if forloop.first %}active{% endif %}" data-start-time="{{ offer.start_time|date:'c' }}" data-end-time="{{ offer.end_time|date:'c' }}">
+                    <a href="{% if offer.is_combo and offer.combo_id %}{% url 'combo_detail' offer.combo_id %}{% elif offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}" class="offer-banner-item {% if forloop.first %}active{% endif %}" {% if offer.start_time and offer.end_time %}data-start-time="{{ offer.start_time|date:'c' }}" data-end-time="{{ offer.end_time|date:'c' }}"{% endif %}>
                         {% if offer.is_combo %}
                         <div class="offer-banner-bg combo-banner-bg">
                             <div class="combo-collage {% if offer.images %}split-layout{% endif %}" {% if offer.images %}style="--cols: {{ offer.images|length }};"{% endif %} aria-hidden="true">
@@ -1393,6 +1393,12 @@ html[data-theme='light'] .category-carousel-nav:hover {
                             </p>
                             <i class="fas fa-quote-right" style="position: absolute; right: -30px; bottom: -10px; font-size: 2rem; color: var(--accent-blue); opacity: 0.3;"></i>
                         </div>
+
+                        {% if r.image %}
+                        <div class="mb-3" style="max-width: 520px; width: 100%;">
+                            <img src="{{ r.image.url }}" alt="Customer review photo" style="width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(100,150,255,0.3); box-shadow: 0 8px 24px rgba(0,0,0,0.25); object-fit: cover;">
+                        </div>
+                        {% endif %}
                         
                         <!-- User Info -->
                         <div class="mt-3">
@@ -1402,7 +1408,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
                                 </span>
                             </div>
                             <div class="mt-2">
-                                <small class="text-muted" style="font-size: 0.75rem;">
+                                <small style="font-size: 0.85rem; color: rgba(200, 200, 200, 0.95);">
                                     <i class="far fa-calendar-alt me-1"></i>{{ r.created_at|date:"M d, Y" }}
                                 </small>
                             </div>
@@ -1786,11 +1792,22 @@ document.addEventListener('DOMContentLoaded', function(){
         banners.forEach(banner => {
             const startStr = banner.getAttribute('data-start-time');
             const endStr = banner.getAttribute('data-end-time');
-            const start = new Date(startStr).getTime();
-            const end = new Date(endStr).getTime();
             const countdown = banner.querySelector('.countdown-banner');
             const progressBar = banner.querySelector('.offer-progress-bar');
-            if (!isFinite(start) || !isFinite(end) || !countdown || !progressBar) return;
+            
+            // Skip if no times are set (offer always visible)
+            if (!startStr || !endStr || !countdown || !progressBar) return;
+            
+            const start = new Date(startStr).getTime();
+            const end = new Date(endStr).getTime();
+            if (!isFinite(start) || !isFinite(end)) return;
+            
+            // Hide banner if not yet started or expired
+            if (now < start || now > end) {
+                banner.style.display = 'none';
+                return;
+            }
+            banner.style.display = 'block';
 
             // Countdown with days/hours/minutes format
             if (now < start) {

@@ -324,7 +324,7 @@
                             <div class="mt-3 p-3" style="background: rgba(30,136,229,0.08); border:1px solid var(--border-color); border-radius:8px;">
                                 <h6 class="text-white mb-2"><i class="fas fa-star me-2"></i>Leave a Review</h6>
                                 <small class="text-gray d-block mb-3">Rate your overall experience with this order. Rating required; comment optional.</small>
-                                <form method="POST" action="{% url 'submit_review' order.id %}">
+                                <form method="POST" action="{% url 'submit_review' order.id %}" enctype="multipart/form-data">
                                     {% csrf_token %}
                                     <div class="mb-2">
                                         <label for="id_rating" class="form-label text-white mb-1"><i class="fas fa-star me-1" style="color:#FFC107;"></i>Rating (1-5 Stars)</label>
@@ -340,6 +340,11 @@
                                     <div class="mb-3">
                                         <label for="id_comment" class="form-label text-white mb-1"><i class="fas fa-comment me-1"></i>Review Comment (optional)</label>
                                         {{ review_form.comment }}
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="id_image" class="form-label text-white mb-1"><i class="fas fa-image me-1"></i>Upload Image (optional)</label>
+                                        {{ review_form.image }}
+                                        <small class="text-gray d-block mt-1">Accepted formats: JPG, PNG, GIF. Max ~5MB.</small>
                                     </div>
                                     <button type="submit" class="btn btn-primary btn-sm">
                                         <i class="fas fa-paper-plane me-1"></i>Submit Review
@@ -376,13 +381,7 @@
                                 <i class="fas fa-truck me-2"></i>Track Order (Coming Soon)
                             </button>
                             {% if order.payment_status != 'pending' %}
-                            <button class="btn btn-danger" data-confirm="Are you sure you want to cancel this order? This action cannot be undone." 
-                                    onclick="document.getElementById('cancelOrderForm').submit();">
-                                <i class="fas fa-times-circle me-2"></i>Cancel Order
-                            </button>
-                            <form id="cancelOrderForm" method="POST" action="{% url 'cancel_order' order.id %}" style="display: none;">
-                                {% csrf_token %}
-                            </form>
+                            {# Customer cancel disabled per request #}
                             {% endif %}
                             {% else %}
                             <button class="btn btn-outline-light" disabled>

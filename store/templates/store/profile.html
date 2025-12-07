@@ -50,9 +50,6 @@
                             </div>
                             {% endif %}
                             <h3 class="mt-3 profile-name">{{ user.get_full_name|default:user.username }}</h3>
-                            <span class="badge bg-{% if user.role == 'admin' %}danger{% elif user.role == 'staff' %}warning{% else %}info{% endif %}">
-                                {{ user.get_role_display }}
-                            </span>
                         </div>
                         
                         <div class="divider"></div>

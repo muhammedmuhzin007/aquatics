@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect
 from datetime import timedelta
+from decimal import Decimal
 
 from .payments import razorpay as razorpay_provider
 
@@ -17,36 +18,78 @@ def is_admin(user):
 @user_passes_test(is_customer)
 def checkout_view(request):
     """Render the checkout page with cart, coupons and payment options."""
-    cart_items = Cart.objects.filter(user=request.user)
+    cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
     accessory_items = AccessoryCart.objects.filter(user=request.user)
 
     if not cart_items and not accessory_items:
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
 
-    # Calculate total taking bundle prices into account when provided
-    total = 0
-    for group in bundle_groups:
-        combo = group.get('combo')
-        if combo and combo.bundle_price:
-            total += float(combo.bundle_price)
+    # Group cart items by combo
+    bundle_groups = []
+    standalone_items = []
+    combos_map = {}
+    for item in cart_items:
+        if item.combo_id:
+            combos_map.setdefault(item.combo_id, {'combo': item.combo, 'items': []})['items'].append(item)
         else:
-            total += sum(item.get_total() for item in group.get('items', []))
-    total += sum(item.get_total() for item in standalone_items)
-    total += sum(item.get_total() for item in accessory_items)
+            standalone_items.append(item)
+
+    for _, group in combos_map.items():
+        combo = group.get('combo')
+        bundle_count = 0
+        per_bundle_value = Decimal('0')
+        if combo:
+            combo_items = {ci.fish_id: ci.quantity for ci in combo.items.all()}
+            per_bundle_value = sum(Decimal(ci.fish.price) * Decimal(int(ci.quantity)) for ci in combo.items.select_related('fish').all())
+            counts = []
+            for it in group.get('items', []):
+                req = combo_items.get(it.fish_id, 1)
+                try:
+                    counts.append(int(it.quantity) // int(req))
+                except Exception:
+                    counts.append(0)
+            bundle_count = min(counts) if counts else 0
+
+        if combo and combo.bundle_price:
+            group['display_price'] = Decimal(combo.bundle_price) * Decimal(bundle_count)
+        else:
+            group['display_price'] = Decimal(bundle_count) * per_bundle_value
+        group['bundle_count'] = bundle_count
+        bundle_groups.append(group)
+
+    # Compute total considering bundle pricing when applicable
+    total = Decimal('0')
+    total += sum(Decimal(item.get_total()) for item in standalone_items)
+    for g in bundle_groups:
+        combo = g.get('combo')
+        items = g.get('items', [])
+        bundle_count = g.get('bundle_count', 0)
+        if combo and combo.bundle_price and bundle_count > 0:
+            total += Decimal(combo.bundle_price) * Decimal(bundle_count)
+            combo_items = {ci.fish_id: ci.quantity for ci in combo.items.all()}
+            for it in items:
+                req = combo_items.get(it.fish_id, 1)
+                leftover = int(it.quantity) - (int(req) * bundle_count)
+                if leftover > 0:
+                    total += Decimal(it.fish.price) * Decimal(leftover)
+        else:
+            total += sum(Decimal(it.get_total()) for it in items)
+
+    total += sum(Decimal(item.get_total()) for item in accessory_items)
 
     # Applied coupon from session
     applied_coupon = None
-    discount = 0
+    discount = Decimal('0')
     final_total = total
     if 'applied_coupon_code' in request.session:
         try:
             coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
             if coupon.is_valid() and coupon.can_use(request.user):
                 applied_coupon = coupon
-                discount = (total * coupon.discount_percentage) / 100
+                discount = (total * Decimal(coupon.discount_percentage)) / Decimal('100')
                 if coupon.max_discount_amount:
-                    discount = min(discount, coupon.max_discount_amount)
+                    discount = min(discount, Decimal(coupon.max_discount_amount))
                 final_total = total - discount
         except Coupon.DoesNotExist:
             request.session.pop('applied_coupon_code', None)
@@ -67,6 +110,8 @@ def checkout_view(request):
 
     return render(request, 'store/customer/checkout.html', {
         'cart_items': cart_items,
+        'bundle_groups': bundle_groups,
+        'standalone_items': standalone_items,
         'accessory_items': accessory_items,
         'total': total,
         'applied_coupon': applied_coupon,
@@ -972,8 +1017,11 @@ def home_view(request):
     limited_offers_qs = LimitedOffer.objects.filter(
         is_active=True,
         show_on_homepage=True,
-        start_time__lte=now,
-        end_time__gte=now,
+    ).filter(
+        Q(start_time__isnull=True, end_time__isnull=True) |  # No scheduling set
+        Q(start_time__isnull=True, end_time__gte=now) |       # Only end_time set
+        Q(start_time__lte=now, end_time__isnull=True) |       # Only start_time set
+        Q(start_time__lte=now, end_time__gte=now)             # Both set and within range
     ).order_by('end_time')[:4]
 
     # Convert LimitedOffer model instances into plain dicts so template can treat
@@ -1950,7 +1998,7 @@ def apply_coupon_view(request):
             if coupon.valid_until and now > coupon.valid_until:
                 return JsonResponse({
                     'success': False,
-                    'message': f'This coupon expired on: {coupon.valid_until.strftime("%d %b %Y, %I:%M %p")}'
+                    'message': 'This coupon has expired'
                 })
 
             # Check usage limit
@@ -2148,7 +2196,7 @@ def submit_review_view(request, order_id):
     if Review.objects.filter(user=request.user, order=order).exists():
         messages.info(request, 'You have already reviewed this order.')
         return redirect('order_detail', order_id=order.id)
-    form = ReviewForm(request.POST or None)
+    form = ReviewForm(request.POST or None, request.FILES or None)
     if request.method == 'POST':
         if form.is_valid():
             review = form.save(commit=False)

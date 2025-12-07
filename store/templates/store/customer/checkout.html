@@ -621,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (youSavedEl) { youSavedEl.textContent = 'Calculating...'; youSavedEl.style.display = ''; }
                 }
 
-                applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+                applyBtn.innerHTML = 'Apply';
                 applyCoupon(code);
             });
             couponInput.addEventListener('keypress', function(e) {

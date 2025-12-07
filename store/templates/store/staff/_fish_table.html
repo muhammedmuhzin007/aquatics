@@ -1,6 +1,7 @@
 {% load currency %}
 <div class="card admin-card-light">
     <div class="card-body">
+        <div class="manage-table-scroll">
         <table class="table">
             <thead>
                 <tr>
@@ -18,22 +19,22 @@
             <tbody>
                 {% for fish in fishes %}
                 <tr>
-                    <td>
+                    <td class="td-image" data-label="Image">
                         {% if fish.image %}
                         <img src="{{ fish.image.url }}" alt="{{ fish.name }}" 
-                             style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color);">
+                             style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);">
                         {% else %}
-                        <div style="width: 60px; height: 60px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <div style="width: 48px; height: 48px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-fish admin-text-black"></i>
                         </div>
                         {% endif %}
                     </td>
-                    <td data-label="Name"><strong>{{ fish.name }}</strong></td>
+                    <td data-label="Name" style="font-size:0.95rem;"><strong>{{ fish.name }}</strong></td>
                     <td data-label="Category">{{ fish.category.name }}</td>
                     <td data-label="Breed">{{ fish.breed.name }}</td>
                     <td data-label="Size">{{ fish.size }}</td>
-                    <td data-label="Price" style="font-weight:600;">{{ fish.price|rupees }}</td>
-                    <td data-label="Stock">{{ fish.stock_quantity }}</td>
+                    <td data-label="Price" style="font-weight:600; font-size:0.95rem;">{{ fish.price|rupees }}</td>
+                    <td data-label="Stock" style="font-size:0.95rem;">{{ fish.stock_quantity }}</td>
                     <td data-label="Status">
                         {% if fish.is_available %}
                         <span class="badge bg-success">Available</span>
@@ -57,5 +58,6 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>

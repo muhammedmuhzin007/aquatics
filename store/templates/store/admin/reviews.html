@@ -82,6 +82,12 @@
     html[data-theme='light'] .review-moderation a {
         color: var(--light-accent) !important;
     }
+
+    /* Utility: disable scroll when modal is open */
+    .no-scroll {
+      overflow: hidden !important;
+      height: 100%;
+    }
 </style>
 {% endblock %}
 
@@ -107,6 +113,7 @@
                 <th>Order</th>
                 <th>Rating</th>
                 <th>Comment</th>
+                <th>Image</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -140,6 +147,13 @@
                     {{ review.comment|truncatewords:20 }}
                   {% else %}
                     <em class="text-muted">No comment</em>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if review.image %}
+                    <img src="{{ review.image.url }}" alt="Review image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-color);" onclick="showImageModal('{{ review.image.url }}')"/>
+                  {% else %}
+                    <span class="text-muted">-</span>
                   {% endif %}
                 </td>
                 <td>
@@ -179,6 +193,7 @@
                 <th>Order</th>
                 <th>Rating</th>
                 <th>Comment</th>
+                <th>Image</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -215,6 +230,13 @@
                   {% endif %}
                 </td>
                 <td>
+                  {% if review.image %}
+                    <img src="{{ review.image.url }}" alt="Review image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-color);" onclick="showImageModal('{{ review.image.url }}')"/>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
                   <a href="{% url 'admin_reject_review' review.id %}" class="btn btn-outline-danger btn-sm" 
                      onclick="return confirm('Are you sure you want to remove this review?')" title="Remove">
                     <i class="fas fa-trash"></i> Remove
@@ -232,4 +254,77 @@
     </div>
   </div>
 </section>
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+      <div class="modal-header" style="border-color: var(--border-color);">
+        <h5 class="modal-title" style="color: var(--text-white);">Review Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
+      </div>
+      <div class="modal-body text-center p-0">
+        <img id="modalImage" src="" alt="Review image" style="width: 100%; height: auto; max-height: 80vh; object-fit: contain;"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let modalInstance = null;
+let _savedScrollY = 0;
+
+function _lockScroll() {
+  _savedScrollY = window.scrollY || window.pageYOffset || 0;
+  // Add class for CSS fallback and set fixed positioning to prevent scrolling/shift
+  document.documentElement.classList.add('no-scroll');
+  document.body.classList.add('no-scroll');
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${_savedScrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+}
+
+function _unlockScroll() {
+  document.documentElement.classList.remove('no-scroll');
+  document.body.classList.remove('no-scroll');
+  // Restore body positioning and scroll
+  document.body.style.position = '';
+  const top = document.body.style.top || '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  // Restore scroll position (use saved value)
+  if (_savedScrollY) {
+    window.scrollTo(0, _savedScrollY);
+    _savedScrollY = 0;
+  }
+}
+
+function showImageModal(imageUrl) {
+  document.getElementById('modalImage').src = imageUrl;
+  const modalEl = document.getElementById('imageModal');
+
+  if (!modalInstance) {
+    modalInstance = new bootstrap.Modal(modalEl);
+
+    // Use Bootstrap events to lock/unlock scroll robustly
+    modalEl.addEventListener('show.bs.modal', function () {
+      _lockScroll();
+    });
+
+    modalEl.addEventListener('shown.bs.modal', function () {
+      // ensure focus inside modal (accessibility)
+      const img = document.getElementById('modalImage');
+      if (img) img.focus?.();
+    });
+
+    modalEl.addEventListener('hide.bs.modal', function () {
+      _unlockScroll();
+    });
+  }
+
+  modalInstance.show();
+}
+</script>
 {% endblock %}

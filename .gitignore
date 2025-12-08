@@ -43,7 +43,6 @@ db.sqlite3-journal
 Thumbs.db
 
 # Environment
-.env
 .env.local
 
 # Sensitive keys and credentials

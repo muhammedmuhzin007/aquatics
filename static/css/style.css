@@ -196,6 +196,16 @@ html[data-theme='light'] .table-wrapper {
     background: var(--light-card);
     border-color: var(--light-border);
 }
+
+/* Admin table polish */
+.admin-table-card .table { background: transparent; }
+.admin-table-card .table tbody tr:hover { background: rgba(255,255,255,0.03); }
+.admin-table-card .table thead { border: 0; }
+.badge.bg-success-subtle { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.25); }
+.badge.bg-warning-subtle { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid rgba(255,193,7,0.25); }
+html[data-theme='light'] .admin-table-card .table tbody tr:hover { background: rgba(0,0,0,0.02); }
+html[data-theme='light'] .badge.bg-success-subtle { background: rgba(46, 204, 113, 0.16); color: #1b5e20; border-color: rgba(27,94,32,0.25); }
+html[data-theme='light'] .badge.bg-warning-subtle { background: rgba(255, 193, 7, 0.18); color: #b36b00; border-color: rgba(179,107,0,0.25); }
 html[data-theme='light'] .table thead {
     background: rgba(25,118,210,0.08);
     border-bottom-color: var(--light-border);

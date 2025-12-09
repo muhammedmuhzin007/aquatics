@@ -61,7 +61,7 @@ def assign_service_images():
 def create_or_update_contact():
     # Sample contact details - update as needed
     details = {
-        'address_line1': 'Fishy Friend Aquatics, 123 Ocean Avenue',
+        'address_line1': 'FISHY FRIEND AQUA, 123 Ocean Avenue',
         'address_line2': 'Suite 5B',
         'city': 'Mumbai',
         'state': 'Maharashtra',

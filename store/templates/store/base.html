@@ -422,9 +422,11 @@
                             <li class="nav-item">
                                     <a class="nav-link" href="{% url 'about' %}">About Us</a>
                                 </li>
+                                {% if has_published_blogs %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="{% url 'blog_list' %}">Blog</a>
                                 </li>
+                                {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'fish_list' %}">Fishes</a>
                         </li>

@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     'store',
 ]
 
-SITE_NAME = 'Fishy Friend Aquatics'
+SITE_NAME = 'FISHY FRIEND AQUA'
 
 # Public site base URL used by background tasks to build absolute links when
 # no HttpRequest object is available. Override in .env for production.

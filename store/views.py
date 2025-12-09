@@ -145,8 +145,10 @@ def order_confirmation_view(request, order_id):
         invoice_path = os.path.join(settings.MEDIA_ROOT, 'invoices', f'invoice-{order.order_number}.pdf')
         if os.path.exists(invoice_path):
             invoice_url = settings.MEDIA_URL + f'invoices/invoice-{order.order_number}.pdf'
-    order.invoice_url = invoice_url
-    return render(request, 'store/customer/order_confirmation.html', {'order': order})
+    return render(request, 'store/customer/order_confirmation.html', {
+        'order': order,
+        'invoice_url': invoice_url,
+    })
 from .models import CustomUser, Category, Breed, Fish, Order, OrderItem, Review, Service, ContactInfo, Coupon, LimitedOffer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
@@ -2088,9 +2090,43 @@ def remove_coupon_view(request):
     })
 
 
-@login_required
-@require_POST
-@csrf_protect
+def _build_upi_metadata(order):
+    """Return reusable UPI payment metadata for an order (QR, deeplinks)."""
+    upi_id = getattr(settings, 'UPI_PAYMENT_ID', 'muhzinmuhammed4@oksbi')
+    merchant_name = getattr(settings, 'SITE_NAME', 'Fishy Friend Aquatics')
+    amount = str(order.final_amount or order.total_amount or '0')
+    transaction_note = f"Order {order.order_number}"
+
+    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(upi_string)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+
+    upi_apps = {
+        'phonepe': f"phonepe://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+        'googlepay': f"gpay://upi/pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+        'paytm': f"paytmmp://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
+    }
+
+    return {
+        'upi_id': upi_id,
+        'upi_string': upi_string,
+        'qr_code': qr_code_base64,
+        'upi_apps': upi_apps,
+    }
+
+
 def create_draft_order(request):
     """AJAX endpoint: create or return a recent draft Order for the current user's cart.
 
@@ -2121,6 +2157,14 @@ def create_draft_order(request):
             except Coupon.DoesNotExist:
                 pass
 
+        shipping_address = (request.POST.get('shipping_address')
+                             or getattr(request.user, 'address', '')
+                             or '')
+        phone_number = (request.POST.get('phone_number')
+                        or getattr(request.user, 'phone_number', '')
+                        or '')
+        payment_method = request.POST.get('payment_method') or 'card'
+
         # Try to reuse a recent draft
         draft_cutoff = timezone.now() - timedelta(minutes=30)
         draft_order = Order.objects.filter(
@@ -2138,9 +2182,9 @@ def create_draft_order(request):
                 coupon=applied_coupon,
                 discount_amount=discount,
                 final_amount=final_total,
-                shipping_address=(request.POST.get('shipping_address') or (request.user.address if hasattr(request.user, 'address') else '')),
-                phone_number=(request.POST.get('phone_number') or (request.user.phone_number if hasattr(request.user, 'phone_number') else '')),
-                payment_method=(request.POST.get('payment_method') or 'card'),
+                shipping_address=shipping_address,
+                phone_number=phone_number,
+                payment_method=payment_method,
                 payment_status='pending',
             )
             for cart_item in cart_items:
@@ -2157,8 +2201,60 @@ def create_draft_order(request):
                     quantity=a_item.quantity,
                     price=a_item.accessory.price,
                 )
+        else:
+            # Refresh core order fields to match the current cart snapshot
+            draft_order.total_amount = total
+            draft_order.coupon = applied_coupon
+            draft_order.discount_amount = discount
+            draft_order.final_amount = final_total
+            draft_order.shipping_address = shipping_address
+            draft_order.phone_number = phone_number
+            draft_order.payment_method = payment_method
+            draft_order.status = 'pending'
+            draft_order.payment_status = 'pending'
+            draft_order.transaction_id = None
+            draft_order.provider_order_id = None
+            draft_order.save()
 
-        return JsonResponse({'order_id': draft_order.id, 'order_number': draft_order.order_number, 'final_amount': float(draft_order.final_amount)})
+            # Replace line items so the order mirrors the latest cart contents
+            draft_order.items.all().delete()
+            for cart_item in cart_items:
+                OrderItem.objects.create(
+                    order=draft_order,
+                    fish=cart_item.fish,
+                    quantity=cart_item.quantity,
+                    price=cart_item.fish.price,
+                )
+
+            draft_order.accessory_items.all().delete()
+            for a_item in accessory_items:
+                OrderAccessoryItem.objects.create(
+                    order=draft_order,
+                    accessory=a_item.accessory,
+                    quantity=a_item.quantity,
+                    price=a_item.accessory.price,
+                )
+
+        response_data = {
+            'order_id': draft_order.id,
+            'order_number': draft_order.order_number,
+            'final_amount': float(draft_order.final_amount),
+            'payment_method': draft_order.payment_method,
+        }
+
+        if draft_order.payment_method == 'upi':
+            try:
+                upi_meta = _build_upi_metadata(draft_order)
+                response_data.update({
+                    'upi_qr': upi_meta['qr_code'],
+                    'upi_id': upi_meta['upi_id'],
+                    'upi_string': upi_meta['upi_string'],
+                    'upi_apps': upi_meta['upi_apps'],
+                })
+            except Exception:
+                logging.getLogger(__name__).exception('Failed generating UPI metadata for order %s', draft_order.order_number)
+
+        return JsonResponse(response_data)
     except Exception:
         logging.getLogger(__name__).exception('Failed to create draft order via AJAX')
         return JsonResponse({'error': 'Server error'}, status=500)
@@ -2241,6 +2337,36 @@ def cancel_order_view(request, order_id):
     return redirect('order_detail', order_id=order.id)
 
 
+@login_required
+@user_passes_test(is_admin)
+def admin_cancel_order_view(request, order_id):
+    """Admin endpoint to cancel an order and redirect to admin orders list."""
+    order = get_object_or_404(Order, id=order_id)
+    
+    if request.method == 'POST':
+        # Only allow cancellation for pending or processing orders
+        if order.status in ['pending', 'processing']:
+            order.status = 'cancelled'
+            order.save()
+            # Send cancellation email to customer
+            try:
+                subject = f'Order Cancelled - {settings.SITE_NAME} - {order.order_number}'
+                try:
+                    from store.tasks import send_order_email
+                    site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
+                    send_order_email.delay(order.id, 'order_cancelled', subject, order.user.email, site_base)
+                except Exception:
+                    logging.getLogger(__name__).exception('Celery task import failed; falling back to synchronous send for order %s', order.order_number)
+                    _send_order_email(order, 'order_cancelled', subject, order.user.email, request=request)
+            except Exception:
+                logging.getLogger(__name__).exception('Error sending cancellation email for order %s', order.order_number)
+            messages.success(request, f'Order #{order.order_number} has been cancelled successfully.')
+        else:
+            messages.error(request, f'Order #{order.order_number} cannot be cancelled at this stage.')
+    
+    return redirect('admin_orders')
+
+
 # UPI Payment Views
 @login_required
 @user_passes_test(is_customer)
@@ -2259,44 +2385,14 @@ def upi_payment_view(request, order_id):
     
     # Generate UPI payment string
     # Format: upi://pay?pa=UPI_ID&pn=MERCHANT_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&cu=INR
-    upi_id = "muhzinmuhammed4@oksbi"  # Replace with your actual UPI ID
-    merchant_name = settings.SITE_NAME
-    amount = str(order.total_amount)
-    transaction_note = f"Order {order.order_number}"
-    
-    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR"
-    
-    # Generate QR Code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(upi_string)
-    qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Convert to base64 for embedding in HTML
-    buffer = BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
-    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
-    
-    # UPI app deep links
-    upi_apps = {
-        'phonepe': f"phonepe://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
-        'googlepay': f"gpay://upi/pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
-        'paytm': f"paytmmp://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
-    }
-    
+    upi_meta = _build_upi_metadata(order)
+
     context = {
         'order': order,
-        'upi_id': upi_id,
-        'upi_string': upi_string,
-        'qr_code': qr_code_base64,
-        'upi_apps': upi_apps,
+        'upi_id': upi_meta['upi_id'],
+        'upi_string': upi_meta['upi_string'],
+        'qr_code': upi_meta['qr_code'],
+        'upi_apps': upi_meta['upi_apps'],
     }
     
     return render(request, 'store/customer/upi_payment.html', context)
@@ -2443,51 +2539,6 @@ def admin_delete_combo_view(request, combo_id):
     except Exception:
         messages.error(request, f'Unable to delete combo "{title}". Please try again.')
     return redirect('admin_add_combo')
-    
-    
-    # Generate UPI payment string
-    # Format: upi://pay?pa=UPI_ID&pn=MERCHANT_NAME&am=AMOUNT&tn=TRANSACTION_NOTE&cu=INR
-    upi_id = "muhzinmuhammed4@oksbi"  # Replace with your actual UPI ID
-    merchant_name = settings.SITE_NAME
-    amount = str(order.total_amount)
-    transaction_note = f"Order {order.order_number}"
-    
-    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR"
-    
-    # Generate QR Code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(upi_string)
-    qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Convert to base64 for embedding in HTML
-    buffer = BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
-    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
-    
-    # UPI app deep links
-    upi_apps = {
-        'phonepe': f"phonepe://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
-        'googlepay': f"gpay://upi/pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
-        'paytm': f"paytmmp://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
-    }
-    
-    context = {
-        'order': order,
-        'upi_id': upi_id,
-        'upi_string': upi_string,
-        'qr_code': qr_code_base64,
-        'upi_apps': upi_apps,
-    }
-    
-    return render(request, 'store/customer/upi_payment.html', context)
 
 
 @login_required
@@ -2506,6 +2557,15 @@ def verify_upi_payment(request, order_id):
             order.transaction_id = upi_transaction_id
             order.payment_status = 'paid'
             order.save()
+
+            # Clear cart contents and any applied coupon now that checkout succeeded
+            try:
+                Cart.objects.filter(user=order.user).delete()
+                AccessoryCart.objects.filter(user=order.user).delete()
+            except Exception:
+                logging.getLogger(__name__).exception('Failed to clear cart after UPI payment for order %s', order.order_number)
+
+            request.session.pop('applied_coupon_code', None)
             
             # Send invoice email now that payment is confirmed
             try:

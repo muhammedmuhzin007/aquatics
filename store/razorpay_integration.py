@@ -5,7 +5,7 @@ from django.conf import settings
 import json
 import logging
 
-from .models import Order
+from .models import Order, Cart, AccessoryCart
 from .payments import get_payment_provider
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,19 @@ def _finalize_payment(provider_order, payment_id=None, request=None):
             order.status = 'processing'
         order.save()
 
+        # Clear the user's cart so the next visit starts fresh
+        try:
+            Cart.objects.filter(user=order.user).delete()
+            AccessoryCart.objects.filter(user=order.user).delete()
+        except Exception:
+            logger.exception('Failed to clear cart for order %s', order.order_number)
+
+        if request is not None:
+            try:
+                request.session.pop('applied_coupon_code', None)
+            except Exception:
+                logger.debug('No coupon session to clear for order %s', order.order_number)
+
         # Send invoice using Celery task if available, otherwise synchronous fallback
         try:
             from store.tasks import send_order_email
@@ -62,9 +75,19 @@ def create_razorpay_payment(request, order_id):
         return HttpResponseBadRequest('Only POST/GET allowed')
 
     order = get_object_or_404(Order, id=order_id)
+    if order.payment_status == 'paid':
+        return JsonResponse({'error': 'Order already paid'}, status=400)
+
+    key_id = getattr(settings, 'RAZORPAY_KEY_ID', '')
+    key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', '')
+    if not key_id or not key_secret:
+        return JsonResponse({'error': 'Payment gateway not configured'}, status=503)
+
     provider = get_payment_provider('razorpay')
     try:
         payload = provider.create_order(order)
+        payload.setdefault('payment_method', order.payment_method)
+        payload.setdefault('amount_rupees', float(order.final_amount))
         # Persist provider order id on our Order so we can map callbacks/verify
         try:
             prov_id = payload.get('razorpay_order_id') or payload.get('provider_order_id')

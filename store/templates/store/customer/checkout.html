@@ -135,6 +135,68 @@
     html[data-theme='light'] .coupon-suggestion:hover {
         background: rgba(102, 126, 234, 0.1);
     }
+
+    .upi-qr-inline {
+        display: none;
+        border: 1px dashed var(--accent-blue);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-top: 1rem;
+        background: rgba(30,136,229,0.08);
+    }
+    html[data-theme='light'] .upi-qr-inline {
+        background: rgba(30,136,229,0.06);
+    }
+    .upi-qr-inline h6 {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-white);
+    }
+    html[data-theme='light'] .upi-qr-inline h6 {
+        color: var(--light-text);
+    }
+    .upi-qr-body {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+    .upi-qr-body img {
+        width: 150px;
+        height: 150px;
+        border-radius: 8px;
+        background: #fff;
+        padding: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .upi-qr-meta {
+        flex: 1 1 200px;
+        min-width: 200px;
+    }
+    .upi-qr-id {
+        font-family: 'Courier New', monospace;
+        font-size: 0.95rem;
+        word-break: break-all;
+        color: var(--text-white);
+    }
+    html[data-theme='light'] .upi-qr-id {
+        color: var(--light-text);
+    }
+    .upi-qr-links a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-right: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .upi-qr-note {
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        color: rgba(255,255,255,0.8);
+    }
+    html[data-theme='light'] .upi-qr-note {
+        color: rgba(0,0,0,0.6);
+    }
 </style>
 {% endblock %}
 
@@ -298,6 +360,24 @@
                                     <span class="payment-name">Digital Wallet</span>
                                     <span class="payment-desc">Paytm, Amazon Pay, etc.</span>
                                 </label>
+                            </div>
+                        </div>
+                        <div class="upi-qr-inline" id="upi-qr-section">
+                            <h6><i class="fas fa-qrcode me-2"></i>UPI QR (Backup)</h6>
+                            <div class="upi-qr-body">
+                                <img id="upi-qr-image" alt="UPI QR Code" src="" loading="lazy" />
+                                <div class="upi-qr-meta">
+                                    <div class="small text-muted">Pay to UPI ID</div>
+                                    <div class="upi-qr-id" id="upi-qr-upi-id"></div>
+                                    <div class="upi-qr-links mt-2">
+                                        <a href="#" id="upi-phonepe-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-mobile-alt"></i> PhonePe</a>
+                                        <a href="#" id="upi-gpay-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fab fa-google"></i> Google Pay</a>
+                                        <a href="#" id="upi-paytm-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-wallet"></i> Paytm</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="upi-qr-note">
+                                Razorpay will open next for secure payment confirmation. Use this QR only if the popup does not display your UPI options.
                             </div>
                         </div>
                     </div>
@@ -737,142 +817,280 @@ document.addEventListener('DOMContentLoaded', function() {
     initCouponUI();
 });
 </script>
-{% if order %}
 <script>
-// AJAX checkout form logic (provider-agnostic).
-const checkoutForm = document.getElementById('ajax-checkout-form');
-const placeOrderBtn = document.getElementById('place-order-btn');
-const btnText = document.getElementById('place-order-btn-text');
-const btnSpinner = document.getElementById('place-order-btn-spinner');
-const messageDiv = document.getElementById('checkout-message');
-function showCheckoutMessage(msg, type='danger') {
-    messageDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
-    setTimeout(() => { messageDiv.innerHTML = ''; }, 6000);
-}
-if (checkoutForm) {
-    checkoutForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if (placeOrderBtn) placeOrderBtn.disabled = true;
-        if (btnText) btnText.style.display = 'none';
-        if (btnSpinner) btnSpinner.style.display = '';
+(function() {
+    const checkoutForm = document.getElementById('ajax-checkout-form');
+    if (!checkoutForm) {
+        return;
+    }
+
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    const btnText = document.getElementById('place-order-btn-text');
+    const btnSpinner = document.getElementById('place-order-btn-spinner');
+    const messageDiv = document.getElementById('checkout-message');
+    const csrfInput = checkoutForm.querySelector('input[name="csrfmiddlewaretoken"]');
+    const csrfToken = csrfInput ? csrfInput.value : null;
+
+    const createDraftUrl = "{% url 'create_draft_order' %}";
+    const createPaymentTemplate = "{% url 'create_razorpay_payment' 0 %}";
+    const verifyUrl = "{% url 'verify_razorpay_payment' %}";
+    const confirmationTemplate = "{% url 'order_confirmation' 0 %}";
+
+    const razorpayMethodConfig = {
+        card: { card: true, upi: false, netbanking: false, wallet: false },
+        upi: { card: false, upi: true, netbanking: false, wallet: false },
+        netbanking: { card: false, upi: false, netbanking: true, wallet: false },
+        wallet: { card: false, upi: false, netbanking: false, wallet: true }
+    };
+
+    function showCheckoutMessage(message, type = 'danger') {
+        if (!messageDiv) return;
+        if (!message) {
+            messageDiv.innerHTML = '';
+            return;
+        }
+        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    }
+
+    function setButtonState(disabled) {
+        if (!placeOrderBtn) return;
+        placeOrderBtn.disabled = disabled;
+        if (btnText) btnText.style.display = disabled ? 'none' : '';
+        if (btnSpinner) btnSpinner.style.display = disabled ? '' : 'none';
+    }
+
+    const upiQrSection = document.getElementById('upi-qr-section');
+    const upiQrImage = document.getElementById('upi-qr-image');
+    const upiQrUpiId = document.getElementById('upi-qr-upi-id');
+    const upiPhonepeLink = document.getElementById('upi-phonepe-link');
+    const upiGpayLink = document.getElementById('upi-gpay-link');
+    const upiPaytmLink = document.getElementById('upi-paytm-link');
+
+    function resolveCreatePaymentUrl(orderId) {
+        return createPaymentTemplate.replace('0/', `${orderId}/`);
+    }
+
+    function resolveConfirmationUrl(orderId) {
+        return confirmationTemplate.replace('0/', `${orderId}/`);
+    }
+
+    function hideUpiDetails() {
+        if (upiQrSection) {
+            upiQrSection.style.display = 'none';
+        }
+        if (upiQrImage) {
+            upiQrImage.src = '';
+        }
+        if (upiQrUpiId) {
+            upiQrUpiId.textContent = '';
+        }
+        if (upiPhonepeLink) upiPhonepeLink.href = '#';
+        if (upiGpayLink) upiGpayLink.href = '#';
+        if (upiPaytmLink) upiPaytmLink.href = '#';
+    }
+
+    function showUpiDetails(draftData) {
+        if (!upiQrSection || !draftData) {
+            return;
+        }
+        if (draftData.upi_qr && upiQrImage) {
+            upiQrImage.src = `data:image/png;base64,${draftData.upi_qr}`;
+        }
+        if (upiQrUpiId) {
+            upiQrUpiId.textContent = draftData.upi_id || '';
+        }
+        const apps = draftData.upi_apps || {};
+        if (upiPhonepeLink) {
+            upiPhonepeLink.href = apps.phonepe || '#';
+        }
+        if (upiGpayLink) {
+            upiGpayLink.href = apps.googlepay || '#';
+        }
+        if (upiPaytmLink) {
+            upiPaytmLink.href = apps.paytm || '#';
+        }
+        upiQrSection.style.display = 'block';
+    }
+
+    let razorpayLoaderPromise = null;
+    function loadRazorpayScript() {
+        if (!razorpayLoaderPromise) {
+            razorpayLoaderPromise = new Promise((resolve, reject) => {
+                if (window.Razorpay) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Failed to load Razorpay script'));
+                document.head.appendChild(script);
+            });
+        }
+        return razorpayLoaderPromise;
+    }
+
+    async function verifyPayment(orderId, payload) {
+        const response = await fetch(verifyUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Payment verification failed.');
+        }
+        window.location.href = resolveConfirmationUrl(orderId);
+    }
+
+    if (checkoutForm) {
+        const paymentRadios = checkoutForm.querySelectorAll('input[name="payment_method"]');
+        paymentRadios.forEach((input) => {
+            input.addEventListener('change', (event) => {
+                if (event.target.value !== 'upi') {
+                    hideUpiDetails();
+                }
+            });
+        });
+    }
+
+    checkoutForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setButtonState(true);
         showCheckoutMessage('');
+        hideUpiDetails();
+
         const formData = new FormData(checkoutForm);
+        const paymentMethod = formData.get('payment_method');
+        if (!paymentMethod) {
+            showCheckoutMessage('Please select a payment method.');
+            setButtonState(false);
+            return;
+        }
+
         try {
-            // Create the draft/final order via AJAX
-            const resp = await fetch('/checkout/', {
+            const draftResp = await fetch(createDraftUrl, {
                 method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
                 body: formData
             });
-            const data = await resp.json();
-            if (!resp.ok || !data.order_id) {
-                throw new Error(data.error || 'Failed to create order');
+            const draftJson = await draftResp.json();
+            if (!draftResp.ok || !draftJson.order_id) {
+                throw new Error(draftJson.error || 'Failed to create order.');
             }
 
-            // Ask backend to create provider order (Razorpay-backed endpoint)
-            // Build URL from the named route to avoid hardcoding and to support prefixing
-            const createUrlTemplate = "{% url 'create_razorpay_payment' 0 %}"; // will contain /0/ which we replace
-            const createUrl = createUrlTemplate.replace('/0/', `/${data.order_id}/`);
-            const provResp = await fetch(createUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!provResp.ok) {
-                let errText = 'Failed to create payment order';
-                try { const errJson = await provResp.json(); if (errJson && errJson.error) errText = errJson.error; } catch(e){}
-                throw new Error(errText);
-            }
-            const provJson = await provResp.json();
-
-            // Expected response: { razorpay_order_id, razorpay_key_id, amount, currency }
-            const rOrderId = provJson.razorpay_order_id;
-            const rKeyId = provJson.razorpay_key_id || provJson.key_id || provJson.razorpay_key;
-            if (!rOrderId || !rKeyId) {
-                throw new Error('Provider did not return required Razorpay parameters');
+            if (paymentMethod === 'upi') {
+                showUpiDetails(draftJson);
             }
 
-            // Load Razorpay checkout script if needed
-            function loadScript(src){
-                return new Promise((resolve, reject) => {
-                    if (window.Razorpay) return resolve();
-                    const s = document.createElement('script');
-                    s.src = src;
-                    s.onload = () => resolve();
-                    s.onerror = () => reject(new Error('Failed to load Razorpay script'));
-                    document.head.appendChild(s);
-                });
+            const paymentResp = await fetch(resolveCreatePaymentUrl(draftJson.order_id), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const paymentJson = await paymentResp.json();
+            if (!paymentResp.ok) {
+                throw new Error(paymentJson.error || 'Failed to initiate payment gateway.');
             }
 
-            try {
-                await loadScript('https://checkout.razorpay.com/v1/checkout.js');
-            } catch (err) {
-                console.error('Razorpay script load failed', err);
-                throw new Error('Could not load Razorpay checkout library');
+            const rzpOrderId = paymentJson.razorpay_order_id;
+            const rzpKey = paymentJson.razorpay_key_id || paymentJson.key_id || paymentJson.razorpay_key;
+            const amountPaise = paymentJson.amount || paymentJson.amount_paise;
+            if (!rzpOrderId || !rzpKey) {
+                throw new Error('Payment gateway returned an incomplete response.');
             }
 
-            const options = {
-                key: rKeyId,
-                amount: provJson.amount || provJson.amount_paise || undefined,
-                currency: provJson.currency || 'INR',
-                name: "{{ SITE_NAME|escapejs }}",
-                description: `Order ${data.order_id}`,
-                order_id: rOrderId,
-                handler: async function(response){
-                    // response contains: razorpay_payment_id, razorpay_order_id, razorpay_signature
-                    try {
-                        const verifyPayload = {
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_signature: response.razorpay_signature,
-                            order_id: data.order_id
-                        };
-                        const verifyResp = await fetch('{% url "verify_razorpay_payment" %}', {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify(verifyPayload)
-                        });
-                        if (!verifyResp.ok) throw new Error('Verification failed');
-                        const vjson = await verifyResp.json();
-                        if (vjson.success) {
-                            // Redirect to confirmation
-                            window.location.href = `/order-confirmation/${data.order_id}/`;
-                        } else {
-                            throw new Error(vjson.message || 'Payment verification failed');
+            await loadRazorpayScript();
+
+            const methodConfig = Object.assign({ card: false, upi: false, netbanking: false, wallet: false }, razorpayMethodConfig[paymentMethod] || {});
+
+            const config = (function() {
+                if (paymentMethod !== 'upi') {
+                    return undefined;
+                }
+                return {
+                    display: {
+                        blocks: {
+                            upi: {
+                                name: 'Pay via UPI',
+                                instruments: [
+                                    { method: 'upi' }
+                                ]
+                            }
+                        },
+                        sequence: ['upi'],
+                        preferences: {
+                            show_default_blocks: false
                         }
-                    } catch (err) {
-                        showCheckoutMessage(err.message || 'Payment verification failed.');
-                        if (placeOrderBtn) placeOrderBtn.disabled = false;
-                        if (btnText) btnText.style.display = '';
-                        if (btnSpinner) btnSpinner.style.display = 'none';
                     }
+                };
+            })();
+
+            const options = Object.assign({
+                key: rzpKey,
+                order_id: rzpOrderId,
+                amount: amountPaise,
+                currency: paymentJson.currency || 'INR',
+                name: "{{ SITE_NAME|escapejs }}",
+                description: `Order ${draftJson.order_number || draftJson.order_id}`,
+                method: methodConfig,
+                theme: { color: '#1E88E5' },
+                notes: {
+                    order_number: draftJson.order_number,
+                    payment_method: paymentMethod
                 },
                 prefill: {
+                    name: "{{ user.get_full_name|default:user.username|default:''|escapejs }}",
                     email: "{{ user.email|default:''|escapejs }}",
                     contact: document.querySelector('input[name="phone_number"]') ? document.querySelector('input[name="phone_number"]').value : "{{ user.phone_number|default:''|escapejs }}"
                 },
+                handler: async (response) => {
+                    try {
+                        await verifyPayment(draftJson.order_id, {
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                            order_id: draftJson.order_id
+                        });
+                    } catch (err) {
+                        showCheckoutMessage(err.message || 'Payment verification failed.');
+                        setButtonState(false);
+                    }
+                },
                 modal: {
-                    ondismiss: function(){
-                        // User dismissed the checkout popup
-                        showCheckoutMessage('Payment cancelled');
-                        if (placeOrderBtn) placeOrderBtn.disabled = false;
-                        if (btnText) btnText.style.display = '';
-                        if (btnSpinner) btnSpinner.style.display = 'none';
+                    ondismiss: function() {
+                        showCheckoutMessage('Payment flow cancelled by user.', 'warning');
+                        setButtonState(false);
                     }
                 }
-            };
+            }, config ? { config } : {});
 
             const rzp = new window.Razorpay(options);
-            rzp.open();
-                } catch (err) {
-                    showCheckoutMessage(err.message || 'Order failed. Please try again.');
-                    if (placeOrderBtn) placeOrderBtn.disabled = false;
-                    if (btnText) btnText.style.display = '';
-                    if (btnSpinner) btnSpinner.style.display = 'none';
-                }
+            rzp.on('payment.failed', function(eventInfo) {
+                const err = eventInfo && eventInfo.error ? eventInfo.error : {};
+                const message = err.description || err.reason || 'Payment failed. Please try again.';
+                showCheckoutMessage(message);
+                setButtonState(false);
             });
+            rzp.open();
+        } catch (error) {
+            console.error('Checkout error', error);
+            showCheckoutMessage(error.message || 'Unable to process payment. Please try again.');
+            setButtonState(false);
         }
-        {% endif %}
-        </script>
-        {% endblock %}
+    });
+})();
+</script>
+{% endblock %}

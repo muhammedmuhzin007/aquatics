@@ -26,15 +26,15 @@ def notify_on_staff_removal(sender, instance, **kwargs):
 
     if prev_role == 'staff' and new_role != 'staff':
         # Prepare simple plain-text notification
-        subject = 'Staff access removed — Fishy Friend Aquatics'
+        subject = 'Staff access removed — FISHY FRIEND AQUA'
         name = instance.get_full_name() or instance.username
         body = (
             f"Hello {name},\n\n"
-            "This is an official notification from Fishy Friend Aquatics. "
+            "This is an official notification from FISHY FRIEND AQUA. "
             "Your staff access has been removed and your account role has been changed. "
             "If you believe this is an error, please contact an administrator immediately.\n\n"
             "If you have questions, reply to this email or contact support.\n\n"
-            "— Fishy Friend Aquatics Team"
+            "— FISHY FRIEND AQUA Team"
         )
 
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None)

@@ -4,6 +4,7 @@
 {% block title %}Blog - {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+{% if posts|length %}
 <section class="section">
     <div class="container-fluid">
         <h2 class="section-heading">Blog</h2>
@@ -25,8 +26,6 @@
                         </div>
                     </div>
                 </div>
-                {% empty %}
-                <p class="text-gray">No blog posts yet.</p>
                 {% endfor %}
                 </div>
 
@@ -45,4 +44,11 @@
         </div>
     </div>
 </section>
+{% else %}
+<section class="section">
+    <div class="container-fluid text-center py-5">
+        <p class="text-gray mb-0">No blog posts yet.</p>
+    </div>
+</section>
+{% endif %}
 {% endblock %}

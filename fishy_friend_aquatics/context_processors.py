@@ -2,7 +2,7 @@ from django.conf import settings
 
 def site_settings(request):
     return {
-        'SITE_NAME': getattr(settings, 'SITE_NAME', 'Fishy Friend Aquatics'),
+        'SITE_NAME': getattr(settings, 'SITE_NAME', 'FISHY FRIEND AQUA'),
     }
 
 
@@ -39,6 +39,8 @@ def global_flags(request):
     # Attach unread notification counts for staff/admin users
     unread_count = 0
     recent_notifications = []
+    # Show blog nav only when at least one published post exists
+    has_published_blogs = False
     try:
         user = getattr(request, 'user', None)
         if user and user.is_authenticated and getattr(user, 'role', None) in ('staff', 'admin'):
@@ -51,9 +53,16 @@ def global_flags(request):
         unread_count = 0
         recent_notifications = []
 
+    try:
+        from store.models import BlogPost
+        has_published_blogs = BlogPost.objects.filter(is_published=True).exists()
+    except Exception:
+        has_published_blogs = False
+
     return {
         'has_active_accessories': has_active,
         'has_active_combos': has_active_combos,
+        'has_published_blogs': has_published_blogs,
         'unread_notifications_count': unread_count,
         'recent_notifications': recent_notifications,
     }

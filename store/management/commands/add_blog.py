@@ -41,7 +41,7 @@ class Command(BaseCommand):
                 "<p>This is a sample blog post generated for testing purposes. "
                 "Replace with real content in admin panel.</p>"
             )
-            excerpt = "Sample blog post for Fishy Friend Aquatics."
+            excerpt = "Sample blog post for FISHY FRIEND AQUA."
             bp = BlogPost(title=title, slug=slug, author=author, excerpt=excerpt, content=content, is_published=True, published_at=timezone.now())
             bp.save()
 

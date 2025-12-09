@@ -1,4 +1,36 @@
 {% extends 'store/base.html' %}
+{% load currency %}
+{% block extra_css %}
+<style>
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .status-pill-success {
+    background: rgba(24, 144, 57, 0.12);
+    color: #2ecc71;
+  }
+  .status-pill-pending {
+    background: rgba(255, 193, 7, 0.18);
+    color: #f5a623;
+  }
+  .order-summary-list .list-group-item {
+    background: rgba(12, 22, 35, 0.65);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-white);
+  }
+  html[data-theme='light'] .order-summary-list .list-group-item {
+    background: rgba(240, 246, 255, 0.85);
+    color: #1b2430;
+    border-color: rgba(27, 36, 48, 0.12);
+  }
+</style>
+{% endblock %}
 {% block content %}
 <section class="section order-confirmation-center">
   <div class="container-fluid">
@@ -12,10 +44,10 @@
             <h4>Order <code>{{ order.order_number }}</code></h4>
             <p class="mb-2">Thank you for your purchase, <strong>{{ order.user.first_name }}</strong>!</p>
             <p class="mb-3">Your order has been placed and is being processed.</p>
-            <ul class="list-group mb-3 text-start">
+            <ul class="list-group order-summary-list mb-3 text-start">
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>Status:</span>
-                <span class="fw-bold text-{{ 'success' if order.payment_status == 'paid' else 'warning' }}">{{ order.get_payment_status_display }}</span>
+                <span class="fw-bold status-pill status-pill-{% if order.payment_status == 'paid' %}success{% else %}pending{% endif %}">{{ order.get_payment_status_display }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>Total Amount:</span>
@@ -27,7 +59,7 @@
               </li>
             </ul>
             {% if order.payment_status == 'paid' %}
-              <a href="{{ order.invoice_url }}" class="btn btn-success mb-2" target="_blank"><i class="fas fa-file-invoice"></i> Download Invoice</a>
+                <a href="{{ invoice_url }}" class="btn btn-success mb-2" target="_blank"><i class="fas fa-file-invoice"></i> Download Invoice</a>
             {% endif %}
             <div class="d-grid gap-2 mt-3">
               <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary">View My Orders</a>

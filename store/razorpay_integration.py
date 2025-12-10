@@ -5,7 +5,7 @@ from django.conf import settings
 import json
 import logging
 
-from .models import Order, Cart, AccessoryCart
+from .models import Order
 from .payments import get_payment_provider
 
 logger = logging.getLogger(__name__)
@@ -31,38 +31,13 @@ def _finalize_payment(provider_order, payment_id=None, request=None):
         return False
 
     try:
-        if payment_id:
-            order.transaction_id = payment_id
-        order.payment_status = 'paid'
-        if order.status == 'pending':
-            order.status = 'processing'
-        order.save()
+        from store.views import finalize_order_payment
 
-        # Clear the user's cart so the next visit starts fresh
-        try:
-            Cart.objects.filter(user=order.user).delete()
-            AccessoryCart.objects.filter(user=order.user).delete()
-        except Exception:
-            logger.exception('Failed to clear cart for order %s', order.order_number)
-
-        if request is not None:
-            try:
-                request.session.pop('applied_coupon_code', None)
-            except Exception:
-                logger.debug('No coupon session to clear for order %s', order.order_number)
-
-        # Send invoice using Celery task if available, otherwise synchronous fallback
-        try:
-            from store.tasks import send_order_email
-            site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
-            send_order_email.delay(order.id, 'invoice', f'Invoice - {settings.SITE_NAME} - {order.order_number}', order.user.email, site_base)
-        except Exception:
-            logger.info('Celery unavailable or task failed; sending invoice synchronously for %s', order.order_number)
-            try:
-                from store.views import _send_order_email
-                _send_order_email(order, 'invoice', f'Invoice - {settings.SITE_NAME} - {order.order_number}', order.user.email, request=request)
-            except Exception:
-                logger.exception('Synchronous invoice send failed for order %s', order.order_number)
+        processed, order = finalize_order_payment(order, payment_id=payment_id, request=request)
+        if processed:
+            logger.info('Finalized payment for order %s (provider=%s)', order.order_number, provider_order)
+        else:
+            logger.info('Order %s already finalized; acknowledged provider event %s', order.order_number, provider_order)
         return True
     except Exception:
         logger.exception('Failed to finalize payment for order %s (provider_order=%s)', getattr(order, 'order_number', 'N/A'), provider_order)

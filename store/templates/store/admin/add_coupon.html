@@ -238,9 +238,18 @@ html[data-theme='light'] .card { background: var(--light-card); border-color: va
 .form-label { font-weight: 600; color: var(--text-white); margin-bottom: 0.5rem; }
 html[data-theme='light'] .form-label { color: var(--light-text); }
 
+.admin-form-stable input.form-control::placeholder,
+.admin-form-stable textarea.form-control::placeholder {
+    color: rgba(234, 246, 255, 0.55) !important;
+}
+html[data-theme='light'] .admin-form-stable input.form-control::placeholder,
+html[data-theme='light'] .admin-form-stable textarea.form-control::placeholder {
+    color: rgba(84, 110, 122, 0.7) !important;
+}
+
 /* Select arrow and option background (theme-aware) */
 .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); background-repeat:no-repeat; background-position:right 0.75rem center; background-size:16px 12px; padding-right:2.5rem; cursor:pointer; font-weight:500; height:50px; appearance:none; }
-html[data-theme='dark'] .form-select option { background: rgba(15,25,40,0.95); color: var(--text-white); }
+html:not([data-theme='light']) .form-select option { background: rgba(15,25,40,0.95); color: var(--text-white); }
 html[data-theme='light'] .form-select option { background: var(--light-surface); color: var(--light-text); }
 </style>
 

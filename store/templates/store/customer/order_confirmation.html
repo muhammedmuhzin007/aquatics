@@ -58,8 +58,10 @@
                 <span>{{ order.get_payment_method_display }}</span>
               </li>
             </ul>
-            {% if order.payment_status == 'paid' %}
-                <a href="{{ invoice_url }}" class="btn btn-success mb-2" target="_blank"><i class="fas fa-file-invoice"></i> Download Invoice</a>
+            {% if order.payment_status == 'paid' and invoice_url %}
+              <a href="{{ invoice_url }}" class="btn btn-success mb-2" target="_blank"><i class="fas fa-file-invoice"></i> Download Invoice</a>
+            {% elif order.payment_status == 'paid' %}
+              <p class="text-muted mb-2">Invoice will be available shortly. Please check back from your orders list.</p>
             {% endif %}
             <div class="d-grid gap-2 mt-3">
               <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary">View My Orders</a>

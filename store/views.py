@@ -96,11 +96,18 @@ def checkout_view(request):
 
     # Available coupon suggestions (simple rules)
     now = timezone.now()
+    coupon_types_allowed = ['all']
+    if getattr(request.user, 'is_favorite', False):
+        coupon_types_allowed.append('favorites')
+    else:
+        coupon_types_allowed.append('normal')
+
     available_coupons = Coupon.objects.filter(
         is_active=True,
         show_in_suggestions=True,
         valid_from__lte=now,
-        valid_until__gte=now
+        valid_until__gte=now,
+        coupon_type__in=coupon_types_allowed,
     ).exclude(
         usage_limit__isnull=False,
         times_used__gte=models.F('usage_limit')
@@ -156,7 +163,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.http import JsonResponse, HttpResponse
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q, Sum, Count
 from django.conf import settings
 from django.urls import reverse
@@ -191,6 +198,7 @@ import uuid
 import smtplib
 import socket
 import logging
+from collections import defaultdict
 from django.contrib.sessions.models import Session
 import os
 
@@ -516,6 +524,166 @@ def _send_order_email(order, template_base, subject, recipient_email, request=No
                 logging.getLogger(__name__).exception('Retry without attachment also failed for order %s', order.order_number)
     except Exception:
         logging.getLogger(__name__).exception('Failed to send order email %s for order %s', template_base, getattr(order, 'order_number', None))
+
+
+def _ensure_order_inventory_deducted_locked(order):
+    """Deduct fish/accessory stock for a locked Order instance."""
+    if getattr(order, '_inventory_deducted', False):
+        return False
+
+    if getattr(order, 'status', None) != 'pending':
+        return False
+
+    logger = logging.getLogger(__name__)
+    deducted = False
+
+    fish_items = list(order.items.select_related('fish')) if hasattr(order, 'items') else []
+    accessory_items = list(order.accessory_items.select_related('accessory')) if hasattr(order, 'accessory_items') else []
+
+    if fish_items:
+        qty_by_fish = defaultdict(int)
+        for item in fish_items:
+            try:
+                qty_by_fish[item.fish_id] += int(item.quantity or 0)
+            except Exception:
+                logger.exception('Invalid quantity for fish item %s on order %s', getattr(item, 'id', None), getattr(order, 'order_number', None))
+        if qty_by_fish:
+            fishes = {fish.id: fish for fish in Fish.objects.select_for_update().filter(id__in=qty_by_fish.keys())}
+            for fish_id, qty in qty_by_fish.items():
+                fish = fishes.get(fish_id)
+                if not fish or qty <= 0:
+                    continue
+                current_stock = int(fish.stock_quantity or 0)
+                new_stock = current_stock - qty
+                if new_stock < 0:
+                    logger.warning(
+                        'Order %s attempted to reduce fish %s stock below zero (%s -> %s)',
+                        getattr(order, 'order_number', None),
+                        fish_id,
+                        current_stock,
+                        new_stock,
+                    )
+                    new_stock = 0
+                if new_stock != current_stock:
+                    fish.stock_quantity = new_stock
+                    fish.save(update_fields=['stock_quantity'])
+                    deducted = True
+
+    if accessory_items:
+        qty_by_accessory = defaultdict(int)
+        for item in accessory_items:
+            try:
+                qty_by_accessory[item.accessory_id] += int(item.quantity or 0)
+            except Exception:
+                logger.exception('Invalid quantity for accessory item %s on order %s', getattr(item, 'id', None), getattr(order, 'order_number', None))
+        if qty_by_accessory:
+            accessories = {acc.id: acc for acc in Accessory.objects.select_for_update().filter(id__in=qty_by_accessory.keys())}
+            for accessory_id, qty in qty_by_accessory.items():
+                accessory = accessories.get(accessory_id)
+                if not accessory or qty <= 0:
+                    continue
+                current_stock = int(accessory.stock_quantity or 0)
+                new_stock = current_stock - qty
+                if new_stock < 0:
+                    logger.warning(
+                        'Order %s attempted to reduce accessory %s stock below zero (%s -> %s)',
+                        getattr(order, 'order_number', None),
+                        accessory_id,
+                        current_stock,
+                        new_stock,
+                    )
+                    new_stock = 0
+                if new_stock != current_stock:
+                    accessory.stock_quantity = new_stock
+                    accessory.save(update_fields=['stock_quantity'])
+                    deducted = True
+
+    order._inventory_deducted = True
+    return deducted
+
+
+def ensure_order_inventory_deducted(order):
+    """Public helper ensuring inventory deduction happens once per order."""
+    if transaction.get_connection().in_atomic_block:
+        return _ensure_order_inventory_deducted_locked(order)
+
+    with transaction.atomic():
+        locked = Order.objects.select_for_update().get(pk=order.pk)
+        return _ensure_order_inventory_deducted_locked(locked)
+
+
+def finalize_order_payment(order, payment_id=None, request=None):
+    """Mark an order as paid, deduct stock, clear carts, and trigger invoice send."""
+    logger = logging.getLogger(__name__)
+    processed = False
+
+    with transaction.atomic():
+        locked_order = Order.objects.select_for_update().select_related('user').get(pk=order.pk)
+
+        dirty_fields = []
+        if payment_id and locked_order.transaction_id != payment_id:
+            locked_order.transaction_id = payment_id
+            dirty_fields.append('transaction_id')
+
+        already_processed = locked_order.payment_status == 'paid' and locked_order.status != 'pending'
+
+        if not already_processed:
+            try:
+                ensure_order_inventory_deducted(locked_order)
+            except Exception:
+                logger.exception('Inventory deduction failed for order %s', getattr(locked_order, 'order_number', None))
+                raise
+
+            if locked_order.payment_status != 'paid':
+                locked_order.payment_status = 'paid'
+                dirty_fields.append('payment_status')
+
+            if locked_order.status == 'pending':
+                locked_order.status = 'processing'
+                dirty_fields.append('status')
+
+            processed = True
+
+        if dirty_fields:
+            locked_order.save(update_fields=list(dict.fromkeys(dirty_fields)))
+        elif processed:
+            locked_order.save()
+
+        order = locked_order
+
+    if processed:
+        try:
+            Cart.objects.filter(user=order.user).delete()
+            AccessoryCart.objects.filter(user=order.user).delete()
+        except Exception:
+            logger.exception('Failed to clear cart for order %s', getattr(order, 'order_number', None))
+
+        if request is not None:
+            try:
+                request.session.pop('applied_coupon_code', None)
+            except Exception:
+                logger.debug('No coupon session to clear for order %s', getattr(order, 'order_number', None))
+
+        recipient = ''
+        if getattr(order, 'user', None):
+            recipient = (getattr(order.user, 'email', '') or '').strip()
+
+        if recipient:
+            subject = f'Invoice - {settings.SITE_NAME} - {order.order_number}'
+            try:
+                from store.tasks import send_order_email
+                site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
+                send_order_email.delay(order.id, 'invoice', subject, recipient, site_base)
+            except Exception:
+                logger.info('Celery unavailable or task failed; sending invoice synchronously for %s', getattr(order, 'order_number', None))
+                try:
+                    _send_order_email(order, 'invoice', subject, recipient, request=request)
+                except Exception:
+                    logger.exception('Synchronous invoice send failed for order %s', getattr(order, 'order_number', None))
+        else:
+            logger.warning('Skipping invoice email - no recipient for order %s', getattr(order, 'order_number', None))
+
+    return processed, order
 
 
 def generate_invoice_pdf(order):
@@ -2553,35 +2721,18 @@ def verify_upi_payment(request, order_id):
         upi_transaction_id = request.POST.get('upi_transaction_id', '').strip()
         
         if upi_transaction_id:
-            # Update order with payment details
-            order.transaction_id = upi_transaction_id
-            order.payment_status = 'paid'
-            order.save()
-
-            # Clear cart contents and any applied coupon now that checkout succeeded
             try:
-                Cart.objects.filter(user=order.user).delete()
-                AccessoryCart.objects.filter(user=order.user).delete()
+                processed, order = finalize_order_payment(order, payment_id=upi_transaction_id, request=request)
             except Exception:
-                logging.getLogger(__name__).exception('Failed to clear cart after UPI payment for order %s', order.order_number)
+                logging.getLogger(__name__).exception('Failed to finalize UPI payment for order %s', order.order_number)
+                messages.error(request, 'We could not verify the payment right now. Please contact support with your transaction ID.')
+                return redirect('upi_payment', order_id=order.id)
 
-            request.session.pop('applied_coupon_code', None)
-            
-            # Send invoice email now that payment is confirmed
-            try:
-                subject = f'Invoice - {settings.SITE_NAME} - {order.order_number}'
-                try:
-                    from store.tasks import send_order_email
-                    site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
-                    send_order_email.delay(order.id, 'invoice', subject, order.user.email, site_base)
-                except Exception:
-                    logging.getLogger(__name__).exception('Celery task import failed; falling back to synchronous send for order %s', order.order_number)
-                    _send_order_email(order, 'invoice', subject, order.user.email, request=request)
-            except Exception:
-                logging.getLogger(__name__).exception('Error sending invoice after UPI payment for order %s', order.order_number)
-
-            messages.success(request, f'Payment successful! Your order has been confirmed and an invoice has been sent.')
-            return redirect('order_detail', order_id=order.id)
+            if processed:
+                messages.success(request, 'Payment successful! Your order has been confirmed and an invoice has been sent.')
+            else:
+                messages.info(request, 'Payment was already verified earlier. Showing your confirmation details.')
+            return redirect('order_confirmation', order_id=order.id)
         else:
             messages.error(request, 'Please enter a valid UPI transaction ID.')
             return redirect('upi_payment', order_id=order.id)
@@ -3558,6 +3709,23 @@ def admin_order_detail_view(request, order_id):
 def admin_users_view(request):
     users = CustomUser.objects.filter(role='customer').order_by('-is_favorite', '-created_at')
     return render(request, 'store/admin/users.html', {'users': users})
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_GET
+def admin_users_ajax_view(request):
+    search_term = request.GET.get('search', '').strip()
+    users = CustomUser.objects.filter(role='customer')
+    if search_term:
+        users = users.filter(
+            Q(username__icontains=search_term) |
+            Q(email__icontains=search_term) |
+            Q(phone_number__icontains=search_term)
+        )
+    users = users.order_by('-is_favorite', '-created_at')
+    html = render_to_string('store/admin/_users_table.html', {'users': users}, request=request)
+    return JsonResponse({'html': html})
 
 
 @login_required

@@ -1,0 +1,59 @@
+{% if users %}
+<div class="card admin-card-light">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th class="admin-text-black">Favorite</th>
+                    <th class="admin-text-black">Username</th>
+                    <th class="admin-text-black">Email</th>
+                    <th class="admin-text-black">Phone</th>
+                    <th class="admin-text-black">Status</th>
+                    <th class="admin-text-black">Joined</th>
+                    <th class="admin-text-black">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_obj in users %}
+                <tr>
+                    <td>
+                        <a href="{% url 'toggle_favorite_user' user_obj.id %}"
+                           class="favorite-btn {% if user_obj.is_favorite %}active{% else %}inactive{% endif %}"
+                           title="{% if user_obj.is_favorite %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                            <i class="{% if user_obj.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                        </a>
+                    </td>
+                    <td><strong class="admin-text-black">{{ user_obj.username }}</strong></td>
+                    <td class="admin-text-black">{{ user_obj.email }}</td>
+                    <td class="admin-text-black">{{ user_obj.phone_number|default:"N/A" }}</td>
+                    <td>
+                        {% if user_obj.is_blocked %}
+                        <span class="badge bg-danger">Blocked</span>
+                        {% else %}
+                        <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="admin-text-black">{{ user_obj.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        {% if user_obj.is_blocked %}
+                        <a href="{% url 'unblock_user' user_obj.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-unlock"></i> Unblock
+                        </a>
+                        {% else %}
+                        <a href="{% url 'block_user' user_obj.id %}" class="btn btn-danger btn-sm" data-confirm="Are you sure you want to block this user?">
+                            <i class="fas fa-ban"></i> Block
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-users"></i>
+    <h3>No users found</h3>
+</div>
+{% endif %}

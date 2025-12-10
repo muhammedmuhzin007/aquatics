@@ -130,6 +130,7 @@ urlpatterns = [
     path('store-admin/order/<int:order_id>/', views.admin_order_detail_view, name='admin_order_detail'),
     path('store-admin/order/<int:order_id>/cancel/', views.admin_cancel_order_view, name='admin_cancel_order'),
     path('store-admin/users/', views.admin_users_view, name='admin_users'),
+    path('store-admin/users/ajax/', views.admin_users_ajax_view, name='admin_users_ajax'),
     path('store-admin/toggle-favorite/<int:user_id>/', views.toggle_favorite_user_view, name='toggle_favorite_user'),
     path('store-admin/block-user/<int:user_id>/', views.block_user_view, name='block_user'),
     path('store-admin/unblock-user/<int:user_id>/', views.unblock_user_view, name='unblock_user'),

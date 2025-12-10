@@ -84,6 +84,14 @@
     html[data-theme='light'] .favorite-btn.inactive {
         color: rgba(0, 0, 0, 0.3);
     }
+
+    .user-management #userSearch.is-loading {
+        padding-right: 2.75rem;
+    }
+
+    .user-management .search-spinner {
+        right: 0.85rem;
+    }
 </style>
 {% endblock %}
 
@@ -91,67 +99,87 @@
 <section class="section user-management">
     <div class="container-fluid">
         <h2 class="section-heading">User Management</h2>
-
-        {% if users %}
-        <div class="card admin-card-light">
-            <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th class="admin-text-black">Favorite</th>
-                            <th class="admin-text-black">Username</th>
-                            <th class="admin-text-black">Email</th>
-                            <th class="admin-text-black">Phone</th>
-                            <th class="admin-text-black">Status</th>
-                            <th class="admin-text-black">Joined</th>
-                            <th class="admin-text-black">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user_obj in users %}
-                        <tr>
-                            <td>
-                                <a href="{% url 'toggle_favorite_user' user_obj.id %}" 
-                                   class="favorite-btn {% if user_obj.is_favorite %}active{% else %}inactive{% endif %}"
-                                   title="{% if user_obj.is_favorite %}Remove from favorites{% else %}Add to favorites{% endif %}">
-                                    <i class="{% if user_obj.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
-                                </a>
-                            </td>
-                            <td><strong class="admin-text-black">{{ user_obj.username }}</strong></td>
-                            <td class="admin-text-black">{{ user_obj.email }}</td>
-                            <td class="admin-text-black">{{ user_obj.phone_number|default:"N/A" }}</td>
-                            <td>
-                                {% if user_obj.is_blocked %}
-                                <span class="badge bg-danger">Blocked</span>
-                                {% else %}
-                                <span class="badge bg-success">Active</span>
-                                {% endif %}
-                            </td>
-                            <td class="admin-text-black">{{ user_obj.created_at|date:"M d, Y" }}</td>
-                            <td>
-                                {% if user_obj.is_blocked %}
-                                <a href="{% url 'unblock_user' user_obj.id %}" class="btn btn-success btn-sm">
-                                    <i class="fas fa-unlock"></i> Unblock
-                                </a>
-                                {% else %}
-                                          <a href="{% url 'block_user' user_obj.id %}" class="btn btn-danger btn-sm" 
-                                              data-confirm="Are you sure you want to block this user?">
-                                    <i class="fas fa-ban"></i> Block
-                                </a>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="card admin-card-light mb-3">
+            <div class="card-body d-flex flex-column flex-md-row align-items-center gap-3">
+                <div class="flex-shrink-0">
+                    <h5 class="mb-0">Search Users</h5>
+                </div>
+                <div class="ms-md-auto w-100 w-md-50 position-relative">
+                    <input type="search" id="userSearch" class="form-control" placeholder="Search users..." autocomplete="off">
+                    <span class="search-spinner spinner-border spinner-border-sm text-primary position-absolute top-50 end-2 translate-middle-y d-none" role="status" aria-hidden="true"></span>
+                </div>
             </div>
         </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-users"></i>
-            <h3>No users found</h3>
+
+        <div id="usersTableContainer">
+            {% include 'store/admin/_users_table.html' with users=users %}
         </div>
-        {% endif %}
     </div>
 </section>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearch');
+    const container = document.getElementById('usersTableContainer');
+    const spinner = document.querySelector('.search-spinner');
+    if (!searchInput || !container) {
+        return;
+    }
+
+    let activeRequest = null;
+    let debounceTimer = null;
+
+    function setLoading(isLoading) {
+        if (spinner) {
+            spinner.classList.toggle('d-none', !isLoading);
+        }
+        searchInput.classList.toggle('is-loading', isLoading);
+    }
+
+    function fetchUsers(query) {
+        if (activeRequest) {
+            activeRequest.abort();
+            activeRequest = null;
+        }
+
+        setLoading(true);
+        const controller = new AbortController();
+        activeRequest = controller;
+
+        const url = new URL('{% url "admin_users_ajax" %}', window.location.origin);
+        if (query) {
+            url.searchParams.set('search', query);
+        }
+
+        fetch(url.toString(), {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: controller.signal,
+        }).then(function(response) {
+            if (!response.ok) { throw new Error('Network error'); }
+            return response.json();
+        }).then(function(data) {
+            if (data && typeof data.html === 'string') {
+                container.innerHTML = data.html;
+            }
+        }).catch(function(error) {
+            if (error.name !== 'AbortError') {
+                console.error('User search failed', error);
+            }
+        }).finally(function() {
+            if (activeRequest === controller) {
+                activeRequest = null;
+                setLoading(false);
+            }
+        });
+    }
+
+    searchInput.addEventListener('input', function(event) {
+        const value = event.target.value.trim();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            fetchUsers(value);
+        }, 250);
+    });
+});
+</script>
 {% endblock %}

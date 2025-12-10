@@ -52,6 +52,13 @@ body, html {
     overflow-x: hidden;
 }
 
+.text-muted {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+html[data-theme='light'] .text-muted {
+    color: var(--light-text-soft) !important;
+}
+
 /* Native form control colors for checkboxes/radios */
 input[type="checkbox"], input[type="radio"], .form-check-input {
     accent-color: var(--accent-blue);

@@ -2452,6 +2452,27 @@ def order_detail_view(request, order_id):
 
 @login_required
 @user_passes_test(is_customer)
+def resume_payment_view(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    if order.payment_status == 'paid':
+        messages.info(request, 'This order is already paid. Showing your latest confirmation.')
+        return redirect('order_confirmation', order_id=order.id)
+
+    if order.status == 'cancelled':
+        messages.error(request, 'Cannot process payment for a cancelled order.')
+        return redirect('order_detail', order_id=order.id)
+
+    if order.payment_method == 'upi':
+        return redirect('upi_payment', order_id=order.id)
+
+    return render(request, 'store/customer/resume_payment.html', {
+        'order': order,
+    })
+
+
+@login_required
+@user_passes_test(is_customer)
 def submit_review_view(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     if order.status != 'delivered':

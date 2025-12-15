@@ -52,6 +52,21 @@
         <label class="form-label">Bundle Price (optional)</label>
         <input name="bundle_price" class="form-control" value="{% if editing %}{{ combo.bundle_price }}{% else %}{{ bundle_price|default:'' }}{% endif %}" placeholder="e.g. 999.00" />
       </div>
+      <div class="mb-3">
+        <label class="form-label">Category</label>
+        <select name="category_id" class="form-select" required>
+          <option value="">-- select category --</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}"
+              {% if selected_category_id %}
+                {% if category.id|stringformat:'s' == selected_category_id|stringformat:'s' %}selected{% endif %}
+              {% elif editing and combo %}
+                {% if category.id == combo.category_id %}selected{% endif %}
+              {% endif %}
+            >{{ category.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="form-check mb-3">
         <input type="checkbox" name="is_active" id="is_active" class="form-check-input" {% if editing %}{% if combo.is_active %}checked{% endif %}{% else %}{% if is_active %}checked{% endif %}{% endif %} />
         <label for="is_active" class="form-check-label">Active</label>

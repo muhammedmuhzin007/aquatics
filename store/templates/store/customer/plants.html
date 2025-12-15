@@ -1,0 +1,142 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Plants{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="section-heading mb-4"><i class="fas fa-seedling me-2"></i>Plants</h2>
+            <form id="plant-filter-form" class="d-flex flex-column flex-md-row gap-3 align-items-stretch mx-auto w-100" method="get">
+                <div class="plant-filter-search flex-grow-1">
+                    <div class="input-group input-group-lg">
+                        <input type="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Search plants by name or description" autocomplete="off">
+                    </div>
+                </div>
+                <div class="plant-filter-select ms-md-auto">
+                    <select name="category" class="form-select form-select-lg">
+                        <option value="">All categories</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}" {% if category.id|stringformat:'s' == category_filter %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if search_query or category_filter %}
+                <a href="{% url 'plants' %}" class="btn btn-outline-secondary align-self-md-center">Reset</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div id="plant-results">
+            {% include 'store/customer/partials/plant_grid.html' %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const form = document.getElementById('plant-filter-form');
+    const searchInput = form ? form.querySelector('input[name="search"]') : null;
+    const resultsContainer = document.getElementById('plant-results');
+    const categorySelect = form ? form.querySelector('select[name="category"]') : null;
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function(){
+                const params = new URLSearchParams(new FormData(form));
+                fetchPlants(params);
+            });
+        }
+    let debounceTimer = null;
+
+    function fetchPlants(params){
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+        fetch(url.toString(), {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(resp => resp.ok ? resp.json() : null)
+          .then(data => {
+              if (data && data.html !== undefined) {
+                  resultsContainer.innerHTML = data.html;
+                  resultsContainer.classList.remove('fade-in');
+                  void resultsContainer.offsetWidth;
+                  resultsContainer.classList.add('fade-in');
+              }
+          }).catch(err => console.error('Plant filter error', err));
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function(){
+            const params = new URLSearchParams(new FormData(form));
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchPlants(params), 300);
+        });
+        searchInput.addEventListener('keydown', function(evt){
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                const params = new URLSearchParams(new FormData(form));
+                fetchPlants(params);
+            }
+        });
+    }
+
+    resultsContainer.addEventListener('click', function(evt){
+        const paginationLink = evt.target.closest('.pagination a');
+        if (paginationLink) {
+            evt.preventDefault();
+            const url = new URL(paginationLink.href, window.location.href);
+            fetch(url.toString(), {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            }).then(resp => resp.ok ? resp.json() : null)
+              .then(data => {
+                  if (data && data.html !== undefined) {
+                      resultsContainer.innerHTML = data.html;
+                      resultsContainer.classList.remove('fade-in');
+                      void resultsContainer.offsetWidth;
+                      resultsContainer.classList.add('fade-in');
+                  }
+              }).catch(err => console.error('Plant pagination error', err));
+            return;
+        }
+
+        if (evt.target.closest('form, button, input, select, textarea, label, a')) {
+            return;
+        }
+
+        const card = evt.target.closest('.plant-card[data-href]');
+        if (card) {
+            window.location.href = card.dataset.href;
+        }
+    });
+
+    resultsContainer.addEventListener('keydown', function(evt){
+        if (evt.key !== 'Enter' && evt.key !== ' ') {
+            return;
+        }
+        const card = evt.target.closest('.plant-card[data-href]');
+        if (!card) {
+            return;
+        }
+        if (evt.target.closest('form, button, input, select, textarea, label, a')) {
+            return;
+        }
+        evt.preventDefault();
+        window.location.href = card.dataset.href;
+    });
+});
+</script>
+<style>
+    #plant-filter-form { width: 100%; max-width: 1280px; margin-top: 60px; }
+    #plant-results { transition: opacity 220ms ease, transform 220ms ease; }
+    #plant-results.fade-in { opacity: 1; transform: none; }
+    .plant-filter-search { flex: 1 1 820px; min-width: 0; }
+    .plant-filter-select { flex: 0 0 200px; min-width: 0; }
+    .plant-filter-search .form-control,
+    .plant-filter-select .form-select { height: 3.5rem; padding: 0.75rem 1rem; }
+    @media (max-width: 767.98px) {
+        .plant-filter-search,
+        .plant-filter-select { flex: 1 1 auto; width: 100%; }
+    }
+</style>
+{% endblock %}

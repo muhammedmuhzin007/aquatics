@@ -1,11 +1,25 @@
 from django import forms
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser, Category, Breed, Fish, Order, Review, Service, ContactInfo, Coupon, LimitedOffer
-from .models import ComboOffer
-from .models import FishMedia, Accessory, ContactGalleryMedia
-from .models import FishMedia
-from .models import BlogPost
+from .models import (
+    CustomUser,
+    Category,
+    Breed,
+    Fish,
+    Order,
+    Review,
+    Service,
+    ContactInfo,
+    Coupon,
+    LimitedOffer,
+    ComboOffer,
+    FishMedia,
+    Accessory,
+    ContactGalleryMedia,
+    Plant,
+    PlantMedia,
+    BlogPost,
+)
 
 
 class BlogPostForm(forms.ModelForm):
@@ -75,15 +89,33 @@ class StaffCreateForm(forms.ModelForm):
 
 
 class CategoryForm(forms.ModelForm):
+    field_order = ['category_type', 'name', 'description', 'image']
+
     class Meta:
         model = Category
-        fields = ['name', 'description', 'image']
+        fields = ['name', 'description', 'image', 'category_type']
+        widgets = {
+            'category_type': forms.Select(attrs={'class': 'form-select'}),
+        }
+        labels = {
+            'category_type': 'Category Type',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.field_order:
+            self.order_fields(self.field_order)
 
 
 class BreedForm(forms.ModelForm):
     class Meta:
         model = Breed
         fields = ['name', 'category', 'description']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'category' in self.fields:
+            self.fields['category'].queryset = Category.objects.filter(category_type='fish')
 
 
 class FishForm(forms.ModelForm):
@@ -106,6 +138,8 @@ class FishForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if 'category' in self.fields:
+            self.fields['category'].queryset = Category.objects.filter(category_type='fish')
         # Customize breed choices to show category in parentheses
         if 'breed' in self.fields:
             self.fields['breed'].queryset = Breed.objects.select_related('category').all()
@@ -259,14 +293,16 @@ class ServiceForm(forms.ModelForm):
         }
 
 class AccessoryForm(forms.ModelForm):
+    field_order = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+
     class Meta:
         model = Accessory
         # Put minimum_order_quantity (Min order) right after stock_quantity as requested
         # Removed 'display_order' so the 'Order' input is not shown in add/edit accessory forms
-        # Removed 'category' from the accessory form per request
-        fields = ['name', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+        fields = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Accessory name'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
@@ -275,9 +311,73 @@ class AccessoryForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
+            'category': 'Category',
             'minimum_order_quantity': 'Minimum Order Quantity',
             'is_active': 'Active',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'category' in self.fields:
+            self.fields['category'].queryset = Category.objects.filter(category_type='accessory').order_by('name')
+            self.fields['category'].empty_label = 'Select category'
+        if self.field_order:
+            self.order_fields(self.field_order)
+
+
+class PlantForm(forms.ModelForm):
+    field_order = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+
+    class Meta:
+        model = Plant
+        fields = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Plant name'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Optional details about the plant'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': 0}),
+            'stock_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'e.g., 1'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'category': 'Plant Category',
+            'price': 'Price (optional)',
+            'minimum_order_quantity': 'Minimum Order Quantity',
+            'is_active': 'Active',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'category' in self.fields:
+            self.fields['category'].queryset = Category.objects.filter(category_type='plant').order_by('name')
+            self.fields['category'].empty_label = 'Select category'
+        if self.field_order:
+            self.order_fields(self.field_order)
+
+
+class PlantMediaForm(forms.ModelForm):
+    field_order = ['image', 'title', 'display_order']
+
+    class Meta:
+        model = PlantMedia
+        fields = ['image', 'title', 'display_order']
+        widgets = {
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional title'}),
+            'display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+        }
+        labels = {
+            'image': 'Image',
+            'title': 'Title (optional)',
+            'display_order': 'Display Order',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.field_order:
+            self.order_fields(self.field_order)
 
 
 class ContactInfoForm(forms.ModelForm):

@@ -14,14 +14,260 @@ def is_staff(user):
 def is_admin(user):
     return user.is_authenticated and user.role == 'admin'
 
+
+GUEST_CART_SESSION_KEY = 'guest_cart'
+
+
+def _ensure_guest_cart(request):
+    cart = request.session.get(GUEST_CART_SESSION_KEY)
+    if not isinstance(cart, dict):
+        cart = {}
+    cart.setdefault('fish', {})
+    cart.setdefault('accessories', {})
+    cart.setdefault('plants', {})
+    request.session[GUEST_CART_SESSION_KEY] = cart
+    return cart
+
+
+def _save_guest_cart(request, cart):
+    request.session[GUEST_CART_SESSION_KEY] = cart
+    request.session.modified = True
+
+
+def _guest_cart_total_items(cart):
+    total = 0
+    for section in ('fish', 'accessories', 'plants'):
+        entries = cart.get(section, {})
+        if isinstance(entries, dict):
+            for data in entries.values():
+                try:
+                    total += int(data.get('quantity', 0))
+                except (TypeError, ValueError):
+                    continue
+    return total
+
+
+def _guest_cart_key(item_id, combo_id=None):
+    return f"{item_id}:{combo_id if combo_id else 'none'}"
+
+
+def _add_guest_fish(request, fish_id, quantity, combo_id=None):
+    cart = _ensure_guest_cart(request)
+    key = _guest_cart_key(fish_id, combo_id)
+    entry = cart['fish'].get(key, {'fish_id': fish_id, 'quantity': 0, 'combo_id': combo_id})
+    entry['quantity'] = int(entry.get('quantity', 0) or 0) + int(quantity or 0)
+    cart['fish'][key] = entry
+    _save_guest_cart(request, cart)
+    return cart
+
+
+def _add_guest_accessory(request, accessory_id, quantity):
+    cart = _ensure_guest_cart(request)
+    key = str(accessory_id)
+    entry = cart['accessories'].get(key, {'accessory_id': accessory_id, 'quantity': 0})
+    entry['quantity'] = int(entry.get('quantity', 0) or 0) + int(quantity or 0)
+    cart['accessories'][key] = entry
+    _save_guest_cart(request, cart)
+    return cart
+
+
+def _add_guest_plant(request, plant_id, quantity):
+    cart = _ensure_guest_cart(request)
+    key = str(plant_id)
+    entry = cart['plants'].get(key, {'plant_id': plant_id, 'quantity': 0})
+    entry['quantity'] = int(entry.get('quantity', 0) or 0) + int(quantity or 0)
+    cart['plants'][key] = entry
+    _save_guest_cart(request, cart)
+    return cart
+
+
+def _guest_cart_total_counter(request):
+    cart = _ensure_guest_cart(request)
+    return _guest_cart_total_items(cart)
+
+
+def _merge_guest_cart_into_user(request, user):
+    if not user or getattr(user, 'role', None) != 'customer':
+        # Non-customer logins should not keep guest carts; clear to avoid reuse.
+        if GUEST_CART_SESSION_KEY in request.session:
+            request.session.pop(GUEST_CART_SESSION_KEY, None)
+            request.session.modified = True
+        return
+
+    cart = request.session.get(GUEST_CART_SESSION_KEY)
+    if not isinstance(cart, dict):
+        return
+
+    fish_entries = cart.get('fish', {}) if isinstance(cart.get('fish'), dict) else {}
+    accessory_entries = cart.get('accessories', {}) if isinstance(cart.get('accessories'), dict) else {}
+    plant_entries = cart.get('plants', {}) if isinstance(cart.get('plants'), dict) else {}
+
+    try:
+        for data in fish_entries.values():
+            fish_id = data.get('fish_id')
+            quantity = max(int(data.get('quantity', 0) or 0), 0)
+            if not fish_id or quantity <= 0:
+                continue
+            fish = Fish.objects.filter(id=fish_id).first()
+            if not fish:
+                continue
+            combo_obj = None
+            combo_id = data.get('combo_id')
+            if combo_id:
+                combo_obj = ComboOffer.objects.filter(id=combo_id).first()
+            cart_item, created = Cart.objects.get_or_create(
+                user=user,
+                fish=fish,
+                combo=combo_obj,
+                defaults={'quantity': quantity}
+            )
+            if not created:
+                cart_item.quantity += quantity
+                cart_item.save()
+
+        for data in accessory_entries.values():
+            accessory_id = data.get('accessory_id')
+            quantity = max(int(data.get('quantity', 0) or 0), 0)
+            if not accessory_id or quantity <= 0:
+                continue
+            accessory = Accessory.objects.filter(id=accessory_id).first()
+            if not accessory:
+                continue
+            acc_item, created = AccessoryCart.objects.get_or_create(
+                user=user,
+                accessory=accessory,
+                defaults={'quantity': quantity}
+            )
+            if not created:
+                acc_item.quantity += quantity
+                acc_item.save()
+
+        for data in plant_entries.values():
+            plant_id = data.get('plant_id')
+            quantity = max(int(data.get('quantity', 0) or 0), 0)
+            if not plant_id or quantity <= 0:
+                continue
+            plant = Plant.objects.filter(id=plant_id).first()
+            if not plant or plant.price is None:
+                continue
+            plant_item, created = PlantCart.objects.get_or_create(
+                user=user,
+                plant=plant,
+                defaults={'quantity': quantity}
+            )
+            if not created:
+                plant_item.quantity += quantity
+                plant_item.save()
+    finally:
+        request.session.pop(GUEST_CART_SESSION_KEY, None)
+        request.session.modified = True
+
+
+class GuestFishCartItem:
+    def __init__(self, fish, quantity, combo=None):
+        self.fish = fish
+        self.quantity = max(int(quantity or 0), 0)
+        self.combo = combo
+        self.combo_id = getattr(combo, 'id', None)
+
+    def get_total(self):
+        try:
+            return Decimal(self.fish.price) * Decimal(self.quantity)
+        except Exception:
+            return Decimal('0')
+
+
+class GuestAccessoryCartItem:
+    def __init__(self, accessory, quantity):
+        self.accessory = accessory
+        self.quantity = max(int(quantity or 0), 0)
+
+    def get_total(self):
+        try:
+            return Decimal(self.accessory.price) * Decimal(self.quantity)
+        except Exception:
+            return Decimal('0')
+
+
+class GuestPlantCartItem:
+    def __init__(self, plant, quantity):
+        self.plant = plant
+        self.quantity = max(int(quantity or 0), 0)
+
+    def get_total(self):
+        try:
+            return Decimal(self.plant.price) * Decimal(self.quantity)
+        except Exception:
+            return Decimal('0')
+
+
+def _build_guest_cart_items(request):
+    cart = _ensure_guest_cart(request)
+
+    fish_entries = cart.get('fish', {})
+    accessory_entries = cart.get('accessories', {})
+    plant_entries = cart.get('plants', {})
+
+    fish_ids = {int(data.get('fish_id')) for data in fish_entries.values() if data.get('fish_id')}
+    accessory_ids = {int(data.get('accessory_id')) for data in accessory_entries.values() if data.get('accessory_id')}
+    plant_ids = {int(data.get('plant_id')) for data in plant_entries.values() if data.get('plant_id')}
+    combo_ids = {int(data.get('combo_id')) for data in fish_entries.values() if data.get('combo_id')}
+
+    fish_map = {f.id: f for f in Fish.objects.filter(id__in=fish_ids)} if fish_ids else {}
+    accessory_map = {a.id: a for a in Accessory.objects.filter(id__in=accessory_ids)} if accessory_ids else {}
+    plant_map = {p.id: p for p in Plant.objects.filter(id__in=plant_ids)} if plant_ids else {}
+    combo_map = {c.id: c for c in ComboOffer.objects.filter(id__in=combo_ids)} if combo_ids else {}
+
+    guest_fish_items = []
+    for key, data in list(fish_entries.items()):
+        fish_id = data.get('fish_id')
+        if not fish_id or fish_id not in fish_map:
+            fish_entries.pop(key, None)
+            continue
+        quantity = max(int(data.get('quantity', 0) or 0), 0)
+        if quantity <= 0:
+            fish_entries.pop(key, None)
+            continue
+        combo_id = data.get('combo_id')
+        combo = combo_map.get(int(combo_id)) if combo_id else None
+        guest_fish_items.append(GuestFishCartItem(fish_map[fish_id], quantity, combo))
+
+    guest_accessories = []
+    for key, data in list(accessory_entries.items()):
+        accessory_id = data.get('accessory_id')
+        if not accessory_id or accessory_id not in accessory_map:
+            accessory_entries.pop(key, None)
+            continue
+        quantity = max(int(data.get('quantity', 0) or 0), 0)
+        if quantity <= 0:
+            accessory_entries.pop(key, None)
+            continue
+        guest_accessories.append(GuestAccessoryCartItem(accessory_map[accessory_id], quantity))
+
+    guest_plants = []
+    for key, data in list(plant_entries.items()):
+        plant_id = data.get('plant_id')
+        if not plant_id or plant_id not in plant_map:
+            plant_entries.pop(key, None)
+            continue
+        quantity = max(int(data.get('quantity', 0) or 0), 0)
+        if quantity <= 0:
+            plant_entries.pop(key, None)
+            continue
+        guest_plants.append(GuestPlantCartItem(plant_map[plant_id], quantity))
+
+    _save_guest_cart(request, cart)
+    return guest_fish_items, guest_accessories, guest_plants
+
 @login_required
 @user_passes_test(is_customer)
 def checkout_view(request):
     """Render the checkout page with cart, coupons and payment options."""
     cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
     accessory_items = AccessoryCart.objects.filter(user=request.user)
+    plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
 
-    if not cart_items and not accessory_items:
+    if not cart_items and not accessory_items and not plant_items:
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
 
@@ -77,6 +323,7 @@ def checkout_view(request):
             total += sum(Decimal(it.get_total()) for it in items)
 
     total += sum(Decimal(item.get_total()) for item in accessory_items)
+    total += sum(Decimal(item.get_total()) for item in plant_items)
 
     # Applied coupon from session
     applied_coupon = None
@@ -120,6 +367,7 @@ def checkout_view(request):
         'bundle_groups': bundle_groups,
         'standalone_items': standalone_items,
         'accessory_items': accessory_items,
+        'plant_items': plant_items,
         'total': total,
         'applied_coupon': applied_coupon,
         'discount': discount,
@@ -174,13 +422,46 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import (
-    CustomUser, Category, Breed, Fish, FishMedia, Cart, AccessoryCart, Order, OrderItem, OrderAccessoryItem, OTP, Review, Service, ContactInfo, Coupon, Accessory, ContactGalleryMedia
+    CustomUser,
+    Category,
+    Breed,
+    Fish,
+    FishMedia,
+    Cart,
+    AccessoryCart,
+    Order,
+    OrderItem,
+    OrderAccessoryItem,
+    OrderPlantItem,
+    OTP,
+    Review,
+    Service,
+    ContactInfo,
+    Coupon,
+    Accessory,
+    ContactGalleryMedia,
+    Plant,
+    PlantCart,
+    PlantMedia,
 )
 from django.contrib import messages
 from .forms import (
-    CustomUserCreationForm, StaffCreateForm, CategoryForm, BreedForm, FishForm, FishMediaForm,
-    ProfileEditForm, OrderFilterForm, ChangePasswordForm, ReviewForm, ServiceForm, ContactInfoForm, CouponForm,
-    LimitedOfferForm
+    CustomUserCreationForm,
+    StaffCreateForm,
+    CategoryForm,
+    BreedForm,
+    FishForm,
+    FishMediaForm,
+    ProfileEditForm,
+    OrderFilterForm,
+    ChangePasswordForm,
+    ReviewForm,
+    ServiceForm,
+    ContactInfoForm,
+    CouponForm,
+    LimitedOfferForm,
+    PlantForm,
+    PlantMediaForm,
 )
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import user_passes_test
@@ -223,6 +504,10 @@ def combos_view(request):
     # Prefetch related fishes to avoid N+1 queries
     all_combos = ComboOffer.objects.filter(is_active=True).prefetch_related('items__fish').order_by('-created_at')
 
+    search_query = request.GET.get('search', '').strip()
+    category_filter = request.GET.get('category', '').strip()
+    combo_categories = Category.objects.filter(category_type='combo').order_by('name')
+
     visible_combos = []
     for combo in all_combos:
         ok = True
@@ -241,7 +526,43 @@ def combos_view(request):
             combo.preview_items = items_list
             visible_combos.append(combo)
 
-    return render(request, 'store/customer/combos.html', {'combos': visible_combos})
+    # Apply search filter by combo title or included fish names
+    if search_query:
+        sq = search_query.lower()
+        filtered = []
+        for combo in visible_combos:
+            title_match = sq in (combo.title or '').lower()
+            fish_match = False
+            if not title_match:
+                for item in combo.items.all():
+                    name = getattr(item.fish, 'name', '')
+                    if name and sq in name.lower():
+                        fish_match = True
+                        break
+            if title_match or fish_match:
+                filtered.append(combo)
+        visible_combos = filtered
+
+    # Filter by combo category if requested
+    if category_filter:
+        try:
+            cat_id = int(category_filter)
+        except ValueError:
+            cat_id = None
+        if cat_id:
+            visible_combos = [combo for combo in visible_combos if getattr(combo.category, 'id', None) == cat_id]
+
+    # If AJAX request, return partial rendering for live updates
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render(request, 'store/customer/partials/_combo_cards.html', {'combos': visible_combos}).content.decode('utf-8')
+        return JsonResponse({'html': html})
+
+    return render(request, 'store/customer/combos.html', {
+        'combos': visible_combos,
+        'search_query': search_query,
+        'category_filter': category_filter,
+        'combo_categories': combo_categories,
+    })
 
 
 def combo_detail_view(request, combo_id):
@@ -448,6 +769,8 @@ def _send_order_email(order, template_base, subject, recipient_email, request=No
         context = {
             'order': order,
             'order_items': order.items.all(),
+            'plant_items': order.plant_items.all() if hasattr(order, 'plant_items') else [],
+            'accessory_items': order.accessory_items.all() if hasattr(order, 'accessory_items') else [],
             'site_name': settings.SITE_NAME,
         }
         if request is not None:
@@ -539,6 +862,7 @@ def _ensure_order_inventory_deducted_locked(order):
 
     fish_items = list(order.items.select_related('fish')) if hasattr(order, 'items') else []
     accessory_items = list(order.accessory_items.select_related('accessory')) if hasattr(order, 'accessory_items') else []
+    plant_items = list(order.plant_items.select_related('plant')) if hasattr(order, 'plant_items') else []
 
     if fish_items:
         qty_by_fish = defaultdict(int)
@@ -598,6 +922,35 @@ def _ensure_order_inventory_deducted_locked(order):
                     accessory.save(update_fields=['stock_quantity'])
                     deducted = True
 
+    if plant_items:
+        qty_by_plant = defaultdict(int)
+        for item in plant_items:
+            try:
+                qty_by_plant[item.plant_id] += int(item.quantity or 0)
+            except Exception:
+                logger.exception('Invalid quantity for plant item %s on order %s', getattr(item, 'id', None), getattr(order, 'order_number', None))
+        if qty_by_plant:
+            plants = {pl.id: pl for pl in Plant.objects.select_for_update().filter(id__in=qty_by_plant.keys())}
+            for plant_id, qty in qty_by_plant.items():
+                plant = plants.get(plant_id)
+                if not plant or qty <= 0:
+                    continue
+                current_stock = int(plant.stock_quantity or 0)
+                new_stock = current_stock - qty
+                if new_stock < 0:
+                    logger.warning(
+                        'Order %s attempted to reduce plant %s stock below zero (%s -> %s)',
+                        getattr(order, 'order_number', None),
+                        plant_id,
+                        current_stock,
+                        new_stock,
+                    )
+                    new_stock = 0
+                if new_stock != current_stock:
+                    plant.stock_quantity = new_stock
+                    plant.save(update_fields=['stock_quantity'])
+                    deducted = True
+
     order._inventory_deducted = True
     return deducted
 
@@ -655,6 +1008,7 @@ def finalize_order_payment(order, payment_id=None, request=None):
         try:
             Cart.objects.filter(user=order.user).delete()
             AccessoryCart.objects.filter(user=order.user).delete()
+            PlantCart.objects.filter(user=order.user).delete()
         except Exception:
             logger.exception('Failed to clear cart for order %s', getattr(order, 'order_number', None))
 
@@ -843,6 +1197,20 @@ def generate_invoice_pdf(order):
             pdf.cell(col_total_w, 8, fmt(a.get_total()), border=1, align='R', fill=(fill != 255))
             pdf.ln(8)
 
+        for plant_item in (order.plant_items.all() if hasattr(order, 'plant_items') else []):
+            row_fill = row_fill_toggle
+            row_fill_toggle = not row_fill_toggle
+            name = plant_item.plant.name or ''
+            name_display = name if len(name) <= 60 else name[:57] + '...'
+            fill = 240 if row_fill else 255
+            if fill != 255:
+                pdf.set_fill_color(fill, fill, fill)
+            pdf.cell(col_item_w, 8, name_display, border=1, fill=(fill != 255))
+            pdf.cell(col_qty_w, 8, str(plant_item.quantity), border=1, align='R', fill=(fill != 255))
+            pdf.cell(col_unit_w, 8, fmt(plant_item.price), border=1, align='R', fill=(fill != 255))
+            pdf.cell(col_total_w, 8, fmt(plant_item.get_total()), border=1, align='R', fill=(fill != 255))
+            pdf.ln(8)
+
         # Totals box
         pdf.ln(6)
         right_x = 15 + col_item_w + col_qty_w
@@ -1013,6 +1381,7 @@ def login_view(request):
                 return redirect('verify_otp')
             
             login(request, user)
+            _merge_guest_cart_into_user(request, user)
             
             # Redirect based on role
             if user.role == 'admin':
@@ -1045,6 +1414,7 @@ def ajax_login_view(request):
         return JsonResponse({'success': False, 'message': 'Your account is blocked'}, status=403)
 
     login(request, user)
+    _merge_guest_cart_into_user(request, user)
     return JsonResponse({'success': True, 'message': 'Logged in'})
 
 
@@ -1181,7 +1551,7 @@ def reset_password_view(request, user_id):
 # Home/Customer Views
 def home_view(request):
     categories = Category.objects.all()[:6]
-    fishes = Fish.objects.filter(is_available=True, is_featured=True)[:8]
+    fishes = Fish.objects.filter(is_available=True, stock_quantity__gt=0, is_featured=True)[:8]
     # Limited offers currently active and marked to show on homepage
     now = timezone.now()
     limited_offers_qs = LimitedOffer.objects.filter(
@@ -1650,11 +2020,9 @@ def blog_detail_view(request, slug):
     return render(request, 'store/blog_detail.html', {'post': post, 'recent_posts': recent_posts})
 
 
-@login_required
-@user_passes_test(is_customer)
 def customer_fish_list_view(request):
-    fishes = Fish.objects.filter(is_available=True)
-    categories = Category.objects.all()
+    fishes = Fish.objects.filter(is_available=True, stock_quantity__gt=0)
+    categories = Category.objects.filter(category_type='fish').order_by('name')
     breeds = Breed.objects.all()
     
     # Search and filter
@@ -1690,10 +2058,53 @@ def customer_fish_list_view(request):
     })
 
 
-@login_required
-@user_passes_test(is_customer)
+def customer_plants_view(request):
+    plants_qs = Plant.objects.filter(is_active=True, stock_quantity__gt=0).select_related('category')
+    categories = Category.objects.filter(category_type='plant').order_by('name')
+
+    search_query = request.GET.get('search', '').strip()
+    category_filter = request.GET.get('category', '').strip()
+
+    if search_query:
+        plants_qs = plants_qs.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+
+    if category_filter and category_filter.isdigit():
+        plants_qs = plants_qs.filter(category_id=int(category_filter))
+
+    paginator = Paginator(plants_qs, 12)
+    page_number = request.GET.get('page')
+    try:
+        plants = paginator.page(page_number or 1)
+    except PageNotAnInteger:
+        plants = paginator.page(1)
+    except EmptyPage:
+        plants = paginator.page(paginator.num_pages)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string(
+            'store/customer/partials/plant_grid.html',
+            {
+                'plants': plants,
+                'search_query': search_query,
+                'category_filter': category_filter,
+            },
+            request=request,
+        )
+        return JsonResponse({'html': html})
+
+    return render(request, 'store/customer/plants.html', {
+        'plants': plants,
+        'categories': categories,
+        'search_query': search_query,
+        'category_filter': category_filter,
+    })
+
+
 def fish_detail_view(request, fish_id):
-    fish = get_object_or_404(Fish, id=fish_id, is_available=True)
+    fish = get_object_or_404(Fish, id=fish_id, is_available=True, stock_quantity__gt=0)
     # Collect up to 5 images and 2 videos
     images = list(FishMedia.objects.filter(fish=fish, media_type='image')[:5])
     videos = list(FishMedia.objects.filter(fish=fish, media_type='video')[:2])
@@ -1701,15 +2112,46 @@ def fish_detail_view(request, fish_id):
     return render(request, 'store/customer/fish_detail.html', {'fish': fish, 'media': media})
 
 
-@login_required
-@user_passes_test(is_customer)
+def plant_detail_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id, is_active=True, stock_quantity__gt=0)
+    gallery_items = list(PlantMedia.objects.filter(plant=plant))
+
+    primary_image_url = None
+    if getattr(plant, 'image', None):
+        try:
+            primary_image_url = plant.image.url
+        except Exception:
+            primary_image_url = None
+    if not primary_image_url and gallery_items:
+        primary_image_url = gallery_items[0].source
+
+    modal_images = []
+    if primary_image_url:
+        modal_images.append({'url': primary_image_url, 'title': plant.name})
+    # Include remaining gallery images, skipping duplicates of the primary image URL
+    for item in gallery_items:
+        src = item.source
+        if not src:
+            continue
+        if primary_image_url and src == primary_image_url:
+            continue
+        modal_images.append({'url': src, 'title': item.title or plant.name})
+
+    return render(request, 'store/customer/plant_detail.html', {
+        'plant': plant,
+        'primary_image_url': primary_image_url,
+        'modal_images': modal_images,
+        'gallery_items': gallery_items,
+    })
+
+
 def customer_accessories_view(request):
     """List available accessories for customers"""
-    accessories_qs = Accessory.objects.filter(is_active=True)
+    accessories_qs = Accessory.objects.filter(is_active=True, stock_quantity__gt=0)
     # query params
     q = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '').strip()
-    sort = request.GET.get('sort', '').strip()
+    categories = Category.objects.filter(category_type='accessory').order_by('name')
 
     if q:
         accessories_qs = accessories_qs.filter(
@@ -1722,18 +2164,11 @@ def customer_accessories_view(request):
         except ValueError:
             pass
 
-    # Sorting
-    if sort == 'price_asc':
-        accessories_qs = accessories_qs.order_by('price')
-    elif sort == 'price_desc':
-        accessories_qs = accessories_qs.order_by('-price')
+    # Default ordering: newest first if available
+    if hasattr(Accessory, 'created_at'):
+        accessories_qs = accessories_qs.order_by('-created_at')
     else:
-        # default: newest first
-        # fallback to created_at if present
-        if hasattr(Accessory, 'created_at'):
-            accessories_qs = accessories_qs.order_by('-created_at')
-        else:
-            accessories_qs = accessories_qs.order_by('-id')
+        accessories_qs = accessories_qs.order_by('-id')
 
     # No pagination — return the full accessory list as requested
     # If AJAX request, return partial rendering of the full grid
@@ -1741,21 +2176,16 @@ def customer_accessories_view(request):
         html = render(request, 'store/customer/_accessory_grid.html', {'accessories': accessories_qs}).content.decode('utf-8')
         return JsonResponse({'html': html})
 
-    categories = Category.objects.all()
-
     return render(request, 'store/customer/accessories.html', {
         'accessories': accessories_qs,
         'search_query': q,
         'categories': categories,
         'selected_category': category_id,
-        'current_sort': sort,
     })
 
 
-@login_required
-@user_passes_test(is_customer)
 def accessory_detail_view(request, accessory_id):
-    accessory = get_object_or_404(Accessory, id=accessory_id, is_active=True)
+    accessory = get_object_or_404(Accessory, id=accessory_id, is_active=True, stock_quantity__gt=0)
     return render(request, 'store/customer/accessory_detail.html', {'accessory': accessory})
 
 
@@ -1827,7 +2257,61 @@ def admin_edit_fish_media_view(request, media_id):
 
 
 @login_required
-@user_passes_test(is_customer)
+@user_passes_test(is_admin)
+def admin_plant_media_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id)
+    media_items = PlantMedia.objects.filter(plant=plant)
+
+    if request.method == 'POST':
+        form = PlantMediaForm(request.POST, request.FILES)
+        if form.is_valid():
+            media = form.save(commit=False)
+            media.plant = plant
+            media.save()
+            messages.success(request, 'Image added to gallery.')
+            return redirect('admin_plant_media', plant_id=plant.id)
+    else:
+        form = PlantMediaForm()
+
+    return render(request, 'store/admin/plant_media.html', {
+        'plant': plant,
+        'media_items': media_items,
+        'form': form,
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_delete_plant_media_view(request, media_id):
+    media = get_object_or_404(PlantMedia, id=media_id)
+    plant_id = media.plant_id
+    media.delete()
+    messages.success(request, 'Gallery image deleted.')
+    return redirect('admin_plant_media', plant_id=plant_id)
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_plant_media_view(request, media_id):
+    media = get_object_or_404(PlantMedia, id=media_id)
+    plant = media.plant
+
+    if request.method == 'POST':
+        form = PlantMediaForm(request.POST, request.FILES, instance=media)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Gallery image updated.')
+            return redirect('admin_plant_media', plant_id=plant.id)
+    else:
+        form = PlantMediaForm(instance=media)
+
+    return render(request, 'store/admin/edit_plant_media.html', {
+        'plant': plant,
+        'media': media,
+        'form': form,
+    })
+
+
 def add_to_cart_view(request, fish_id):
     fish = get_object_or_404(Fish, id=fish_id)
     try:
@@ -1842,29 +2326,35 @@ def add_to_cart_view(request, fish_id):
         messages.error(request, f'Minimum order quantity for {fish.name} is {fish.minimum_order_quantity}.')
         return redirect('fish_detail', fish_id=fish_id)
 
-    cart_item, created = Cart.objects.get_or_create(
-        user=request.user,
-        fish=fish,
-        defaults={'quantity': quantity}
-    )
+    if request.user.is_authenticated and getattr(request.user, 'role', None) == 'customer':
+        cart_item, created = Cart.objects.get_or_create(
+            user=request.user,
+            fish=fish,
+            defaults={'quantity': quantity}
+        )
 
-    if not created:
-        cart_item.quantity += quantity
-        cart_item.save()
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
 
-    # If AJAX, return JSON including combined cart count
+        total_items = (
+            Cart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+        ) + (
+            AccessoryCart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+        ) + (
+            PlantCart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+        )
+    else:
+        _add_guest_fish(request, fish.id, quantity)
+        total_items = _guest_cart_total_counter(request)
+
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        accessory_items = AccessoryCart.objects.filter(user=request.user)
-        cart_items = Cart.objects.filter(user=request.user)
-        total_items = (cart_items.aggregate(total=models.Sum('quantity'))['total'] or 0) + (accessory_items.aggregate(total=models.Sum('quantity'))['total'] or 0)
         return JsonResponse({'success': True, 'message': f'{fish.name} added to cart.', 'total_items': int(total_items)})
 
     messages.success(request, f'{fish.name} added to cart.')
     return redirect('cart')
 
 
-@login_required
-@user_passes_test(is_customer)
 @require_POST
 def add_combo_to_cart_view(request, combo_id):
     """Add all fishes from a combo to the current user's cart.
@@ -1890,25 +2380,29 @@ def add_combo_to_cart_view(request, combo_id):
         return redirect('combos')
 
     # Add items to cart
-    for item in combo.items.select_related('fish').all():
-        fish = item.fish
-        qty = max(1, int(item.quantity or 1))
-        cart_item, created = Cart.objects.get_or_create(
-            user=request.user,
-            fish=fish,
-            combo=combo,
-            defaults={'quantity': qty}
-        )
-        if not created:
-            cart_item.quantity += qty
-            cart_item.save()
+    if request.user.is_authenticated and getattr(request.user, 'role', None) == 'customer':
+        for item in combo.items.select_related('fish').all():
+            fish = item.fish
+            qty = max(1, int(item.quantity or 1))
+            cart_item, created = Cart.objects.get_or_create(
+                user=request.user,
+                fish=fish,
+                combo=combo,
+                defaults={'quantity': qty}
+            )
+            if not created:
+                cart_item.quantity += qty
+                cart_item.save()
+    else:
+        for item in combo.items.select_related('fish').all():
+            fish = item.fish
+            qty = max(1, int(item.quantity or 1))
+            _add_guest_fish(request, fish.id, qty, combo_id=combo.id)
 
     messages.success(request, f'Combo "{combo.title}" added to your cart.')
     return redirect('cart')
 
 
-@login_required
-@user_passes_test(is_customer)
 @require_POST
 def add_accessory_to_cart_view(request, accessory_id):
     from .models import AccessoryCart, Accessory
@@ -1927,27 +2421,34 @@ def add_accessory_to_cart_view(request, accessory_id):
         return redirect('accessory_detail', accessory_id=accessory_id)
 
     try:
-        cart_item, created = AccessoryCart.objects.get_or_create(
-            user=request.user,
-            accessory=accessory,
-            defaults={'quantity': quantity}
-        )
+        if request.user.is_authenticated and getattr(request.user, 'role', None) == 'customer':
+            cart_item, created = AccessoryCart.objects.get_or_create(
+                user=request.user,
+                accessory=accessory,
+                defaults={'quantity': quantity}
+            )
 
-        if not created:
-            cart_item.quantity += quantity
-            cart_item.save()
+            if not created:
+                cart_item.quantity += quantity
+                cart_item.save()
 
-        # AJAX clients expect JSON; regular clients expect redirect
+            total_items = (
+                AccessoryCart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+            ) + (
+                Cart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+            ) + (
+                PlantCart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+            )
+        else:
+            _add_guest_accessory(request, accessory.id, quantity)
+            total_items = _guest_cart_total_counter(request)
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            # Return cart summary counts so client can update UI without a full reload
-            accessory_items = AccessoryCart.objects.filter(user=request.user)
-            total_items = accessory_items.aggregate(total=models.Sum('quantity'))['total'] or 0
             return JsonResponse({'success': True, 'message': f'{accessory.name} added to cart.', 'total_items': int(total_items)})
 
         messages.success(request, f'{accessory.name} added to cart.')
         return redirect('cart')
     except Exception as e:
-        # Log error to console for local debugging and return friendly message
         print(f"Error adding accessory to cart: {e}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'message': 'Server error adding to cart.'}, status=500)
@@ -1955,11 +2456,88 @@ def add_accessory_to_cart_view(request, accessory_id):
         return redirect('accessory_detail', accessory_id=accessory_id)
 
 
-@login_required
-@user_passes_test(is_customer)
+@require_POST
+def add_plant_to_cart_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id, is_active=True)
+
+    if plant.price is None:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': 'This plant is priced on request.'}, status=400)
+        messages.error(request, 'This plant requires contacting support for pricing.')
+        return redirect('plants')
+
+    if plant.stock_quantity is not None and plant.stock_quantity <= 0:
+        msg = f'{plant.name} is currently out of stock.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('plants')
+
+    try:
+        quantity = int(request.POST.get('quantity', plant.minimum_order_quantity or 1))
+    except (TypeError, ValueError):
+        quantity = plant.minimum_order_quantity or 1
+
+    quantity = max(quantity, 1)
+
+    if quantity < plant.minimum_order_quantity:
+        msg = f'Minimum order quantity for {plant.name} is {plant.minimum_order_quantity}.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('plants')
+
+    if plant.stock_quantity is not None and plant.stock_quantity > 0 and quantity > plant.stock_quantity:
+        msg = f'Only {plant.stock_quantity} units available for {plant.name}.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('plants')
+
+    try:
+        if request.user.is_authenticated and getattr(request.user, 'role', None) == 'customer':
+            cart_item, created = PlantCart.objects.get_or_create(
+                user=request.user,
+                plant=plant,
+                defaults={'quantity': quantity}
+            )
+            if not created:
+                cart_item.quantity += quantity
+                cart_item.save()
+
+            total_items = (
+                PlantCart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+            ) + (
+                Cart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+            ) + (
+                AccessoryCart.objects.filter(user=request.user).aggregate(total=models.Sum('quantity'))['total'] or 0
+            )
+        else:
+            _add_guest_plant(request, plant.id, quantity)
+            total_items = _guest_cart_total_counter(request)
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': f'{plant.name} added to cart.', 'total_items': int(total_items)})
+
+        messages.success(request, f'{plant.name} added to cart.')
+        return redirect('cart')
+    except Exception as exc:
+        print(f"Error adding plant to cart: {exc}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': 'Server error adding to cart.'}, status=500)
+        messages.error(request, 'Server error adding to cart.')
+        return redirect('plants')
+
+
 def cart_view(request):
-    cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
-    accessory_items = AccessoryCart.objects.filter(user=request.user)
+    guest_mode = not (request.user.is_authenticated and getattr(request.user, 'role', None) == 'customer')
+
+    if not guest_mode:
+        cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
+        accessory_items = AccessoryCart.objects.filter(user=request.user)
+        plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
+    else:
+        cart_items, accessory_items, plant_items = _build_guest_cart_items(request)
 
     # Group cart items that belong to the same combo
     bundle_groups = []
@@ -2034,12 +2612,16 @@ def cart_view(request):
 
     # Accessories
     total += sum(float(item.get_total()) for item in accessory_items)
+    # Plants
+    total += sum(float(item.get_total()) for item in plant_items)
 
     return render(request, 'store/customer/cart.html', {
         'bundle_groups': bundle_groups,
         'cart_items': standalone_items,
         'accessory_items': accessory_items,
+        'plant_items': plant_items,
         'total': total,
+        'guest_mode': guest_mode,
     })
 
 
@@ -2110,6 +2692,42 @@ def remove_accessory_cart_view(request, accessory_cart_id):
     a_item = get_object_or_404(AccessoryCart, id=accessory_cart_id, user=request.user)
     a_item.delete()
     messages.success(request, 'Accessory removed from cart.')
+    return redirect('cart')
+
+
+@login_required
+@user_passes_test(is_customer)
+def update_plant_cart_view(request, plant_cart_id):
+    p_item = get_object_or_404(PlantCart, id=plant_cart_id, user=request.user)
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+    except (TypeError, ValueError):
+        quantity = p_item.quantity
+
+    if quantity > 0 and quantity < p_item.plant.minimum_order_quantity:
+        messages.error(request, f'Minimum order quantity for {p_item.plant.name} is {p_item.plant.minimum_order_quantity}.')
+        return redirect('cart')
+
+    available = p_item.plant.stock_quantity
+    if available is not None and available >= 0 and quantity > available:
+        messages.error(request, f'Only {available} units of {p_item.plant.name} available.')
+        return redirect('cart')
+
+    if quantity > 0:
+        p_item.quantity = quantity
+        p_item.save()
+    else:
+        p_item.delete()
+
+    return redirect('cart')
+
+
+@login_required
+@user_passes_test(is_customer)
+def remove_plant_cart_view(request, plant_cart_id):
+    p_item = get_object_or_404(PlantCart, id=plant_cart_id, user=request.user)
+    p_item.delete()
+    messages.success(request, 'Plant removed from cart.')
     return redirect('cart')
 
 
@@ -2188,7 +2806,12 @@ def apply_coupon_view(request):
         # the coupon into session so it can be applied later when a cart exists.
         cart_items = Cart.objects.filter(user=request.user)
         accessory_items = AccessoryCart.objects.filter(user=request.user)
-        total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+        plant_items = PlantCart.objects.filter(user=request.user)
+        total = (
+            sum(item.get_total() for item in cart_items)
+            + sum(item.get_total() for item in accessory_items)
+            + sum(item.get_total() for item in plant_items)
+        )
 
         # Check minimum order amount unless force_apply
         if not getattr(coupon, 'force_apply', False):
@@ -2245,7 +2868,12 @@ def remove_coupon_view(request):
     
     cart_items = Cart.objects.filter(user=request.user)
     accessory_items = AccessoryCart.objects.filter(user=request.user)
-    total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+    plant_items = PlantCart.objects.filter(user=request.user)
+    total = (
+        sum(item.get_total() for item in cart_items)
+        + sum(item.get_total() for item in accessory_items)
+        + sum(item.get_total() for item in plant_items)
+    )
     # When removed, discount is zero and final_total equals total
     return JsonResponse({
         'success': True,
@@ -2303,11 +2931,16 @@ def create_draft_order(request):
     try:
         cart_items = Cart.objects.filter(user=request.user)
         accessory_items = AccessoryCart.objects.filter(user=request.user)
+        plant_items = PlantCart.objects.filter(user=request.user)
 
-        if not cart_items and not accessory_items:
+        if not cart_items and not accessory_items and not plant_items:
             return JsonResponse({'error': 'Cart is empty'}, status=400)
 
-        total = sum(item.get_total() for item in cart_items) + sum(item.get_total() for item in accessory_items)
+        total = (
+            sum(item.get_total() for item in cart_items)
+            + sum(item.get_total() for item in accessory_items)
+            + sum(item.get_total() for item in plant_items)
+        )
 
         # Get applied coupon from session if present
         applied_coupon = None
@@ -2369,6 +3002,13 @@ def create_draft_order(request):
                     quantity=a_item.quantity,
                     price=a_item.accessory.price,
                 )
+            for p_item in plant_items:
+                OrderPlantItem.objects.create(
+                    order=draft_order,
+                    plant=p_item.plant,
+                    quantity=p_item.quantity,
+                    price=p_item.plant.price,
+                )
         else:
             # Refresh core order fields to match the current cart snapshot
             draft_order.total_amount = total
@@ -2401,6 +3041,14 @@ def create_draft_order(request):
                     accessory=a_item.accessory,
                     quantity=a_item.quantity,
                     price=a_item.accessory.price,
+                )
+            draft_order.plant_items.all().delete()
+            for p_item in plant_items:
+                OrderPlantItem.objects.create(
+                    order=draft_order,
+                    plant=p_item.plant,
+                    quantity=p_item.quantity,
+                    price=p_item.plant.price,
                 )
 
         response_data = {
@@ -2596,11 +3244,13 @@ def admin_add_combo_view(request):
     Form fields (simple): title, bundle_price (optional), is_active
     Items: multiple rows of fish_id[] and quantity[] submitted via JS
     """
+    combo_categories = Category.objects.filter(category_type='combo').order_by('name')
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         bundle_price = request.POST.get('bundle_price') or None
         is_active = request.POST.get('is_active') == 'on'
         show_on_homepage = request.POST.get('show_on_homepage') == 'on'
+        category_id = request.POST.get('category_id') or None
         fish_ids = request.POST.getlist('fish_id')
         quantities = request.POST.getlist('quantity')
         errors = []
@@ -2609,16 +3259,28 @@ def admin_add_combo_view(request):
         if not fish_ids:
             errors.append('Add at least one fish to the combo.')
 
+        selected_category = None
+        if category_id:
+            try:
+                selected_category = combo_categories.get(id=int(category_id))
+            except (ValueError, Category.DoesNotExist):
+                selected_category = None
+        if not selected_category:
+            errors.append('Select a category for this combo.')
+
         if errors:
             fishes = Fish.objects.all().order_by('name')
+            combos = ComboOffer.objects.all().order_by('-created_at')
             return render(request, 'store/admin/add_combo.html', {
                 'errors': errors,
                 'fishes': fishes,
+                'combos': combos,
+                'categories': combo_categories,
                 'title': title,
                 'bundle_price': bundle_price,
                 'is_active': is_active,
                 'show_on_homepage': show_on_homepage,
-            
+                'selected_category_id': category_id,
             })
 
         combo = ComboOffer.objects.create(
@@ -2626,6 +3288,7 @@ def admin_add_combo_view(request):
             bundle_price=bundle_price or None,
             is_active=is_active,
             show_on_homepage=show_on_homepage,
+            category=selected_category,
         )
         for idx, fid in enumerate(fish_ids):
             try:
@@ -2658,7 +3321,12 @@ def admin_add_combo_view(request):
         except Exception:
             prefill_fish_ids = []
 
-    return render(request, 'store/admin/add_combo.html', {'fishes': fishes, 'combos': combos, 'prefill_fish_ids': prefill_fish_ids})
+    return render(request, 'store/admin/add_combo.html', {
+        'fishes': fishes,
+        'combos': combos,
+        'prefill_fish_ids': prefill_fish_ids,
+        'categories': combo_categories,
+    })
     
     # Check if order is cancelled
     if order.status == 'cancelled':
@@ -2671,11 +3339,13 @@ def admin_add_combo_view(request):
 def admin_edit_combo_view(request, combo_id):
     """Edit an existing combo. Replaces items with submitted list."""
     combo = get_object_or_404(ComboOffer, id=combo_id)
+    combo_categories = Category.objects.filter(category_type='combo').order_by('name')
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         bundle_price = request.POST.get('bundle_price') or None
         is_active = request.POST.get('is_active') == 'on'
         show_on_homepage = request.POST.get('show_on_homepage') == 'on'
+        category_id = request.POST.get('category_id') or None
         fish_ids = request.POST.getlist('fish_id')
         quantities = request.POST.getlist('quantity')
         errors = []
@@ -2684,16 +3354,34 @@ def admin_edit_combo_view(request, combo_id):
         if not fish_ids:
             errors.append('Add at least one fish to the combo.')
 
+        selected_category = None
+        if category_id:
+            try:
+                selected_category = combo_categories.get(id=int(category_id))
+            except (ValueError, Category.DoesNotExist):
+                selected_category = None
+        if not selected_category:
+            errors.append('Select a category for this combo.')
+
         if errors:
             fishes = Fish.objects.all().order_by('name')
             combos = ComboOffer.objects.all().order_by('-created_at')
-            return render(request, 'store/admin/add_combo.html', {'errors': errors, 'fishes': fishes, 'combos': combos, 'editing': True, 'combo': combo})
+            return render(request, 'store/admin/add_combo.html', {
+                'errors': errors,
+                'fishes': fishes,
+                'combos': combos,
+                'editing': True,
+                'combo': combo,
+                'categories': combo_categories,
+                'selected_category_id': category_id,
+            })
 
         # Update combo fields
         combo.title = title
         combo.bundle_price = bundle_price or None
         combo.is_active = is_active
         combo.show_on_homepage = show_on_homepage
+        combo.category = selected_category
         combo.save()
 
         # Replace items: simple approach - delete existing and recreate
@@ -2712,7 +3400,14 @@ def admin_edit_combo_view(request, combo_id):
     # GET - render form prefilled
     fishes = Fish.objects.all().order_by('name')
     combos = ComboOffer.objects.all().order_by('-created_at')
-    return render(request, 'store/admin/add_combo.html', {'fishes': fishes, 'combos': combos, 'editing': True, 'combo': combo})
+    return render(request, 'store/admin/add_combo.html', {
+        'fishes': fishes,
+        'combos': combos,
+        'editing': True,
+        'combo': combo,
+        'categories': combo_categories,
+        'selected_category_id': combo.category_id,
+    })
 
 
 @login_required
@@ -2808,6 +3503,11 @@ def staff_fish_list_view(request):
 @login_required
 @user_passes_test(is_staff)
 def add_category_view(request):
+    type_hint = request.GET.get('type') or request.POST.get('category_type')
+    valid_types = dict(Category.CATEGORY_TYPES)
+    if type_hint not in valid_types:
+        type_hint = None
+
     if request.method == 'POST':
         form = CategoryForm(request.POST, request.FILES)
         if form.is_valid():
@@ -2815,16 +3515,218 @@ def add_category_view(request):
             messages.success(request, 'Category added successfully.')
             return redirect('staff_categories')
     else:
-        form = CategoryForm()
-    
-    return render(request, 'store/staff/add_category.html', {'form': form})
+        initial = {}
+        if type_hint:
+            initial['category_type'] = type_hint
+        form = CategoryForm(initial=initial)
+
+    type_label = valid_types.get(type_hint) if type_hint else None
+
+    return render(
+        request,
+        'store/staff/add_category.html',
+        {
+            'form': form,
+            'type_hint': type_hint,
+            'type_label': type_label,
+        },
+    )
 
 
 @login_required
 @user_passes_test(is_staff)
 def staff_categories_view(request):
-    categories = Category.objects.all()
-    return render(request, 'store/staff/categories.html', {'categories': categories})
+    type_configs = {
+        'fish': {
+            'title': 'Fish Categories',
+            'icon': 'fas fa-fish',
+            'badge': 'Fish',
+            'add_label': 'Add Fish Category',
+        },
+        'combo': {
+            'title': 'Combo Offer Categories',
+            'icon': 'fas fa-gift',
+            'badge': 'Combo Offer',
+            'add_label': 'Add Combo Category',
+        },
+        'accessory': {
+            'title': 'Accessory Categories',
+            'icon': 'fas fa-toolbox',
+            'badge': 'Accessory',
+            'add_label': 'Add Accessory Category',
+        },
+        'plant': {
+            'title': 'Plant Categories',
+            'icon': 'fas fa-seedling',
+            'badge': 'Plant',
+            'add_label': 'Add Plant Category',
+        },
+    }
+
+    all_categories_qs = Category.objects.all()
+    counts_by_type = {key: all_categories_qs.filter(category_type=key).count() for key in type_configs.keys()}
+
+    search_query = request.GET.get('search', '').strip()
+    type_filter = request.GET.get('category_type', '').strip()
+
+    categories_qs = all_categories_qs
+    if type_filter and type_filter in type_configs:
+        categories_qs = categories_qs.filter(category_type=type_filter)
+    else:
+        type_filter = ''
+
+    if search_query:
+        categories_qs = categories_qs.filter(
+            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+        )
+
+    categories = list(categories_qs.order_by('name'))
+
+    filtered_counts_by_type = {key: categories_qs.filter(category_type=key).count() for key in type_configs.keys()}
+
+    category_cards = []
+    for category in categories:
+        config = type_configs.get(category.category_type, {})
+        category_cards.append({
+            'object': category,
+            'icon': config.get('icon', 'fas fa-tags'),
+            'badge': config.get('badge', category.get_category_type_display()),
+        })
+
+    type_actions = []
+    for type_key, config in type_configs.items():
+        type_actions.append({
+            'key': type_key,
+            'title': config['title'],
+            'icon': config['icon'],
+            'count': filtered_counts_by_type.get(type_key, 0),
+            'badge': config.get('badge', config['title']),
+            'total_count': counts_by_type.get(type_key, 0),
+            'is_selected': type_filter == type_key,
+        })
+
+    total_categories = len(categories)
+    overall_category_count = all_categories_qs.count()
+    has_any_categories = overall_category_count > 0
+    add_category_url = reverse('add_category')
+    add_category_label = 'Add Category'
+    if type_filter:
+        add_category_label = type_configs[type_filter]['add_label']
+        add_category_url = f"{add_category_url}?type={type_filter}"
+
+    context = {
+        'category_cards': category_cards,
+        'type_actions': type_actions,
+        'has_any_categories': has_any_categories,
+        'total_categories': total_categories,
+        'overall_category_count': overall_category_count,
+        'type_config_map': type_configs,
+        'add_category_url': add_category_url,
+        'add_category_label': add_category_label,
+        'search_query': search_query,
+        'selected_type': type_filter,
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        summary_html = render_to_string(
+            'store/staff/partials/category_summary.html',
+            context,
+            request=request,
+        )
+        cards_html = render_to_string(
+            'store/staff/partials/category_cards.html',
+            context,
+            request=request,
+        )
+        return JsonResponse({
+            'summary_html': summary_html,
+            'cards_html': cards_html,
+        })
+
+    return render(request, 'store/staff/categories.html', context)
+
+
+@login_required
+@user_passes_test(is_staff)
+def staff_plants_view(request):
+    categories = Category.objects.filter(category_type='plant').order_by('name')
+    plants_qs = Plant.objects.select_related('category').order_by('display_order', 'name')
+
+    category_id = request.GET.get('category', '').strip()
+    search_query = request.GET.get('search', '').strip()
+
+    if category_id and category_id.isdigit():
+        plants_qs = plants_qs.filter(category_id=int(category_id))
+    else:
+        category_id = ''
+
+    if search_query:
+        plants_qs = plants_qs.filter(
+            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+        )
+
+    plants = list(plants_qs)
+
+    context = {
+        'plants': plants,
+        'categories': categories,
+        'selected_category_id': category_id,
+        'search_query': search_query,
+        'total_plants': len(plants),
+    }
+    return render(request, 'store/staff/plants.html', context)
+
+
+@login_required
+@user_passes_test(is_staff)
+def add_plant_view(request):
+    if request.method == 'POST':
+        form = PlantForm(request.POST, request.FILES)
+        if form.is_valid():
+            plant = form.save(commit=False)
+            if not plant.created_by:
+                plant.created_by = request.user
+            plant.save()
+            messages.success(request, 'Plant added successfully.')
+            return redirect('staff_plants')
+    else:
+        initial = {}
+        category_hint = request.GET.get('category')
+        if category_hint and category_hint.isdigit():
+            try:
+                plant_category = Category.objects.get(id=int(category_hint), category_type='plant')
+                initial['category'] = plant_category.id
+            except Category.DoesNotExist:
+                pass
+        form = PlantForm(initial=initial)
+
+    return render(request, 'store/staff/add_plant.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_staff)
+def edit_plant_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id)
+    if request.method == 'POST':
+        form = PlantForm(request.POST, request.FILES, instance=plant)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Plant updated successfully.')
+            return redirect('staff_plants')
+    else:
+        form = PlantForm(instance=plant)
+
+    return render(request, 'store/staff/add_plant.html', {'form': form, 'plant': plant})
+
+
+@login_required
+@user_passes_test(is_staff)
+@require_POST
+def delete_plant_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id)
+    plant.delete()
+    messages.success(request, 'Plant deleted successfully.')
+    return redirect('staff_plants')
 
 
 @login_required
@@ -3190,13 +4092,212 @@ def unblock_staff_view(request, user_id):
 @login_required
 @user_passes_test(is_admin)
 def admin_categories_view(request):
-    categories = Category.objects.all()
-    return render(request, 'store/admin/categories.html', {'categories': categories})
+    type_configs = {
+        'fish': {
+            'title': 'Fish Categories',
+            'icon': 'fas fa-fish',
+            'add_label': 'Add Fish Category',
+            'badge': 'Fish',
+        },
+        'combo': {
+            'title': 'Combo Offer Categories',
+            'icon': 'fas fa-gift',
+            'add_label': 'Add Combo Offer Category',
+            'badge': 'Combo Offer',
+        },
+        'accessory': {
+            'title': 'Accessory Categories',
+            'icon': 'fas fa-toolbox',
+            'add_label': 'Add Accessory Category',
+            'badge': 'Accessory',
+        },
+        'plant': {
+            'title': 'Plant Categories',
+            'icon': 'fas fa-seedling',
+            'add_label': 'Add Plant Category',
+            'badge': 'Plant',
+        },
+    }
+
+    all_categories_qs = Category.objects.all()
+    counts_by_type = {key: all_categories_qs.filter(category_type=key).count() for key in type_configs.keys()}
+
+    search_query = request.GET.get('search', '').strip()
+    type_filter = request.GET.get('category_type', '').strip()
+
+    categories_qs = all_categories_qs
+    if type_filter and type_filter in type_configs:
+        categories_qs = categories_qs.filter(category_type=type_filter)
+
+    if search_query:
+        categories_qs = categories_qs.filter(
+            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+        )
+
+    categories = list(categories_qs.order_by('name'))
+
+    filtered_counts_by_type = {key: categories_qs.filter(category_type=key).count() for key in type_configs.keys()}
+
+    category_cards = []
+    for category in categories:
+        config = type_configs.get(category.category_type, {})
+        category_cards.append({
+            'object': category,
+            'icon': config.get('icon', 'fas fa-tags'),
+            'badge': config.get('badge', category.get_category_type_display()),
+            'title': config.get('title', category.get_category_type_display()),
+        })
+
+    type_actions = []
+    for type_key, config in type_configs.items():
+        type_actions.append({
+            'key': type_key,
+            'title': config['title'],
+            'icon': config['icon'],
+            'add_label': config['add_label'],
+            'add_url': f"{reverse('admin_add_category')}?type={type_key}",
+            'count': filtered_counts_by_type.get(type_key, 0),
+            'badge': config.get('badge', config['title']),
+            'total_count': counts_by_type.get(type_key, 0),
+            'is_selected': type_filter == type_key,
+        })
+
+    total_categories = len(categories)
+    overall_category_count = all_categories_qs.count()
+    has_any_categories = overall_category_count > 0
+    add_category_url = reverse('admin_add_category')
+    add_category_label = 'Add Category'
+    if type_filter in type_configs:
+        add_category_label = type_configs[type_filter]['add_label']
+        add_category_url = f"{add_category_url}?type={type_filter}"
+
+    context = {
+        'category_cards': category_cards,
+        'type_actions': type_actions,
+        'has_any_categories': has_any_categories,
+        'total_categories': total_categories,
+        'overall_category_count': overall_category_count,
+        'type_config_map': type_configs,
+        'add_category_url': add_category_url,
+        'add_category_label': add_category_label,
+        'search_query': search_query,
+        'selected_type': type_filter if type_filter in type_configs else '',
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        summary_html = render_to_string(
+            'store/admin/partials/category_summary.html',
+            context,
+            request=request,
+        )
+        cards_html = render_to_string(
+            'store/admin/partials/category_cards.html',
+            context,
+            request=request,
+        )
+        return JsonResponse({
+            'summary_html': summary_html,
+            'cards_html': cards_html,
+        })
+
+    return render(
+        request,
+        'store/admin/categories.html',
+        context,
+    )
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_plants_view(request):
+    categories = Category.objects.filter(category_type='plant').order_by('name')
+    plants_qs = Plant.objects.select_related('category').order_by('display_order', 'name')
+
+    category_id = request.GET.get('category', '').strip()
+    search_query = request.GET.get('search', '').strip()
+
+    if category_id and category_id.isdigit():
+        plants_qs = plants_qs.filter(category_id=int(category_id))
+    else:
+        category_id = ''
+
+    if search_query:
+        plants_qs = plants_qs.filter(Q(name__icontains=search_query) | Q(description__icontains=search_query))
+
+    plants = list(plants_qs)
+
+    return render(
+        request,
+        'store/admin/plants.html',
+        {
+            'plants': plants,
+            'categories': categories,
+            'selected_category_id': category_id,
+            'search_query': search_query,
+            'total_plants': len(plants),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_add_plant_view(request):
+    if request.method == 'POST':
+        form = PlantForm(request.POST, request.FILES)
+        if form.is_valid():
+            plant = form.save(commit=False)
+            if not plant.created_by:
+                plant.created_by = request.user
+            plant.save()
+            messages.success(request, 'Plant created successfully.')
+            return redirect('admin_plants')
+    else:
+        initial = {}
+        category_hint = request.GET.get('category')
+        if category_hint and category_hint.isdigit():
+            try:
+                plant_category = Category.objects.get(id=int(category_hint), category_type='plant')
+                initial['category'] = plant_category.id
+            except Category.DoesNotExist:
+                pass
+        form = PlantForm(initial=initial)
+
+    return render(request, 'store/admin/add_plant.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_edit_plant_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id)
+    if request.method == 'POST':
+        form = PlantForm(request.POST, request.FILES, instance=plant)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Plant updated successfully.')
+            return redirect('admin_plants')
+    else:
+        form = PlantForm(instance=plant)
+
+    return render(request, 'store/admin/add_plant.html', {'form': form, 'plant': plant})
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def admin_delete_plant_view(request, plant_id):
+    plant = get_object_or_404(Plant, id=plant_id)
+    plant.delete()
+    messages.success(request, 'Plant deleted successfully.')
+    return redirect('admin_plants')
 
 
 @login_required
 @user_passes_test(is_admin)
 def admin_add_category_view(request):
+    type_hint = request.GET.get('type') or request.POST.get('category_type')
+    valid_types = dict(Category.CATEGORY_TYPES)
+    type_label = valid_types.get(type_hint) if type_hint in valid_types else None
+
     if request.method == 'POST':
         form = CategoryForm(request.POST, request.FILES)
         if form.is_valid():
@@ -3204,9 +4305,25 @@ def admin_add_category_view(request):
             messages.success(request, 'Category added successfully.')
             return redirect('admin_categories')
     else:
-        form = CategoryForm()
-    
-    return render(request, 'store/admin/add_category.html', {'form': form})
+        initial = {}
+        if type_hint in valid_types:
+            initial['category_type'] = type_hint
+        form = CategoryForm(initial=initial)
+
+    add_heading = 'Add Category'
+    if type_label:
+        add_heading = f"Add {type_label} Category"
+
+    return render(
+        request,
+        'store/admin/add_category.html',
+        {
+            'form': form,
+            'add_heading': add_heading,
+            'type_hint': type_hint if type_label else None,
+            'type_label': type_label,
+        },
+    )
 
 
 @login_required
@@ -3406,12 +4523,68 @@ def delete_accessory_view(request, accessory_id):
     return redirect('staff_accessories')
 
 
+def _build_admin_accessories_context(request):
+    from .models import Accessory
+
+    search_query = (request.GET.get('search') or '').strip()
+    category_id = (request.GET.get('category') or '').strip()
+    status_filter = (request.GET.get('status') or '').strip()
+
+    qs = Accessory.objects.all().select_related('category')
+    total_count = qs.count()
+
+    if search_query:
+        qs = qs.filter(Q(name__icontains=search_query) | Q(description__icontains=search_query))
+
+    if category_id:
+        qs = qs.filter(category_id=category_id)
+
+    if status_filter == 'active':
+        qs = qs.filter(is_active=True)
+    elif status_filter == 'inactive':
+        qs = qs.filter(is_active=False)
+    elif status_filter == 'in_stock':
+        qs = qs.filter(stock_quantity__gt=0)
+    elif status_filter == 'out_of_stock':
+        qs = qs.filter(stock_quantity__lte=0)
+
+    qs = qs.order_by('display_order', 'name')
+    filtered_count = qs.count()
+
+    categories = Category.objects.filter(category_type='accessory').order_by('name')
+    filters_active = bool(search_query or category_id or status_filter)
+
+    return {
+        'accessories': qs,
+        'search_query': search_query,
+        'selected_category': category_id,
+        'selected_status': status_filter,
+        'categories': categories,
+        'filtered_count': filtered_count,
+        'total_count': total_count,
+        'filters_active': filters_active,
+    }
+
+
 @login_required
 @user_passes_test(is_admin)
 def admin_accessories_view(request):
-    from .models import Accessory
-    accessories = Accessory.objects.all()
-    return render(request, 'store/admin/accessories.html', {'accessories': accessories})
+    context = _build_admin_accessories_context(request)
+    return render(request, 'store/admin/accessories.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_GET
+def admin_accessories_ajax_view(request):
+    context = _build_admin_accessories_context(request)
+    table_html = render_to_string('store/admin/_accessories_table.html', context, request=request)
+    return JsonResponse({
+        'table_html': table_html,
+        'filtered_count': context.get('filtered_count', 0),
+        'total_count': context.get('total_count', 0),
+        'filters_active': context.get('filters_active', False),
+    })
 
 
 @login_required
@@ -3715,6 +4888,33 @@ def admin_order_detail_view(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     
     if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'send_message':
+            message_body = (request.POST.get('message') or '').strip()
+            subject = (request.POST.get('subject') or '').strip()
+            recipient = getattr(order.user, 'email', '') or ''
+
+            if not recipient:
+                messages.error(request, 'Cannot send email: customer has no email address on file.')
+                return redirect('admin_order_detail', order_id=order.id)
+
+            if not message_body:
+                messages.error(request, 'Please enter a message before sending.')
+                return redirect('admin_order_detail', order_id=order.id)
+
+            subject_line = subject or f'Update on Order {order.order_number}'
+            from_email = settings.DEFAULT_FROM_EMAIL or 'noreply@aquafishstore.com'
+
+            try:
+                send_mail(subject_line, message_body, from_email, [recipient], fail_silently=False)
+            except Exception:
+                logging.getLogger(__name__).exception('Failed to send admin order email for order %s', order.id)
+                messages.error(request, 'Failed to send email. Please try again later.')
+            else:
+                messages.success(request, 'Email sent to customer successfully.')
+
+            return redirect('admin_order_detail', order_id=order.id)
+
         new_status = request.POST.get('status')
         if new_status and new_status in dict(Order.STATUS_CHOICES):
             order.status = new_status

@@ -1,0 +1,73 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Edit Plant Gallery Image{% endblock %}
+
+{% block extra_css %}
+<style>
+  .plant-media-edit .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  html[data-theme='dark'] .plant-media-edit input.form-control,
+  html[data-theme='dark'] .plant-media-edit input[type="file"] {
+    background-color: rgba(18, 26, 40, 0.9);
+    border-color: rgba(100, 150, 255, 0.25);
+    color: #fff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section plant-media-edit">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <h2 class="section-heading mb-0"><i class="fas fa-edit me-2"></i>Edit Gallery Image</h2>
+      <a class="btn btn-secondary" href="{% url 'admin_plant_media' plant.id %}"><i class="fas fa-arrow-left me-2"></i>Back to Gallery</a>
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="row justify-content-center">
+      <div class="col-lg-7 col-xl-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0 text-white">Update Image Details</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+              {% csrf_token %}
+              <div class="mb-3 text-center">
+                {% if media.source %}
+                  <img src="{{ media.source }}" alt="{{ media.title|default:plant.name }}" class="img-fluid rounded" style="max-height:280px; object-fit:cover;">
+                {% endif %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Replace Image (optional)</label>
+                {{ form.image }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Title (optional)</label>
+                {{ form.title }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Display Order</label>
+                {{ form.display_order }}
+              </div>
+              <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-2"></i>Save Changes</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

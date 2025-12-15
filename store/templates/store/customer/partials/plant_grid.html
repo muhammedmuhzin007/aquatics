@@ -1,0 +1,150 @@
+{% load static %}
+{% load currency %}
+{% if plants and plants|length %}
+<div class="row g-4">
+    {% for plant in plants %}
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100 plant-card shadow-sm" style="border: 1px solid rgba(76,175,80,0.2);" data-href="{% url 'plant_detail' plant.id %}" role="link" tabindex="0">
+            <div class="position-relative">
+                {% if plant.image %}
+                <img src="{{ plant.image.url }}" class="card-img-top" alt="{{ plant.name }}" style="height: 240px; object-fit: cover;">
+                {% else %}
+                <div class="card-img-top d-flex align-items-center justify-content-center" style="height: 240px; background: linear-gradient(135deg, rgba(76,175,80,0.15), rgba(56,142,60,0.08));">
+                    <i class="fas fa-seedling fa-4x text-muted" style="opacity:0.35;"></i>
+                </div>
+                {% endif %}
+                {% if plant.stock_quantity|default:0 <= 0 %}
+                <span class="badge bg-danger position-absolute top-0 end-0 m-2">Out of Stock</span>
+                {% endif %}
+            </div>
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="badge bg-success bg-opacity-25 text-success fw-semibold text-uppercase">{{ plant.category.name|default:'Plant' }}</span>
+                    {% if plant.is_active %}
+                        <span class="badge bg-success bg-opacity-75">Available</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </div>
+                <h5 class="card-title text-white"><a href="{% url 'plant_detail' plant.id %}" class="text-reset text-decoration-none">{{ plant.name }}</a></h5>
+                <p class="card-text text-muted flex-grow-1">{{ plant.description|default:'No description provided.'|truncatewords:24 }}</p>
+                <div class="mt-3">
+                    {% if plant.price %}
+                        <span class="price-badge" style="font-size: 1.1rem;">{{ plant.price|rupees }}</span>
+                    {% else %}
+                        <span class="text-warning fw-semibold">Contact for pricing</span>
+                    {% endif %}
+                </div>
+                <div class="mt-auto pt-3">
+                    {% if plant.price and plant.stock_quantity|default:0 > 0 %}
+                    <form method="post" action="{% url 'add_plant_to_cart' plant.id %}" class="plant-add-to-cart-form">
+                        {% csrf_token %}
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="number" name="quantity" class="form-control" value="{{ plant.minimum_order_quantity }}" min="{{ plant.minimum_order_quantity }}"{% if plant.stock_quantity %} max="{{ plant.stock_quantity }}"{% endif %}>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-cart-plus me-1"></i>Add to Cart
+                            </button>
+                        </div>
+                        {% if plant.minimum_order_quantity > 1 %}
+                        <small class="text-muted d-block">Minimum order: {{ plant.minimum_order_quantity }}</small>
+                        {% endif %}
+                    </form>
+                    {% elif plant.stock_quantity|default:0 <= 0 %}
+                        <div class="alert alert-danger py-2 mb-2" role="alert" style="font-size: 0.85rem;">
+                            Currently unavailable
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% for plant in plants %}
+<div class="modal fade" id="plantModal{{ plant.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-white);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title"><i class="fas fa-seedling me-2"></i>{{ plant.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if plant.image %}
+                <img src="{{ plant.image.url }}" alt="{{ plant.name }}" class="img-fluid rounded mb-3 d-block mx-auto" style="max-height: 420px; object-fit: contain;">
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center" style="height: 320px; background: rgba(76,175,80,0.08); border: 1px dashed rgba(76,175,80,0.3);">
+                    <div class="text-center">
+                        <i class="fas fa-image fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-0">No gallery image available</p>
+                    </div>
+                </div>
+                {% endif %}
+                <p class="text-muted">{{ plant.description|default:'No description available for this plant.' }}</p>
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <span class="badge bg-success bg-opacity-25 text-success fw-semibold">{{ plant.category.name|default:'Plant' }}</span>
+                    {% if plant.price %}
+                    <span class="price-badge">{{ plant.price|rupees }}</span>
+                    {% else %}
+                    <span class="text-warning">Contact for pricing</span>
+                    {% endif %}
+                </div>
+                {% if plant.price and plant.stock_quantity|default:0 > 0 %}
+                <form method="post" action="{% url 'add_plant_to_cart' plant.id %}" class="plant-add-to-cart-form">
+                    {% csrf_token %}
+                    <div class="row g-2 align-items-center">
+                        <div class="col-sm-4">
+                            <label class="form-label small">Quantity</label>
+                            <input type="number" name="quantity" class="form-control" value="{{ plant.minimum_order_quantity }}" min="{{ plant.minimum_order_quantity }}"{% if plant.stock_quantity %} max="{{ plant.stock_quantity }}"{% endif %}>
+                            {% if plant.minimum_order_quantity > 1 %}
+                            <small class="text-muted">Minimum {{ plant.minimum_order_quantity }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-sm-8 text-sm-end">
+                            <button type="submit" class="btn btn-success mt-3 mt-sm-4">
+                                <i class="fas fa-cart-plus me-1"></i>Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                {% elif plant.stock_quantity|default:0 <= 0 %}
+                <div class="alert alert-danger" role="alert">
+                    This plant is currently out of stock.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if plants.has_other_pages %}
+<nav aria-label="Plants pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if plants.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ plants.previous_page_number }}{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}{% if category_filter %}&amp;category={{ category_filter }}{% endif %}">Previous</a>
+        </li>
+        {% endif %}
+        {% for num in plants.paginator.page_range %}
+            {% if num == plants.number %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% else %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}{% if category_filter %}&amp;category={{ category_filter }}{% endif %}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+        {% if plants.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ plants.next_page_number }}{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}{% if category_filter %}&amp;category={{ category_filter }}{% endif %}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% else %}
+<div class="empty-state text-center py-5">
+    <i class="fas fa-search fa-2x mb-3"></i>
+    <h4>No plants match your filters</h4>
+    <p class="text-muted">Try adjusting the search or selecting a different category.</p>
+</div>
+{% endif %}

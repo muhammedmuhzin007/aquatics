@@ -59,9 +59,16 @@ def global_flags(request):
     except Exception:
         has_published_blogs = False
 
+    try:
+        from store.models import Plant
+        has_active_plants = Plant.objects.filter(is_active=True).exists()
+    except Exception:
+        has_active_plants = False
+
     return {
         'has_active_accessories': has_active,
         'has_active_combos': has_active_combos,
+        'has_active_plants': has_active_plants,
         'has_published_blogs': has_published_blogs,
         'unread_notifications_count': unread_count,
         'recent_notifications': recent_notifications,

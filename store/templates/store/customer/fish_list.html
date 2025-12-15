@@ -3,16 +3,26 @@
 {% block content %}
 <section class="section">
     <div class="container-fluid">
-        <h2 class="section-heading">Browse Our Collection</h2>
+        <h2 class="section-heading">Fish Collection</h2>
         
-        <div>
-            <div class="row g-0">
-                <div class="col-12">
+        <form id="fish-filter-form" method="get" class="mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-8 col-lg-9">
+                    <label for="live-search" class="form-label text-muted mb-1">Search</label>
                     <input id="live-search" type="text" class="form-control form-control-lg search-large" name="search" value="{{ search_query }}"
-                           placeholder="Search by name, description, breed..." autocomplete="off" style="width:100%;">
+                           placeholder="Search by name, description, breed..." autocomplete="off">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 col-xl-3">
+                    <label for="category-filter" class="form-label text-muted mb-1">Category</label>
+                    <select id="category-filter" name="category" class="form-select form-select-lg">
+                        <option value=""{% if not category_filter %} selected{% endif %}>All categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}"{% if category_filter and category.id|stringformat:"s" == category_filter|stringformat:"s" %} selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
-        </div>
+        </form>
 
         <div id="fish-results">
             {% include 'store/customer/_fish_grid.html' %}
@@ -26,12 +36,21 @@
 document.addEventListener('DOMContentLoaded', function(){
     const searchInput = document.getElementById('live-search');
     const resultsContainer = document.getElementById('fish-results');
-    const clearBtn = document.getElementById('clear-search');
+    const categorySelect = document.getElementById('category-filter');
+    const filterForm = document.getElementById('fish-filter-form');
     let timeout = null;
 
-    function fetchResults(query){
-        const params = new URLSearchParams({search: query});
-        fetch(window.location.pathname + '?' + params.toString(), {
+    function fetchResults(query, category){
+        const params = new URLSearchParams();
+        if (query) {
+            params.set('search', query);
+        }
+        if (category) {
+            params.set('category', category);
+        }
+        const queryString = params.toString();
+        const url = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+        fetch(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
@@ -40,6 +59,9 @@ document.addEventListener('DOMContentLoaded', function(){
         .then(data => {
             if (data && data.html !== undefined) {
                 insertResults(data.html);
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, '', url);
+                }
             }
         })
         .catch(err => {
@@ -53,8 +75,25 @@ document.addEventListener('DOMContentLoaded', function(){
             // debounce
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                fetchResults(q);
+                const category = categorySelect ? categorySelect.value : '';
+                fetchResults(q, category);
             }, 300);
+        });
+    }
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function(){
+            const currentSearch = searchInput ? searchInput.value.trim() : '';
+            fetchResults(currentSearch, this.value);
+        });
+    }
+
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e){
+            e.preventDefault();
+            const q = searchInput ? searchInput.value.trim() : '';
+            const category = categorySelect ? categorySelect.value : '';
+            fetchResults(q, category);
         });
     }
 

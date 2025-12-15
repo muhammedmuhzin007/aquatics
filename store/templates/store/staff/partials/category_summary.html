@@ -1,0 +1,17 @@
+<span class="badge bg-primary bg-opacity-25 text-uppercase fw-semibold" style="letter-spacing: 0.08em;">
+    <i class="fas fa-tags me-2"></i>All Categories
+</span>
+<span class="badge bg-dark text-white">
+    {% if search_query or selected_type %}
+        Showing {{ total_categories }} of {{ overall_category_count }}
+    {% else %}
+        {{ total_categories }} total
+    {% endif %}
+</span>
+<div class="d-flex flex-wrap gap-2">
+    {% for action in type_actions %}
+        <span class="badge category-type-pill{% if action.is_selected %} active{% endif %}" title="{{ action.total_count }} total">
+            <i class="{{ action.icon }} me-2"></i>{{ action.badge }} · {{ action.count }}
+        </span>
+    {% endfor %}
+</div>

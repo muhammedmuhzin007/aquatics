@@ -9,6 +9,12 @@ Items:
 {% for item in order_items %}
 - {{ item.fish.name }} x {{ item.quantity }} - {{ item.price }} = {{ item.get_total }}
 {% endfor %}
+{% for plant in plant_items %}
+- {{ plant.plant.name }} (Plant) x {{ plant.quantity }} - {{ plant.price }} = {{ plant.get_total }}
+{% endfor %}
+{% for accessory in accessory_items %}
+- {{ accessory.accessory.name }} (Accessory) x {{ accessory.quantity }} - {{ accessory.price }} = {{ accessory.get_total }}
+{% endfor %}
 
 You can view your order here: {{ order_url }}
 

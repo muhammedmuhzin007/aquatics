@@ -9,6 +9,7 @@
         <div class="card-img-top" style="min-height:120px;"></div>
       {% endif %}
       <div class="card-body d-flex flex-column">
+        <span class="badge bg-secondary align-self-start mb-2">{{ accessory.category.name|default:'General' }}</span>
         <h5 class="card-title">{{ accessory.name }}</h5>
         <p class="card-text mb-3">₹{{ accessory.price }}</p>
         <div class="mt-auto d-flex justify-content-end align-items-center">

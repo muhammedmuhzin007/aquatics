@@ -179,6 +179,59 @@
                         </div>
                     </div>
                 </div>
+
+                {% with plant_items=order.plant_items.all %}
+                {% if plant_items %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="text-white mb-0">
+                            <i class="fas fa-leaf me-2"></i>Plant Items ({{ plant_items|length }})
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0" style="background: transparent;">
+                                <thead style="background: rgba(76,175,80,0.15); border-bottom: 2px solid var(--border-color);">
+                                    <tr>
+                                        <th style="padding: 12px 20px; background: transparent;">Plant</th>
+                                        <th style="padding: 12px 20px; text-align: center; background: transparent;">Quantity</th>
+                                        <th style="padding: 12px 20px; text-align: right; background: transparent;">Price</th>
+                                        <th style="padding: 12px 20px; text-align: right; background: transparent;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in plant_items %}
+                                    <tr style="border-bottom: 1px solid var(--border-color); background: transparent;">
+                                        <td style="padding: 15px 20px; background: transparent;">
+                                            <div class="d-flex align-items-center">
+                                                {% if item.plant.image %}
+                                                <img src="{{ item.plant.image.url }}" alt="{{ item.plant.name }}"
+                                                     style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 1px solid var(--border-color);">
+                                                {% endif %}
+                                                <div>
+                                                    <strong class="text-white">{{ item.plant.name }}</strong><br>
+                                                    <small class="text-muted">Plant</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style="padding: 15px 20px; text-align: center; background: transparent;">
+                                            <span class="badge bg-success" style="padding: 6px 12px;">x{{ item.quantity }}</span>
+                                        </td>
+                                        <td style="padding: 15px 20px; text-align: right; background: transparent;">
+                                            <span class="text-white">{{ item.price|rupees }}</span>
+                                        </td>
+                                        <td style="padding: 15px 20px; text-align: right; background: transparent;">
+                                            <strong class="text-white">{{ item.get_total|rupees }}</strong>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
             </div>
             
             <!-- Sidebar -->
@@ -212,10 +265,14 @@
                             <h6 class="text-white mb-3">
                                 <i class="fas fa-calculator me-2"></i>Price Details
                             </h6>
+                            {% with fish_count=order.items.count plant_count=order.plant_items.count accessory_count=order.accessory_items.count %}
+                            {% with total_count=fish_count|add:plant_count|add:accessory_count %}
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="text-gray">Subtotal ({{ order.items.count }} items):</span>
+                                <span class="text-gray">Subtotal ({{ total_count }} items):</span>
                                 <span class="text-white">{{ order.total_amount|rupees }}</span>
                             </div>
+                            {% endwith %}
+                            {% endwith %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-gray">Delivery Charges:</span>
                                 <span class="text-success">

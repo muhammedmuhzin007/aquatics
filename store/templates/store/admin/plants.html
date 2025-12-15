@@ -1,0 +1,137 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}Manage Plants{% endblock %}
+
+{% block extra_css %}
+<style>
+    .plant-filter-form {
+        width: 100%;
+    }
+    .plant-filter-search {
+        min-width: 240px;
+    }
+    .plant-filter-select {
+        min-width: 180px;
+    }
+    .admin-plants .actions-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .admin-plants .actions-group form {
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section admin-plants">
+    <div class="container-fluid">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+            <h2 class="section-heading mb-0"><i class="fas fa-seedling me-2"></i>Plant Catalogue</h2>
+            <a href="{% url 'admin_add_plant' %}" class="btn btn-success"><i class="fas fa-plus me-2"></i>Add Plant</a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-lg-between">
+                <div>
+                    <h5 class="mb-1 text-white">Plants</h5>
+                    <small class="text-muted">Total: {{ total_plants }}</small>
+                </div>
+                <form method="get" class="d-flex flex-wrap align-items-center gap-2 plant-filter-form">
+                    <div class="plant-filter-search flex-grow-1">
+                        <div class="input-group input-group-sm">
+                            <input type="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Search plants">
+                            <button class="btn btn-outline-light" type="submit"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
+                    <div class="plant-filter-select">
+                        <select name="category" class="form-select form-select-sm">
+                            <option value="">All categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" {% if category.id|stringformat:"s" == selected_category_id %}selected{% endif %}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <a href="{% url 'admin_plants' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                </form>
+            </div>
+            <div class="card-body p-0">
+                {% if plants %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="admin-text-black">Image</th>
+                                <th class="admin-text-black">Name</th>
+                                <th class="admin-text-black">Category</th>
+                                <th class="admin-text-black">Price</th>
+                                <th class="admin-text-black">Stock</th>
+                                <th class="admin-text-black">Status</th>
+                                <th class="admin-text-black text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plant in plants %}
+                            <tr>
+                                <td class="py-3">
+                                    {% if plant.image %}
+                                        <img src="{{ plant.image.url }}" alt="{{ plant.name }}" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
+                                    {% else %}
+                                        <div style="width:64px; height:48px; display:inline-block; background: rgba(255,255,255,0.05);"></div>
+                                    {% endif %}
+                                </td>
+                                <td class="admin-text-black">
+                                    <strong>{{ plant.name }}</strong>
+                                    {% if plant.description %}
+                                        <div class="small text-muted">{{ plant.description|truncatechars:80 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="admin-text-black">{{ plant.category.name|default:'-' }}</td>
+                                <td class="admin-text-black">{% if plant.price %}₹{{ plant.price }}{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
+                                <td class="admin-text-black">{{ plant.stock_quantity }}</td>
+                                <td>
+                                    {% if plant.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="actions-group">
+                                        <a class="btn btn-info btn-sm" href="{% url 'admin_plant_media' plant.id %}"><i class="fas fa-images"></i></a>
+                                        <a class="btn btn-primary btn-sm" href="{% url 'admin_edit_plant' plant.id %}"><i class="fas fa-edit"></i></a>
+                                        <form method="post" action="{% url 'admin_delete_plant' plant.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this plant?">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-5">
+                    <i class="fas fa-seedling fa-2x mb-2"></i>
+                    <h4 class="mb-1">No plants yet</h4>
+                    <p class="text-muted">Add a plant to populate this list.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

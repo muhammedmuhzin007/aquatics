@@ -1,0 +1,172 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Manage Plant Gallery{% endblock %}
+
+{% block extra_css %}
+<style>
+  .plant-media-page .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  .plant-media-page .card-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  html[data-theme='dark'] .plant-media-page input.form-control,
+  html[data-theme='dark'] .plant-media-page input[type="file"],
+  html[data-theme='dark'] .plant-media-page textarea.form-control {
+    background-color: rgba(18, 26, 40, 0.9);
+    border-color: rgba(100, 150, 255, 0.25);
+    color: #fff;
+  }
+  html[data-theme='dark'] .plant-media-page input.form-control:focus,
+  html[data-theme='dark'] .plant-media-page textarea.form-control:focus {
+    border-color: #4da3ff;
+    box-shadow: 0 0 0 0.1rem rgba(77, 163, 255, 0.25);
+  }
+  html[data-theme='light'] .plant-media-page input.form-control,
+  html[data-theme='light'] .plant-media-page input[type="file"],
+  html[data-theme='light'] .plant-media-page textarea.form-control {
+    background-color: var(--light-surface);
+    border-color: var(--light-border);
+    color: var(--light-text);
+  }
+  .plant-media-page .media-card img {
+    border-radius: 8px;
+    height: 180px;
+    object-fit: cover;
+    width: 100%;
+  }
+  .plant-media-page .empty-state {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section plant-media-page">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <h2 class="section-heading mb-0"><i class="fas fa-images me-2"></i>Plant Gallery: {{ plant.name }}</h2>
+      <a class="btn btn-secondary" href="{% url 'admin_plants' %}"><i class="fas fa-arrow-left me-2"></i>Back to Plants</a>
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="card h-100">
+          <div class="card-header">
+            <h5 class="mb-0 text-white">Add Image</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Image</label>
+                {{ form.image }}
+                <small class="text-muted d-block">Upload JPG or PNG image for this plant.</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Title (optional)</label>
+                {{ form.title }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Display Order</label>
+                {{ form.display_order }}
+              </div>
+              <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus me-2"></i>Add to Gallery</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div class="card h-100">
+          <div class="card-header">
+            <h5 class="mb-0 text-white">Gallery Images</h5>
+          </div>
+          <div class="card-body">
+            {% if media_items %}
+            <div class="row g-3">
+              {% for item in media_items %}
+              <div class="col-sm-6">
+                <div class="card media-card h-100">
+                  <div class="card-body d-flex flex-column">
+                    {% if item.source %}
+                    <img src="{{ item.source }}" alt="{{ item.title|default:plant.name }}" data-preview="{{ item.source }}" class="mb-3 preview-trigger">
+                    {% else %}
+                    <div class="border rounded d-flex align-items-center justify-content-center mb-3" style="height:180px;">
+                      <span class="text-muted">No preview available</span>
+                    </div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                      <strong class="d-block text-white">{{ item.title|default:'(Untitled)' }}</strong>
+                      <small class="text-muted">Display order: {{ item.display_order }}</small>
+                    </div>
+                    <div class="mt-3 d-flex gap-2 justify-content-between">
+                      <form method="post" action="{% url 'admin_delete_plant_media' item.id %}" data-confirm="Delete this image?">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                      </form>
+                      <a class="btn btn-primary btn-sm" href="{% url 'admin_edit_plant_media' item.id %}"><i class="fas fa-edit"></i></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state text-center">
+              <i class="fas fa-image fa-2x mb-3"></i>
+              <h4 class="mb-2 text-white">No gallery images yet</h4>
+              <p class="text-muted mb-0">Upload images to showcase this plant.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal fade" id="plantMediaPreview" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-body p-0 text-center" id="plantMediaPreviewBody" style="min-height:60vh; display:flex; align-items:center; justify-content:center;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('plantMediaPreview');
+    var bodyEl = document.getElementById('plantMediaPreviewBody');
+
+    document.querySelectorAll('.preview-trigger').forEach(function (img) {
+      img.style.cursor = 'pointer';
+      img.addEventListener('click', function () {
+        bodyEl.innerHTML = '';
+        var full = document.createElement('img');
+        full.src = img.dataset.preview;
+        full.style.maxWidth = '100%';
+        full.style.maxHeight = '80vh';
+        full.style.objectFit = 'contain';
+        bodyEl.appendChild(full);
+        if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+          new bootstrap.Modal(modalEl).show();
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

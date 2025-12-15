@@ -3,46 +3,198 @@
 {% block content %}
 <section class="section">
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="mb-4 admin-categories-header">
             <h2 class="section-heading" style="margin-bottom: 0;">Categories</h2>
-            <a href="{% url 'admin_add_category' %}" class="btn btn-success">
-                <i class="fas fa-plus"></i> Add Category
-            </a>
         </div>
 
-        {% if categories %}
-        <div class="row">
-            {% for category in categories %}
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    {% if category.image %}
-                    <img src="{{ category.image.url }}" class="card-img-top" alt="{{ category.name }}">
-                    {% else %}
-                    <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-tags fa-5x" style="opacity: 0.3;"></i>
+        {% if has_any_categories %}
+            <div class="card category-section mb-5">
+                <div class="card-header d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+                    <div class="d-flex flex-wrap align-items-center gap-3" id="category-summary" data-initial="1">
+                        {% include 'store/admin/partials/category_summary.html' %}
                     </div>
-                    {% endif %}
-                    <div class="card-body">
-                        <h5 class="card-title">{{ category.name }}</h5>
-                        <p class="card-text">{{ category.description|truncatewords:15 }}</p>
-                                <a href="{% url 'admin_delete_category' category.id %}" class="btn btn-danger btn-sm" 
-                                    data-confirm="Are you sure you want to delete this category?">
-                            <i class="fas fa-trash"></i> Delete
+                    <div class="d-flex flex-wrap align-items-center gap-2 ms-xl-auto category-header-actions">
+                        <form method="get" action="{% url 'admin_categories' %}" class="category-filter-form d-flex flex-wrap align-items-center gap-2" id="category-filter-form">
+                            <div class="category-filter-select">
+                                <select name="category_type" class="form-select form-select-sm">
+                                    <option value="">All types</option>
+                                    {% for action in type_actions %}
+                                        <option value="{{ action.key }}" {% if action.is_selected %}selected{% endif %}>{{ action.badge }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="category-filter-search">
+                                <div class="input-group input-group-sm input-group-flat">
+                                    <input type="search" name="search" class="form-control form-control-sm" placeholder="Search categories" value="{{ search_query }}" aria-label="Search categories">
+                                </div>
+                            </div>
+                            <a href="{% url 'admin_categories' %}" class="btn btn-outline-light btn-sm category-reset-btn" {% if not search_query and not selected_type %}hidden{% endif %}>
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </a>
+                        </form>
+                        <a href="{{ add_category_url }}" class="btn btn-success category-add-btn">
+                            <i class="fas fa-plus me-2"></i>{{ add_category_label|default:'Add Category' }}
                         </a>
                     </div>
                 </div>
+                <div class="card-body">
+                    <div id="category-content">
+                        {% include 'store/admin/partials/category_cards.html' %}
+                    </div>
+                </div>
             </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-tags"></i>
-            <h3>No categories yet</h3>
-            <a href="{% url 'admin_add_category' %}" class="btn btn-primary mt-3">
-                <i class="fas fa-plus"></i> Add First Category
-            </a>
-        </div>
+        {% endif %}
+
+        {% if not has_any_categories %}
+            <div class="empty-state mt-5">
+                <i class="fas fa-tags"></i>
+                <h3>No categories yet</h3>
+                <p class="text-muted">Start by creating a fish, combo, accessory, or plant category.</p>
+                <a href="{{ add_category_url }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus"></i> Add Category
+                </a>
+            </div>
         {% endif %}
     </div>
 </section>
+
+<script>
+(function(){
+    function syncResetVisibility(form){
+        const resetBtn = form.querySelector('.category-reset-btn');
+        if (!resetBtn) {
+            return;
+        }
+        const searchValue = (form.querySelector('input[name="search"]') || { value: '' }).value.trim();
+        const typeValue = (form.querySelector('select[name="category_type"]') || { value: '' }).value;
+        const shouldShow = Boolean(searchValue) || Boolean(typeValue);
+        resetBtn.hidden = !shouldShow;
+    }
+
+    function attachResetHandlers(form, fetchAndRender){
+        const resetLinks = document.querySelectorAll('.category-reset-btn');
+        resetLinks.forEach(function(link){
+            if (link.dataset.bound === '1') {
+                return;
+            }
+            link.dataset.bound = '1';
+            link.addEventListener('click', function(evt){
+                if (!form) {
+                    return;
+                }
+                evt.preventDefault();
+                form.reset();
+                syncResetVisibility(form);
+                fetchAndRender(new FormData(form));
+            });
+        });
+    }
+
+    function initCategoryFilters(){
+        const form = document.getElementById('category-filter-form');
+        const summaryContainer = document.getElementById('category-summary');
+        const contentContainer = document.getElementById('category-content');
+        if (!form || !summaryContainer || !contentContainer) {
+            return;
+        }
+
+        let debounceTimer = null;
+        let currentController = null;
+        let activeRequests = 0;
+
+        function fetchAndRender(formData){
+            const params = new URLSearchParams();
+            for (const [key, value] of formData.entries()) {
+                const trimmed = typeof value === 'string' ? value.trim() : value;
+                if (key === 'search') {
+                    const searchField = form.querySelector('input[name="search"]');
+                    if (searchField) {
+                        searchField.value = trimmed;
+                    }
+                }
+                if (trimmed) {
+                    params.append(key, trimmed);
+                }
+            }
+
+            const queryString = params.toString();
+            const requestUrl = queryString ? form.action + '?' + queryString : form.action;
+
+            if (currentController) {
+                currentController.abort();
+            }
+            currentController = new AbortController();
+
+            activeRequests += 1;
+            contentContainer.classList.add('is-loading');
+
+            fetch(requestUrl, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                signal: currentController.signal,
+            }).then(function(response){
+                if (!response.ok) {
+                    throw new Error('Failed to load categories');
+                }
+                return response.json();
+            }).then(function(payload){
+                if (payload.summary_html !== undefined) {
+                    summaryContainer.innerHTML = payload.summary_html;
+                }
+                if (payload.cards_html !== undefined) {
+                    contentContainer.innerHTML = payload.cards_html;
+                }
+                window.history.replaceState(null, '', requestUrl);
+                syncResetVisibility(form);
+                attachResetHandlers(form, fetchAndRender);
+            }).catch(function(error){
+                if (error.name === 'AbortError') {
+                    return;
+                }
+                contentContainer.innerHTML = '<div class="alert alert-danger mt-3">Unable to update categories right now. Please try again.</div>';
+            }).finally(function(){
+                activeRequests = Math.max(0, activeRequests - 1);
+                if (activeRequests === 0) {
+                    contentContainer.classList.remove('is-loading');
+                }
+            });
+        }
+
+        form.addEventListener('submit', function(evt){
+            evt.preventDefault();
+        });
+
+        const typeSelect = form.querySelector('select[name="category_type"]');
+        if (typeSelect) {
+            typeSelect.addEventListener('change', function(){
+                syncResetVisibility(form);
+                fetchAndRender(new FormData(form));
+            });
+        }
+
+        const searchInput = form.querySelector('input[name="search"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(){
+                clearTimeout(debounceTimer);
+                syncResetVisibility(form);
+                debounceTimer = setTimeout(function(){
+                    fetchAndRender(new FormData(form));
+                }, 350);
+            });
+            searchInput.addEventListener('keydown', function(evt){
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                }
+            });
+        }
+
+        attachResetHandlers(form, fetchAndRender);
+        syncResetVisibility(form);
+    }
+
+    document.addEventListener('DOMContentLoaded', initCategoryFilters);
+})();
+</script>
 {% endblock %}

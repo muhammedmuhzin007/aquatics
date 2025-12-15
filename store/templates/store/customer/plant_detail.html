@@ -1,0 +1,144 @@
+{% extends 'store/base.html' %}
+{% load currency %}
+
+{% block content %}
+<section class="section">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-5 mb-4">
+                <div class="card">
+                    {% if primary_image_url %}
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#plantGalleryModal" aria-label="Open plant gallery">
+                        <img src="{{ primary_image_url }}" class="card-img-top" alt="{{ plant.name }}" style="height: 500px; object-fit: cover;">
+                    </a>
+                    {% else %}
+                    <div class="card-img-top d-flex align-items-center justify-content-center" style="height: 500px; background: linear-gradient(135deg, rgba(76,175,80,0.25), rgba(46,125,50,0.25));">
+                        <i class="fas fa-seedling fa-6x" style="opacity: 0.35;"></i>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-7 mb-4">
+                <div class="card h-100">
+                    <div class="card-body" style="padding: 40px;">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <span class="badge bg-success bg-opacity-25 text-success fw-semibold text-uppercase">{{ plant.category.name|default:'Plant' }}</span>
+                            {% if plant.stock_quantity|default:0 > 0 %}
+                                <span class="badge bg-success">In Stock</span>
+                            {% else %}
+                                <span class="badge bg-danger">Out of Stock</span>
+                            {% endif %}
+                        </div>
+                        <h1 class="text-white mt-3 mb-3" style="font-size: 2.3rem; font-weight: 700;">{{ plant.name }}</h1>
+                        {% if plant.price %}
+                        <div class="mb-4">
+                            <span class="price-badge" style="font-size: 2rem;">{{ plant.price|rupees }}</span>
+                        </div>
+                        {% else %}
+                        <p class="text-warning fw-semibold mb-4">Contact us for pricing details.</p>
+                        {% endif %}
+                        <div class="divider"></div>
+                        <h5 class="text-white mb-3">Description</h5>
+                        <p class="text-gray mb-4" style="line-height: 1.8; font-size: 1.05rem;">{{ plant.description|default:'No description available for this plant yet.' }}</p>
+                        <div class="divider"></div>
+                        <div class="mb-4">
+                            <strong class="text-white">Stock Available:</strong>
+                            {% if plant.stock_quantity %}
+                                <span class="badge bg-secondary ms-2">{{ plant.stock_quantity }} units</span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-2">While supplies last</span>
+                            {% endif %}
+                        </div>
+                        {% if plant.price and plant.stock_quantity|default:0 > 0 %}
+                        <form method="post" action="{% url 'add_plant_to_cart' plant.id %}">
+                            {% csrf_token %}
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Quantity</label>
+                                    <input type="number" class="form-control" name="quantity" value="{{ plant.minimum_order_quantity }}" min="{{ plant.minimum_order_quantity }}"{% if plant.stock_quantity %} max="{{ plant.stock_quantity }}"{% endif %} required>
+                                    {% if plant.minimum_order_quantity > 1 %}
+                                    <small class="text-muted">Minimum order: {{ plant.minimum_order_quantity }} units</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                        </form>
+                        {% elif not plant.price %}
+                        <div class="alert alert-info" role="alert">Please contact our team to place an order for this plant.</div>
+                        {% else %}
+                        <button class="btn btn-secondary btn-lg" disabled>
+                            <i class="fas fa-ban"></i> Not Available
+                        </button>
+                        {% endif %}
+                        <div class="mt-4">
+                            <a href="{% url 'plants' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Plants
+                            </a>
+                            {% if modal_images %}
+                            <button class="btn btn-outline-light ms-2" data-bs-toggle="modal" data-bs-target="#plantGalleryModal">
+                                <i class="fas fa-images"></i> View Gallery
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="plantGalleryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-white);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title"><i class="fas fa-seedling me-2"></i>{{ plant.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if modal_images %}
+                <div id="plantGalleryCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for item in modal_images %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ item.url }}" alt="{{ item.title }}" class="d-block w-100 rounded" style="max-height: 480px; object-fit: contain;">
+                            {% if item.title %}
+                            <div class="carousel-caption d-none d-md-block">
+                                <h6 class="mb-0">{{ item.title }}</h6>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if modal_images|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#plantGalleryCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#plantGalleryCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                    {% endif %}
+                    {% if modal_images|length > 1 %}
+                    <div class="carousel-indicators" style="margin-top:1rem;">
+                        {% for item in modal_images %}
+                        <button type="button" data-bs-target="#plantGalleryCarousel" data-bs-slide-to="{{ forloop.counter0 }}" class="{% if forloop.first %}active{% endif %}" aria-current="{% if forloop.first %}true{% else %}false{% endif %}" aria-label="Slide {{ forloop.counter }}"></button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center" style="height: 320px; background: rgba(76,175,80,0.08); border: 1px dashed rgba(76,175,80,0.3);">
+                    <div class="text-center">
+                        <i class="fas fa-image fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-0">No image available</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 {% extends 'store/base.html' %}
 {% load static %}
-{% block title %}Accessories (Admin){% endblock %}
+{% block title %}Accessories{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -42,6 +42,15 @@
     html[data-theme='dark'] .admin-accessories .form-select option {
         background: #0f1724; color: #fff;
     }
+
+    .admin-accessory-filters .form-label {
+        font-size: 0.85rem;
+    }
+
+    .admin-accessory-filters .btn {
+        min-height: 34px;
+    }
+
 </style>
 {% endblock %}
 
@@ -49,7 +58,7 @@
 <section class="section admin-accessories">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-heading"><i class="fas fa-boxes me-2"></i> Accessories (Admin)</h2>
+            <h2 class="section-heading"><i class="fas fa-boxes me-2"></i> Accessories</h2>
             <a href="{% url 'admin_add_accessory' %}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Add Accessory</a>
         </div>
 
@@ -62,58 +71,130 @@
             {% endfor %}
         {% endif %}
 
-        <div class="card">
+        <div class="card" id="admin-accessories-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-white">Manage Accessories</h5>
-                <small class="text-muted">Total: {{ accessories|length }}</small>
+                <small class="text-muted" id="accessory-count-summary">Showing {{ filtered_count }} of {{ total_count }}</small>
             </div>
             <div class="card-body">
-                {% if accessories %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th class="admin-text-black">Image</th>
-                            <th class="admin-text-black">Name</th>
-                            <th class="admin-text-black">Price</th>
-                            <th class="admin-text-black">Stock</th>
-                            <th class="admin-text-black">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for accessory in accessories %}
-                        <tr>
-                            <td>
-                                {% if accessory.image %}
-                                    <img src="{{ accessory.image.url }}" alt="{{ accessory.name }}" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
-                                {% else %}
-                                    <div style="width:64px; height:48px; display:inline-block;"></div>
-                                {% endif %}
-                            </td>
-                            <td><strong class="admin-text-black">{{ accessory.name }}</strong></td>
-                            <td class="admin-text-black">₹{{ accessory.price }}</td>
-                            <td class="admin-text-black">{{ accessory.stock_quantity }}</td>
-                            <td>
-                                <a class="btn btn-primary btn-sm" href="{% url 'admin_edit_accessory' accessory.id %}"><i class="fas fa-edit"></i></a>
-                                <form method="post" action="{% url 'admin_delete_accessory' accessory.id %}" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this accessory?">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state text-center py-4">
-                    <i class="fas fa-boxes fa-2x mb-2"></i>
-                    <h4 class="mb-1">No accessories yet</h4>
-                    <p class="text-muted">Create your first accessory to show up here.</p>
+                <form method="get" class="row g-3 admin-accessory-filters align-items-end mb-4" id="admin-accessory-filter-form">
+                    <div class="col-md-4 col-lg-3">
+                        <label for="accessory-category" class="form-label text-muted">Category</label>
+                        <select id="accessory-category" name="category" class="form-select form-select-sm">
+                            <option value="">All categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-lg-3">
+                        <label for="accessory-status" class="form-label text-muted">Availability</label>
+                        <select id="accessory-status" name="status" class="form-select form-select-sm">
+                            <option value="">All statuses</option>
+                            <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
+                            <option value="in_stock" {% if selected_status == 'in_stock' %}selected{% endif %}>In stock</option>
+                            <option value="out_of_stock" {% if selected_status == 'out_of_stock' %}selected{% endif %}>Out of stock</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-lg-5 flex-grow-1">
+                        <label for="accessory-search" class="form-label text-muted">Search</label>
+                        <input id="accessory-search" type="search" name="search" class="form-control form-control-sm" placeholder="Search accessories" value="{{ search_query }}">
+                    </div>
+                </form>
+                <div id="admin-accessories-table" data-ajax-url="{% url 'admin_accessories_ajax' %}">
+                    {% include 'store/admin/_accessories_table.html' %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
 </section>
+
+<script>
+(function(){
+    const form = document.getElementById('admin-accessory-filter-form');
+    const tableContainer = document.getElementById('admin-accessories-table');
+    const summaryEl = document.getElementById('accessory-count-summary');
+    if (!form || !tableContainer || !tableContainer.dataset.ajaxUrl) {
+        return;
+    }
+
+    let debounceTimer = null;
+    let activeController = null;
+
+    function updateSummary(filtered, total) {
+        if (!summaryEl) {
+            return;
+        }
+        summaryEl.textContent = `Showing ${filtered} of ${total}`;
+    }
+
+    function fetchAccessories(params) {
+        const url = new URL(tableContainer.dataset.ajaxUrl, window.location.origin);
+        params.forEach((value, key) => {
+            if (value) {
+                url.searchParams.append(key, value);
+            }
+        });
+
+        if (activeController) {
+            activeController.abort();
+        }
+        activeController = new AbortController();
+        tableContainer.classList.add('is-loading');
+
+        fetch(url.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: activeController.signal,
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to load accessories');
+            }
+            return response.json();
+        }).then(payload => {
+            if (payload.table_html !== undefined) {
+                tableContainer.innerHTML = payload.table_html;
+            }
+            updateSummary(payload.filtered_count ?? 0, payload.total_count ?? 0);
+            const qs = new URLSearchParams(params);
+            const queryString = qs.toString();
+            const targetUrl = queryString ? `${form.action}?${queryString}` : form.action;
+            window.history.replaceState(null, '', targetUrl);
+        }).catch(error => {
+            if (error.name === 'AbortError') {
+                return;
+            }
+            tableContainer.innerHTML = '<div class="alert alert-danger">Unable to load accessories right now. Please try again.</div>';
+        }).finally(() => {
+            tableContainer.classList.remove('is-loading');
+        });
+    }
+
+    form.addEventListener('submit', evt => evt.preventDefault());
+
+    const selectInputs = form.querySelectorAll('select');
+    selectInputs.forEach(select => {
+        select.addEventListener('change', () => {
+            const formData = new FormData(form);
+            fetchAccessories(formData);
+        });
+    });
+
+    const searchInput = document.getElementById('accessory-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const formData = new FormData(form);
+                fetchAccessories(formData);
+            }, 350);
+        });
+        searchInput.addEventListener('keydown', evt => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

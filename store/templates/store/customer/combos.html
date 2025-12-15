@@ -4,109 +4,128 @@
 {% block content %}
 <section class="section">
   <div class="container">
-    <h2 class="section-heading">Combos & Bundles</h2>
-    {% if combos and combos|length > 0 %}
-      <div class="row">
-        {% for combo in combos %}
-          <div class="col-md-6 mb-4 d-flex">
-            <div class="card combo-card w-100">
-              <div class="card-body">
-                <div class="combo-carousel" data-combo-id="{{ combo.id }}">
-                  {% for item in combo.preview_items %}
-                    {% if item and item.fish and item.fish.image %}
-                      <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" class="carousel-slide{% if forloop.first %} active{% endif %}" loading="lazy">
-                    {% endif %}
-                  {% endfor %}
-                  <div class="carousel-controls">
-                    <button class="carousel-prev" aria-label="Previous">‹</button>
-                    <button class="carousel-next" aria-label="Next">›</button>
-                  </div>
-                </div>
-                <h5 class="card-title">{{ combo.title }}</h5>
-                {% if combo.bundle_price %}
-                  <p class="price-badge">Bundle: {{ combo.bundle_price|rupees }}</p>
-                {% endif %}
-                <ul class="list-unstyled">
-                  {% for item in combo.items.all %}
-                    <li class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <span class="combo-fish-name">{{ item.fish.name }}</span>
-                        <span class="mx-1">x{{ item.quantity }}</span>
-                        <small class="text-muted">({{ item.fish.price|rupees }})</small>
-                      </div>
-                      <div>
-                        <a href="{% url 'fish_detail' item.fish.id %}?hide_add_to_cart=1" class="btn btn-sm btn-outline-primary">View details</a>
-                      </div>
-                    </li>
-                  {% endfor %}
-                </ul>
-                <div class="mt-3">
-                  <form method="post" action="{% url 'add_combo_to_cart' combo.id %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary">Add Combo to Cart</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
+    <h2 class="section-heading">Offers</h2>
+
+    <form id="combo-filters" method="get" class="mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-7 col-lg-8">
+          <label for="combo-search" class="form-label text-muted mb-1">Search offers</label>
+          <input id="combo-search" type="text" name="search" class="form-control form-control-lg"
+                 value="{{ search_query }}" placeholder="Search by offer name or fish..." autocomplete="off">
+        </div>
+        <div class="col-12 col-md-5 col-lg-4">
+          <label for="combo-category-filter" class="form-label text-muted mb-1">Category</label>
+          <select id="combo-category-filter" name="category" class="form-select form-select-lg">
+            <option value=""{% if not category_filter %} selected{% endif %}>All categories</option>
+            {% for category in combo_categories %}
+            <option value="{{ category.id }}"{% if category_filter and category.id|stringformat:"s" == category_filter|stringformat:"s" %} selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
-    {% else %}
-      <div class="empty-state">
-        <p>No combos available right now. Check back later.</p>
-      </div>
-    {% endif %}
+    </form>
+
+    <div id="combo-results">
+      {% include 'store/customer/partials/_combo_cards.html' with combos=combos %}
+    </div>
   </div>
 </section>
 {% endblock %}
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-  const carousels = document.querySelectorAll('.combo-carousel');
-  carousels.forEach(function(root){
-    let slides = Array.from(root.querySelectorAll('.carousel-slide'));
+  function initCarousels(scope) {
+    const carousels = (scope || document).querySelectorAll('.combo-carousel');
+    carousels.forEach(function(root){
+      if (root.dataset.carouselInit === '1') {
+        return;
+      }
+      root.dataset.carouselInit = '1';
+      let slides = Array.from(root.querySelectorAll('.carousel-slide'));
+      const controls = root.querySelector('.carousel-controls');
 
-    const controls = root.querySelector('.carousel-controls');
+      if (!slides.length) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'carousel-slide';
+        placeholder.style.minHeight = '160px';
+        root.appendChild(placeholder);
+        if (controls) controls.style.display = 'none';
+        slides = [placeholder];
+        slides.forEach((s, k) => s.classList.toggle('active', k === 0));
+        return;
+      }
 
-    // If there are no image slides, create a lightweight placeholder and hide controls
-    if (!slides.length) {
-      const placeholder = document.createElement('div');
-      placeholder.className = 'carousel-slide';
-      placeholder.style.minHeight = '160px';
-      root.appendChild(placeholder);
-      if (controls) controls.style.display = 'none';
-      slides = [placeholder];
-      slides.forEach((s, k) => s.classList.toggle('active', k === 0));
-      return;
+      if (slides.length <= 1) {
+        if (controls) controls.style.display = 'none';
+        slides.forEach((s, k) => s.classList.toggle('active', k === 0));
+        return;
+      }
+
+      let idx = slides.findIndex(s=>s.classList.contains('active'));
+      if (idx < 0) idx = 0;
+      let timer = null;
+      function show(i){
+        slides.forEach((s, k) => s.classList.toggle('active', k===i));
+        idx = i;
+      }
+      function next(){ show((idx+1)%slides.length); }
+      function prev(){ show((idx-1+slides.length)%slides.length); }
+      const nextBtn = root.querySelector('.carousel-next');
+      const prevBtn = root.querySelector('.carousel-prev');
+      if (nextBtn) nextBtn.addEventListener('click', function(e){ e.preventDefault(); stop(); next(); start(); });
+      if (prevBtn) prevBtn.addEventListener('click', function(e){ e.preventDefault(); stop(); prev(); start(); });
+      function start(){ if (timer) clearInterval(timer); timer = setInterval(next, 3000); }
+      function stop(){ if (timer) { clearInterval(timer); timer = null; } }
+      root.addEventListener('mouseenter', stop);
+      root.addEventListener('mouseleave', start);
+      start();
+    });
+  }
+
+  function attachFilters() {
+    const searchInput = document.getElementById('combo-search');
+    const priceSelect = null;
+    const categorySelect = document.getElementById('combo-category-filter');
+    const resultsContainer = document.getElementById('combo-results');
+    let debounceTimer = null;
+
+    function fetchCombos() {
+      const params = new URLSearchParams();
+      const searchVal = searchInput ? searchInput.value.trim() : '';
+      const priceVal = '';
+      const categoryVal = categorySelect ? categorySelect.value : '';
+      if (searchVal) params.set('search', searchVal);
+      if (categoryVal) params.set('category', categoryVal);
+      const qs = params.toString();
+      const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(resp => resp.json())
+        .then(data => {
+          if (data && data.html !== undefined) {
+            resultsContainer.innerHTML = data.html;
+            initCarousels(resultsContainer);
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', url);
+            }
+          }
+        })
+        .catch(err => console.error('Combo filter error', err));
     }
 
-    // If only one slide, hide controls and do not autoplay
-    if (slides.length <= 1) {
-      if (controls) controls.style.display = 'none';
-      slides.forEach((s, k) => s.classList.toggle('active', k === 0));
-      return;
+    if (searchInput) {
+      searchInput.addEventListener('input', function(){
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchCombos, 300);
+      });
     }
 
-    let idx = slides.findIndex(s=>s.classList.contains('active'));
-    if (idx < 0) idx = 0;
-    let timer = null;
-    function show(i){
-      slides.forEach((s, k) => s.classList.toggle('active', k===i));
-      idx = i;
+    if (categorySelect) {
+      categorySelect.addEventListener('change', fetchCombos);
     }
-    function next(){ show((idx+1)%slides.length); }
-    function prev(){ show((idx-1+slides.length)%slides.length); }
-    const nextBtn = root.querySelector('.carousel-next');
-    const prevBtn = root.querySelector('.carousel-prev');
-    if (nextBtn) nextBtn.addEventListener('click', function(e){ e.preventDefault(); stop(); next(); start(); });
-    if (prevBtn) prevBtn.addEventListener('click', function(e){ e.preventDefault(); stop(); prev(); start(); });
-    function start(){ if (timer) clearInterval(timer); timer = setInterval(next, 3000); }
-    function stop(){ if (timer) { clearInterval(timer); timer = null; } }
-    // pause on hover
-    root.addEventListener('mouseenter', stop);
-    root.addEventListener('mouseleave', start);
-    start();
-  });
+  }
+
+  initCarousels();
+  attachFilters();
 });
 </script>
 {% endblock %}

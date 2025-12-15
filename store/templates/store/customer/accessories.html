@@ -7,13 +7,23 @@
   {% if accessories and accessories|length > 0 %}
     <div class="mb-4">
       <h2 class="mb-2">Accessories</h2>
-      <div>
-        <div class="row g-0">
-          <div class="col-12">
-            <input id="accessory-search" type="text" class="form-control form-control-lg search-large" name="q" value="{{ search_query }}" placeholder="Search accessories" autocomplete="off" style="width:100%;">
+      <form id="accessory-filter-form" class="mb-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-8 col-lg-9">
+            <label for="accessory-search" class="form-label text-muted mb-1">Search accessories</label>
+            <input id="accessory-search" type="text" class="form-control form-control-lg search-large" name="q" value="{{ search_query }}" placeholder="Search accessories" autocomplete="off">
+          </div>
+          <div class="col-12 col-md-4 col-lg-3">
+            <label for="accessory-category" class="form-label text-muted mb-1">Category</label>
+            <select id="accessory-category" name="category" class="form-select form-select-lg">
+              <option value=""{% if not selected_category %} selected{% endif %}>All</option>
+              {% for category in categories %}
+              <option value="{{ category.id }}"{% if selected_category and category.id|stringformat:"s" == selected_category|stringformat:"s" %} selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
-      </div>
+      </form>
     </div>
 
     <div id="accessory-results">
@@ -97,6 +107,8 @@
 // Adapted to fish-like working: debounce, fetch JSON partial from same path, insert results
 (() => {
   const input = document.getElementById('accessory-search');
+  const categorySelect = document.getElementById('accessory-category');
+  const filterForm = document.getElementById('accessory-filter-form');
   if (!input) return;
 
   const resultsContainer = document.getElementById('accessory-results');
@@ -119,15 +131,23 @@
     }, 220);
   }
 
-  async function fetchResults(query) {
-    const params = new URLSearchParams({ q: query });
-    const url = window.location.pathname + '?' + params.toString();
+  async function fetchResults(query, category) {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (category) params.set('category', category);
+    const qs = params.toString();
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
     try {
       const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
       if (resp.redirected && resp.url && resp.url.includes('/login')) { window.location = resp.url; return; }
       if (!resp.ok) return;
       const data = await resp.json();
-      if (data && data.html !== undefined) insertResults(data.html);
+      if (data && data.html !== undefined) {
+        insertResults(data.html);
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', url);
+        }
+      }
     } catch (err) {
       console.error('Accessory live search error', err);
     } finally {
@@ -135,15 +155,46 @@
     }
   }
 
-  input.addEventListener('input', function(e) {
-    const q = this.value.trim();
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fetchResults(q), delay);
-  });
+  function currentFilters() {
+    const query = input ? input.value.trim() : '';
+    const category = categorySelect ? categorySelect.value : '';
+    return { query, category };
+  }
 
-  input.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timeout); fetchResults(this.value.trim()); }
-  });
+  if (input) {
+    input.addEventListener('input', function() {
+      const { query, category } = currentFilters();
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fetchResults(query, category), delay);
+    });
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(timeout);
+        const { query, category } = currentFilters();
+        fetchResults(query, category);
+      }
+    });
+  }
+
+  function bindSelect(selectEl) {
+    if (!selectEl) return;
+    selectEl.addEventListener('change', function() {
+      const { query, category } = currentFilters();
+      fetchResults(query, category);
+    });
+  }
+
+  bindSelect(categorySelect);
+
+  if (filterForm) {
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const { query, category } = currentFilters();
+      fetchResults(query, category);
+    });
+  }
 
   // Keep pagination interception for AJAX navigation
   document.body.addEventListener('click', function(e) {
@@ -154,9 +205,12 @@
     if (!href) return;
     // Construct absolute URL relative to current path
     const url = new URL(href, window.location.href);
-    // preserve current input value
-    const q = (input && input.value) ? input.value.trim() : '';
-    if (q) url.searchParams.set('q', q);
+    // preserve current filters
+    const { query, category } = currentFilters();
+    url.searchParams.delete('q');
+    url.searchParams.delete('category');
+    if (query) url.searchParams.set('q', query);
+    if (category) url.searchParams.set('category', category);
     // Use same fetchResults but with full query string
     (async () => {
       try {
@@ -164,7 +218,12 @@
         if (resp.redirected && resp.url && resp.url.includes('/login')) { window.location = resp.url; return; }
         if (!resp.ok) return;
         const data = await resp.json();
-        if (data && data.html !== undefined) insertResults(data.html);
+        if (data && data.html !== undefined) {
+          insertResults(data.html);
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', url.toString());
+          }
+        }
       } catch (err) { console.error('Accessory pagination AJAX error', err); }
       finally { /* no spinner handling */ }
     })();

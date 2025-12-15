@@ -4,9 +4,11 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 import random
 import string
 from urllib.parse import urlparse, parse_qs
+from decimal import Decimal
 
 
 class CustomUserManager(UserManager):
@@ -55,13 +57,85 @@ class OTP(models.Model):
 
 
 class Category(models.Model):
+    CATEGORY_TYPES = [
+        ('fish', 'Fish'),
+        ('combo', 'Combo Offers'),
+        ('accessory', 'Accessories'),
+        ('plant', 'Plants'),
+    ]
+
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    category_type = models.CharField(max_length=20, choices=CATEGORY_TYPES, default='fish')
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
+    class Meta:
+        ordering = ['category_type', 'name']
+
     def __str__(self):
         return self.name
+
+
+class CategoryTypeManager(models.Manager):
+    def __init__(self, category_type):
+        super().__init__()
+        self.category_type = category_type
+
+    def get_queryset(self):
+        return super().get_queryset().filter(category_type=self.category_type)
+
+
+class FishCategory(Category):
+    objects = CategoryTypeManager('fish')
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Fish Category'
+        verbose_name_plural = 'Fish Categories'
+
+    def save(self, *args, **kwargs):
+        self.category_type = 'fish'
+        super().save(*args, **kwargs)
+
+
+class ComboCategory(Category):
+    objects = CategoryTypeManager('combo')
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Combo Offer Category'
+        verbose_name_plural = 'Combo Offer Categories'
+
+    def save(self, *args, **kwargs):
+        self.category_type = 'combo'
+        super().save(*args, **kwargs)
+
+
+class AccessoryCategory(Category):
+    objects = CategoryTypeManager('accessory')
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Accessory Category'
+        verbose_name_plural = 'Accessory Categories'
+
+    def save(self, *args, **kwargs):
+        self.category_type = 'accessory'
+        super().save(*args, **kwargs)
+
+
+class PlantCategory(Category):
+    objects = CategoryTypeManager('plant')
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Plant Category'
+        verbose_name_plural = 'Plant Categories'
+
+    def save(self, *args, **kwargs):
+        self.category_type = 'plant'
+        super().save(*args, **kwargs)
 
 
 class Breed(models.Model):
@@ -163,6 +237,8 @@ def fish_post_save(sender, instance, created, **kwargs):
                 level='warning',
                 fish=instance,
             )
+
+
 
 
 class FishMedia(models.Model):
@@ -276,6 +352,14 @@ class ComboOffer(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     bundle_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='combo_offers',
+        help_text='Select a combo offer category to help group related bundles.',
+    )
     is_active = models.BooleanField(default=True)
     # Whether to show this combo on the homepage or promotional spots.
     # Added to match existing DB schema where this column may already exist.
@@ -410,6 +494,19 @@ class OrderAccessoryItem(models.Model):
         return self.price * self.quantity
 
 
+class OrderPlantItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='plant_items')
+    plant = models.ForeignKey('Plant', on_delete=models.CASCADE)
+    quantity = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.order.order_number} - {self.plant.name}"
+
+    def get_total(self):
+        return self.price * self.quantity
+
+
 class Review(models.Model):
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews')
@@ -465,6 +562,128 @@ class Accessory(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Plant(models.Model):
+    """Aquatic plants grouped by plant categories."""
+    name = models.CharField(max_length=200)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='plants',
+        help_text='Select a plant category to organise this plant.',
+    )
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    stock_quantity = models.IntegerField(default=0)
+    minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
+    image = models.ImageField(upload_to='plants/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_plants',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'display_order']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        super().clean()
+        if self.category and self.category.category_type != 'plant':
+            raise ValidationError({'category': 'Selected category must be a plant category.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
+@receiver(pre_save, sender=Plant)
+def plant_pre_save(sender, instance, **kwargs):
+    if not instance.pk:
+        instance._previous_stock = None
+        return
+    try:
+        prev = sender.objects.get(pk=instance.pk)
+        instance._previous_stock = prev.stock_quantity
+    except sender.DoesNotExist:
+        instance._previous_stock = None
+
+
+@receiver(post_save, sender=Plant)
+def plant_post_save(sender, instance, created, **kwargs):
+    if created:
+        return
+
+    prev = getattr(instance, '_previous_stock', None)
+    curr = instance.stock_quantity or 0
+
+    if curr > 0 or (prev is not None and prev <= 0):
+        return
+
+    notification_title = f"{instance.name} plant is out of stock"
+    exists = Notification.objects.filter(title=notification_title, is_read=False).exists()
+    if exists:
+        return
+
+    Notification.objects.create(
+        title=notification_title,
+        message=f"{instance.name} plant stock has reached zero. Please restock promptly.",
+        level='critical',
+    )
+
+
+class PlantMedia(models.Model):
+    """Gallery media items for a plant."""
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE, related_name='media')
+    image = models.ImageField(upload_to='plants/gallery/')
+    title = models.CharField(max_length=150, blank=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+
+    def __str__(self):
+        return f"{self.plant.name} - {self.title or self.id}"
+
+    @property
+    def source(self):
+        try:
+            return self.image.url
+        except Exception:
+            return None
+
+
+class PlantCart(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='plant_cart_items')
+    plant = models.ForeignKey('Plant', on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'plant']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.plant.name}"
+
+    def get_total(self):
+        if not self.plant.price:
+            return Decimal('0')
+        return self.plant.price * self.quantity
 
 
 class ContactInfo(models.Model):

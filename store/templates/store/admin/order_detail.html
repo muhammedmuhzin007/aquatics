@@ -234,6 +234,28 @@
                         </div>
                     </div>
                 </div>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Contact Customer</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="send_message">
+                            <div class="mb-3">
+                                <label for="message-subject" class="form-label info-value"><strong>Subject</strong> <span class="text-muted" style="font-size: 0.8rem;">(optional)</span></label>
+                                <input type="text" id="message-subject" name="subject" class="form-control" placeholder="Update on your recent order">
+                            </div>
+                            <div class="mb-3">
+                                <label for="message-body" class="form-label info-value"><strong>Message</strong></label>
+                                <textarea id="message-body" name="message" class="form-control" rows="5" placeholder="Write your message to the customer..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-paper-plane"></i> Send Email
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
             
             <div class="col-md-4 mb-4">
@@ -250,6 +272,7 @@
                         <!-- Update Order Status Form -->
                         <form method="POST" class="mb-3">
                             {% csrf_token %}
+                            <input type="hidden" name="action" value="update_status">
                             <label class="form-label info-value"><strong>Update Status:</strong></label>
                             <select name="status" class="form-select mb-2">
                                 <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>

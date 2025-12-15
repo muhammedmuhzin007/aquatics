@@ -216,9 +216,27 @@
                         <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
                             <div>
                                 <strong class="text-white">{{ item.fish.name }}</strong><br>
-                                <small class="text-gray">{{ item.fish.breed.name }} × {{ item.quantity }}</small>
+                                <small class="text-gray">{{ item.fish.breed.name }} x {{ item.quantity }}</small>
                             </div>
                             <strong class="text-white">{{ item.get_total|rupees }}</strong>
+                        </div>
+                        {% endfor %}
+                        {% for plant in plant_items %}
+                        <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                            <div>
+                                <strong class="text-white">{{ plant.plant.name }}</strong><br>
+                                <small class="text-gray">Plant x {{ plant.quantity }}</small>
+                            </div>
+                            <strong class="text-white">{{ plant.get_total|rupees }}</strong>
+                        </div>
+                        {% endfor %}
+                        {% for accessory in accessory_items %}
+                        <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                            <div>
+                                <strong class="text-white">{{ accessory.accessory.name }}</strong><br>
+                                <small class="text-gray">Accessory x {{ accessory.quantity }}</small>
+                            </div>
+                            <strong class="text-white">{{ accessory.get_total|rupees }}</strong>
                         </div>
                         {% endfor %}
                         <div class="d-flex justify-content-between mt-3 pt-3" style="border-top: 2px solid var(--border-color);">

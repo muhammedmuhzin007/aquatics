@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from .payments import razorpay as razorpay_provider
 
@@ -3247,7 +3247,8 @@ def admin_add_combo_view(request):
     combo_categories = Category.objects.filter(category_type='combo').order_by('name')
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
-        bundle_price = request.POST.get('bundle_price') or None
+        raw_bundle_price = (request.POST.get('bundle_price') or '').strip()
+        bundle_price = None
         is_active = request.POST.get('is_active') == 'on'
         show_on_homepage = request.POST.get('show_on_homepage') == 'on'
         category_id = request.POST.get('category_id') or None
@@ -3268,6 +3269,14 @@ def admin_add_combo_view(request):
         if not selected_category:
             errors.append('Select a category for this combo.')
 
+        if raw_bundle_price:
+            try:
+                bundle_price = Decimal(raw_bundle_price)
+                if bundle_price < 0:
+                    errors.append('Bundle price cannot be negative.')
+            except InvalidOperation:
+                errors.append('Bundle price must be a valid decimal number.')
+
         if errors:
             fishes = Fish.objects.all().order_by('name')
             combos = ComboOffer.objects.all().order_by('-created_at')
@@ -3277,7 +3286,7 @@ def admin_add_combo_view(request):
                 'combos': combos,
                 'categories': combo_categories,
                 'title': title,
-                'bundle_price': bundle_price,
+                'bundle_price': raw_bundle_price,
                 'is_active': is_active,
                 'show_on_homepage': show_on_homepage,
                 'selected_category_id': category_id,
@@ -3285,7 +3294,7 @@ def admin_add_combo_view(request):
 
         combo = ComboOffer.objects.create(
             title=title,
-            bundle_price=bundle_price or None,
+            bundle_price=bundle_price,
             is_active=is_active,
             show_on_homepage=show_on_homepage,
             category=selected_category,
@@ -3342,7 +3351,8 @@ def admin_edit_combo_view(request, combo_id):
     combo_categories = Category.objects.filter(category_type='combo').order_by('name')
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
-        bundle_price = request.POST.get('bundle_price') or None
+        raw_bundle_price = (request.POST.get('bundle_price') or '').strip()
+        bundle_price = None
         is_active = request.POST.get('is_active') == 'on'
         show_on_homepage = request.POST.get('show_on_homepage') == 'on'
         category_id = request.POST.get('category_id') or None
@@ -3363,6 +3373,14 @@ def admin_edit_combo_view(request, combo_id):
         if not selected_category:
             errors.append('Select a category for this combo.')
 
+        if raw_bundle_price:
+            try:
+                bundle_price = Decimal(raw_bundle_price)
+                if bundle_price < 0:
+                    errors.append('Bundle price cannot be negative.')
+            except InvalidOperation:
+                errors.append('Bundle price must be a valid decimal number.')
+
         if errors:
             fishes = Fish.objects.all().order_by('name')
             combos = ComboOffer.objects.all().order_by('-created_at')
@@ -3374,11 +3392,12 @@ def admin_edit_combo_view(request, combo_id):
                 'combo': combo,
                 'categories': combo_categories,
                 'selected_category_id': category_id,
+                'bundle_price': raw_bundle_price,
             })
 
         # Update combo fields
         combo.title = title
-        combo.bundle_price = bundle_price or None
+        combo.bundle_price = bundle_price
         combo.is_active = is_active
         combo.show_on_homepage = show_on_homepage
         combo.category = selected_category

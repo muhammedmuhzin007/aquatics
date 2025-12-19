@@ -135,6 +135,7 @@ urlpatterns = [
     path('store-admin/delete-service/<int:service_id>/', views.admin_delete_service_view, name='admin_delete_service'),
     # Contact Info Management
     path('store-admin/contact/', views.admin_contact_view, name='admin_contact'),
+    path('store-admin/shipping-charges/', views.admin_shipping_charges_view, name='admin_shipping_charges'),
     path('store-admin/add-contact/', views.admin_add_contact_view, name='admin_add_contact'),
     path('store-admin/edit-contact/<int:contact_id>/', views.admin_edit_contact_view, name='admin_edit_contact'),
     path('store-admin/gallery/', views.admin_gallery_view, name='admin_gallery'),

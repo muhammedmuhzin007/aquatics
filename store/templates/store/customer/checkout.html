@@ -207,69 +207,112 @@
 
         <div class="row justify-content-center">
             <div class="col-12 col-md-10 col-lg-8 col-xl-7 mb-4">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="text-white"><i class="fas fa-shopping-cart"></i> Order Summary</h5>
-                    </div>
-                    <div class="card-body" id="order-summary-body" data-total="{{ total }}">
-                        {% for item in cart_items %}
-                        <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
-                            <div>
-                                <strong class="text-white">{{ item.fish.name }}</strong><br>
-                                <small class="text-gray">{{ item.fish.breed.name }} x {{ item.quantity }}</small>
-                            </div>
-                            <strong class="text-white">{{ item.get_total|rupees }}</strong>
-                        </div>
-                        {% endfor %}
-                        {% for plant in plant_items %}
-                        <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
-                            <div>
-                                <strong class="text-white">{{ plant.plant.name }}</strong><br>
-                                <small class="text-gray">Plant x {{ plant.quantity }}</small>
-                            </div>
-                            <strong class="text-white">{{ plant.get_total|rupees }}</strong>
-                        </div>
-                        {% endfor %}
-                        {% for accessory in accessory_items %}
-                        <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
-                            <div>
-                                <strong class="text-white">{{ accessory.accessory.name }}</strong><br>
-                                <small class="text-gray">Accessory x {{ accessory.quantity }}</small>
-                            </div>
-                            <strong class="text-white">{{ accessory.get_total|rupees }}</strong>
-                        </div>
-                        {% endfor %}
-                        <div class="d-flex justify-content-between mt-3 pt-3" style="border-top: 2px solid var(--border-color);">
-                            <h6 class="text-white">Subtotal:</h6>
-                            <h6 class="text-white">{{ total|rupees }}</h6>
-                        </div>
-                        {% if applied_coupon %}
-                        <div class="d-flex justify-content-between text-success">
-                            <span id="discount-label"><i class="fas fa-tag me-1"></i>Coupon <strong>{{ applied_coupon.code }}</strong> ({{ applied_coupon.discount_percentage }}%):</span>
-                            <span id="discount-amount">{{ discount|rupees }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="d-flex justify-content-between mt-2">
-                            <h5 class="text-white">Total:</h5>
-                            <h5 class="price-badge" style="font-size: 1.8rem;" id="final-total">{{ final_total|rupees }}</h5>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Draft notice -->
-                {% if order and order.payment_status == 'pending' and not order.transaction_id %}
-                <div class="alert alert-info mt-3">
-                    <strong>Draft order created:</strong>
-                    Order <code>{{ order.order_number }}</code> has been prepared. It will be finalized when you place the order.
-                </div>
-                {% endif %}
+                <form method="POST" class="checkout-form" id="ajax-checkout-form" autocomplete="off">
+                    {% csrf_token %}
 
-                <!-- Coupon Code Section -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5><i class="fas fa-ticket-alt"></i> Have a Coupon Code?</h5>
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <label class="form-label">Shipping Address *</label>
+                                <textarea class="form-control" name="shipping_address" rows="3" required 
+                                          placeholder="Enter your complete shipping address">{{ shipping_address_prefill }}</textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">State *</label>
+                                <input type="text" class="form-control" name="shipping_state" value="{{ shipping_state_prefill }}" required placeholder="State / Region">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">Pincode *</label>
+                                <input type="text" class="form-control" name="shipping_pincode" value="{{ shipping_pincode_prefill }}" required placeholder="Postal code">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">Phone Number *</label>
+                                <input type="text" class="form-control" name="phone_number" 
+                                       value="{% if user.phone_number %}{{ user.phone_number }}{% endif %}" 
+                                       required placeholder="Enter your phone number">
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body" id="coupon-input-body">
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="text-white"><i class="fas fa-shopping-cart"></i> Order Summary</h5>
+                        </div>
+                        <div class="card-body" id="order-summary-body" data-total="{{ total }}" data-discount="{{ discount }}" data-weight="{{ total_weight }}" data-kerala-rate="{{ kerala_delivery_rate|floatformat:2 }}" data-default-rate="{{ default_delivery_rate|floatformat:2 }}">
+                            {% for item in cart_items %}
+                            <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                                <div>
+                                    <strong class="text-white">{{ item.fish.name }}</strong><br>
+                                    <small class="text-gray">{{ item.fish.breed.name }} x {{ item.quantity }}</small>
+                                </div>
+                                <strong class="text-white">{{ item.get_total|rupees }}</strong>
+                            </div>
+                            {% endfor %}
+                            {% for plant in plant_items %}
+                            <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                                <div>
+                                    <strong class="text-white">{{ plant.plant.name }}</strong><br>
+                                    <small class="text-gray">Plant x {{ plant.quantity }}</small>
+                                </div>
+                                <strong class="text-white">{{ plant.get_total|rupees }}</strong>
+                            </div>
+                            {% endfor %}
+                            {% for accessory in accessory_items %}
+                            <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                                <div>
+                                    <strong class="text-white">{{ accessory.accessory.name }}</strong><br>
+                                    <small class="text-gray">Accessory x {{ accessory.quantity }}</small>
+                                </div>
+                                <strong class="text-white">{{ accessory.get_total|rupees }}</strong>
+                            </div>
+                            {% endfor %}
+                            <div class="d-flex justify-content-between mt-3 pt-3" style="border-top: 2px solid var(--border-color);">
+                                <h6 class="text-white">Subtotal:</h6>
+                                <h6 class="text-white">{{ total|rupees }}</h6>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-white">Total Weight:</span>
+                                <span class="text-white" id="total-weight-display" data-weight="{{ total_weight }}">{{ total_weight|floatformat:3 }} kg</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-white">Delivery Charge (<span id="delivery-rate-text" data-rate="{{ delivery_rate }}">₹{{ delivery_rate|floatformat:0 }}</span>/kg)</span>
+                                <span class="text-white" id="delivery-charge-display" data-amount="{{ delivery_charge }}">{{ delivery_charge|rupees }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-success" id="discount-row" {% if discount|floatformat:2 == '0.00' %}style="display:none;"{% endif %}>
+                                <span id="discount-label">
+                                    {% if applied_coupon %}
+                                    <i class="fas fa-tag me-1"></i>Coupon <strong>{{ applied_coupon.code }}</strong> ({{ applied_coupon.discount_percentage }}%):
+                                    {% endif %}
+                                </span>
+                                <span id="discount-amount" data-discount="{{ discount }}">{{ discount|rupees }}</span>
+                            </div>
+                            <div class="text-success mt-1" id="you-saved" {% if discount|floatformat:2 == '0.00' %}style="display:none;"{% endif %}>
+                                You saved {{ discount|rupees }}
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <h5 class="text-white">Total:</h5>
+                                <h5 class="price-badge" style="font-size: 1.8rem;" id="final-total" data-final="{{ final_total }}">{{ final_total|rupees }}</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Draft notice -->
+                    {% if order and order.payment_status == 'pending' and not order.transaction_id %}
+                    <div class="alert alert-info mt-3">
+                        <strong>Draft order created:</strong>
+                        Order <code>{{ order.order_number }}</code> has been prepared. It will be finalized when you place the order.
+                    </div>
+                    {% endif %}
+
+                    <!-- Coupon Code Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-ticket-alt"></i> Have a Coupon Code?</h5>
+                        </div>
+                        <div class="card-body" id="coupon-input-body">
                         {% if applied_coupon %}
                         <div class="alert alert-success d-flex justify-content-between align-items-center">
                             <div>
@@ -335,102 +378,80 @@
                         <div id="coupon-message" class="mt-2"></div>
                     </div>
                 </div>
-                
-                <form method="POST" class="checkout-form" id="ajax-checkout-form" autocomplete="off">
-                    {% csrf_token %}
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-credit-card"></i> Payment Method</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="payment-method-selector">
-                            <div class="payment-option">
-                                <input type="radio" id="card" name="payment_method" value="card" required>
-                                <label for="card" class="payment-card">
-                                    <i class="fas fa-credit-card"></i>
-                                    <span class="payment-name">Card Payment</span>
-                                    <span class="payment-desc">Credit/Debit Card</span>
-                                </label>
-                            </div>
-                            
-                            <div class="payment-option">
-                                <input type="radio" id="upi" name="payment_method" value="upi" required>
-                                <label for="upi" class="payment-card">
-                                    <i class="fas fa-mobile-alt"></i>
-                                    <span class="payment-name">UPI Payment</span>
-                                    <span class="payment-desc">Google Pay, PhonePe, etc.</span>
-                                </label>
-                            </div>
-                            
-                            <div class="payment-option">
-                                <input type="radio" id="netbanking" name="payment_method" value="netbanking" required>
-                                <label for="netbanking" class="payment-card">
-                                    <i class="fas fa-university"></i>
-                                    <span class="payment-name">Net Banking</span>
-                                    <span class="payment-desc">Online bank transfer</span>
-                                </label>
-                            </div>
-                            
-                            <div class="payment-option">
-                                <input type="radio" id="wallet" name="payment_method" value="wallet" required>
-                                <label for="wallet" class="payment-card">
-                                    <i class="fas fa-wallet"></i>
-                                    <span class="payment-name">Digital Wallet</span>
-                                    <span class="payment-desc">Paytm, Amazon Pay, etc.</span>
-                                </label>
-                            </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-credit-card"></i> Payment Method</h5>
                         </div>
-                        <div class="upi-qr-inline" id="upi-qr-section">
-                            <h6><i class="fas fa-qrcode me-2"></i>UPI QR (Backup)</h6>
-                            <div class="upi-qr-body">
-                                <img id="upi-qr-image" alt="UPI QR Code" src="" loading="lazy" />
-                                <div class="upi-qr-meta">
-                                    <div class="small text-muted">Pay to UPI ID</div>
-                                    <div class="upi-qr-id" id="upi-qr-upi-id"></div>
-                                    <div class="upi-qr-links mt-2">
-                                        <a href="#" id="upi-phonepe-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-mobile-alt"></i> PhonePe</a>
-                                        <a href="#" id="upi-gpay-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fab fa-google"></i> Google Pay</a>
-                                        <a href="#" id="upi-paytm-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-wallet"></i> Paytm</a>
-                                    </div>
+                        <div class="card-body">
+                            <div class="payment-method-selector">
+                                <div class="payment-option">
+                                    <input type="radio" id="card" name="payment_method" value="card" required>
+                                    <label for="card" class="payment-card">
+                                        <i class="fas fa-credit-card"></i>
+                                        <span class="payment-name">Card Payment</span>
+                                        <span class="payment-desc">Credit/Debit Card</span>
+                                    </label>
+                                </div>
+
+                                <div class="payment-option">
+                                    <input type="radio" id="upi" name="payment_method" value="upi" required>
+                                    <label for="upi" class="payment-card">
+                                        <i class="fas fa-mobile-alt"></i>
+                                        <span class="payment-name">UPI Payment</span>
+                                        <span class="payment-desc">Google Pay, PhonePe, etc.</span>
+                                    </label>
+                                </div>
+
+                                <div class="payment-option">
+                                    <input type="radio" id="netbanking" name="payment_method" value="netbanking" required>
+                                    <label for="netbanking" class="payment-card">
+                                        <i class="fas fa-university"></i>
+                                        <span class="payment-name">Net Banking</span>
+                                        <span class="payment-desc">Online bank transfer</span>
+                                    </label>
+                                </div>
+
+                                <div class="payment-option">
+                                    <input type="radio" id="wallet" name="payment_method" value="wallet" required>
+                                    <label for="wallet" class="payment-card">
+                                        <i class="fas fa-wallet"></i>
+                                        <span class="payment-name">Digital Wallet</span>
+                                        <span class="payment-desc">Paytm, Amazon Pay, etc.</span>
+                                    </label>
                                 </div>
                             </div>
-                            <div class="upi-qr-note">
-                                Razorpay will open next for secure payment confirmation. Use this QR only if the popup does not display your UPI options.
+                            <div class="upi-qr-inline" id="upi-qr-section">
+                                <h6><i class="fas fa-qrcode me-2"></i>UPI QR (Backup)</h6>
+                                <div class="upi-qr-body">
+                                    <img id="upi-qr-image" alt="UPI QR Code" src="" loading="lazy" />
+                                    <div class="upi-qr-meta">
+                                        <div class="small text-muted">Pay to UPI ID</div>
+                                        <div class="upi-qr-id" id="upi-qr-upi-id"></div>
+                                        <div class="upi-qr-links mt-2">
+                                            <a href="#" id="upi-phonepe-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-mobile-alt"></i> PhonePe</a>
+                                            <a href="#" id="upi-gpay-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fab fa-google"></i> Google Pay</a>
+                                            <a href="#" id="upi-paytm-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-wallet"></i> Paytm</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="upi-qr-note">
+                                    Razorpay will open next for secure payment confirmation. Use this QR only if the popup does not display your UPI options.
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn">
+                            <span id="place-order-btn-text"><i class="fas fa-check"></i> Place Order</span>
+                            <span id="place-order-btn-spinner" style="display:none"><i class="fas fa-spinner fa-spin"></i> Processing...</span>
+                        </button>
+                        <a href="{% url 'cart' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Cart
+                        </a>
                     </div>
-                    <div class="card-body">
-                        
-                            <div class="mb-4">
-                                <label class="form-label">Shipping Address *</label>
-                                <textarea class="form-control" name="shipping_address" rows="3" required 
-                                          placeholder="Enter your complete shipping address">{% if user.address %}{{ user.address }}{% endif %}</textarea>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label">Phone Number *</label>
-                                <input type="text" class="form-control" name="phone_number" 
-                                       value="{% if user.phone_number %}{{ user.phone_number }}{% endif %}" 
-                                       required placeholder="Enter your phone number">
-                            </div>
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn">
-                                    <span id="place-order-btn-text"><i class="fas fa-check"></i> Place Order</span>
-                                    <span id="place-order-btn-spinner" style="display:none"><i class="fas fa-spinner fa-spin"></i> Processing...</span>
-                                </button>
-                                <a href="{% url 'cart' %}" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left"></i> Back to Cart
-                                </a>
-                            </div>
-                            <div id="checkout-message" class="mt-3"></div>
-                        
-                    </div>
-                </div>
+                    <div id="checkout-message" class="mt-3"></div>
                 </form>
             </div>
         </div>
@@ -474,28 +495,200 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     }
     const csrftoken = getCookie('csrftoken');
+    const orderSummary = document.getElementById('order-summary-body');
+    const totalWeightDisplay = document.getElementById('total-weight-display');
+    const deliveryRateText = document.getElementById('delivery-rate-text');
+    const deliveryChargeDisplay = document.getElementById('delivery-charge-display');
+    const finalTotalEl = document.getElementById('final-total');
+    const discountRow = document.getElementById('discount-row');
+    const discountAmountEl = document.getElementById('discount-amount');
+    const youSavedBanner = document.getElementById('you-saved');
+    const shippingAddressInput = document.querySelector('textarea[name="shipping_address"]');
+    const shippingStateInput = document.querySelector('input[name="shipping_state"]');
+    const shippingPincodeInput = document.querySelector('input[name="shipping_pincode"]');
+
+    function coalesce(value, fallback) {
+        return value === undefined || value === null ? fallback : value;
+    }
+
+    function extractNumeric(value) {
+        if (value === undefined || value === null) return null;
+        const cleaned = String(value).replace(/[^\d.-]/g, '');
+        if (!cleaned) return null;
+        const num = Number(cleaned);
+        return Number.isFinite(num) ? num : null;
+    }
+
+    function safeNumber(value, fallback) {
+        const numeric = extractNumeric(value);
+        if (numeric !== null) return numeric;
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        return fallback;
+    }
 
     function formatRupees(value) {
-        try { return '₹' + Number(value).toFixed(2); } catch (e) { return value; }
+        return '₹' + safeNumber(value, 0).toFixed(2);
     }
+
+    const totalsState = window.__checkoutTotals || {};
+    const subtotalValue = extractNumeric(orderSummary ? orderSummary.dataset.total : null);
+    const discountDataValue = extractNumeric(orderSummary ? orderSummary.dataset.discount : null);
+    const discountSpanValue = extractNumeric(discountAmountEl ? discountAmountEl.dataset.discount : null);
+    const weightValue = extractNumeric(orderSummary ? orderSummary.dataset.weight : null);
+    const rateValue = extractNumeric(deliveryRateText ? deliveryRateText.dataset.rate : null);
+    const keralaRateAttr = extractNumeric(orderSummary ? orderSummary.dataset.keralaRate : null);
+    const defaultRateAttr = extractNumeric(orderSummary ? orderSummary.dataset.defaultRate : null);
+    const baseKeralaRate = keralaRateAttr !== null ? keralaRateAttr : 60;
+    const baseDefaultRate = defaultRateAttr !== null ? defaultRateAttr : 100;
+    const chargeValue = extractNumeric(deliveryChargeDisplay ? deliveryChargeDisplay.dataset.amount : null);
+
+    totalsState.subtotal = coalesce(totalsState.subtotal, subtotalValue !== null ? subtotalValue : 0);
+    totalsState.discount = coalesce(totalsState.discount, discountSpanValue !== null ? discountSpanValue : (discountDataValue !== null ? discountDataValue : 0));
+    totalsState.weight = coalesce(totalsState.weight, weightValue !== null ? weightValue : 0);
+    totalsState.keralaRate = coalesce(totalsState.keralaRate, baseKeralaRate);
+    totalsState.defaultRate = coalesce(totalsState.defaultRate, baseDefaultRate);
+    totalsState.deliveryRate = coalesce(totalsState.deliveryRate, rateValue !== null ? rateValue : baseDefaultRate);
+    const derivedCharge = safeNumber((totalsState.weight || 0) * totalsState.deliveryRate, 0);
+    totalsState.deliveryCharge = coalesce(totalsState.deliveryCharge, chargeValue !== null ? chargeValue : derivedCharge);
+    totalsState.deliveryCharge = Number(safeNumber(totalsState.deliveryCharge, 0).toFixed(2));
+    totalsState.final = Math.max(0, totalsState.subtotal - totalsState.discount) + totalsState.deliveryCharge;
+    window.__checkoutTotals = totalsState;
+
+    function determineDeliveryRate(state, pincode, address) {
+        const keralaRate = safeNumber(totalsState.keralaRate, baseKeralaRate);
+        const defaultRate = safeNumber(totalsState.defaultRate, baseDefaultRate);
+        const stateValue = (state || '').toString().trim().toLowerCase();
+        if (stateValue === 'kerala') return keralaRate;
+        const digits = (pincode || '').toString().replace(/\D/g, '');
+        if (digits.length >= 2 && (digits.startsWith('67') || digits.startsWith('68') || digits.startsWith('69'))) return keralaRate;
+        const addressValue = (address || '').toString().toLowerCase();
+        if (addressValue.includes('kerala')) return keralaRate;
+        return defaultRate;
+    }
+
+    function updateTotalsDisplay() {
+        if (orderSummary) {
+            orderSummary.dataset.total = totalsState.subtotal.toFixed(2);
+            orderSummary.dataset.discount = totalsState.discount.toFixed(2);
+            orderSummary.dataset.weight = totalsState.weight.toFixed(3);
+            orderSummary.dataset.keralaRate = safeNumber(totalsState.keralaRate, baseKeralaRate).toFixed(2);
+            orderSummary.dataset.defaultRate = safeNumber(totalsState.defaultRate, baseDefaultRate).toFixed(2);
+        }
+        if (totalWeightDisplay) {
+            totalWeightDisplay.dataset.weight = totalsState.weight.toFixed(3);
+            totalWeightDisplay.textContent = totalsState.weight.toFixed(3) + ' kg';
+        }
+        if (deliveryRateText) {
+            deliveryRateText.dataset.rate = totalsState.deliveryRate.toFixed(2);
+            deliveryRateText.textContent = '₹' + safeNumber(totalsState.deliveryRate, 0).toFixed(0);
+        }
+        if (deliveryChargeDisplay) {
+            deliveryChargeDisplay.dataset.amount = totalsState.deliveryCharge.toFixed(2);
+            deliveryChargeDisplay.textContent = formatRupees(totalsState.deliveryCharge);
+        }
+        if (discountRow) {
+            discountRow.style.display = totalsState.discount > 0 ? 'flex' : 'none';
+        }
+        if (discountAmountEl) {
+            discountAmountEl.dataset.discount = totalsState.discount.toFixed(2);
+            discountAmountEl.textContent = totalsState.discount > 0 ? formatRupees(totalsState.discount) : formatRupees(0);
+        }
+        const finalCalculated = Math.max(0, totalsState.subtotal - totalsState.discount) + totalsState.deliveryCharge;
+        totalsState.final = Number(finalCalculated.toFixed(2));
+        if (finalTotalEl) {
+            finalTotalEl.dataset.final = totalsState.final.toFixed(2);
+            finalTotalEl.textContent = formatRupees(totalsState.final);
+        }
+        if (youSavedBanner) {
+            if (totalsState.discount > 0) {
+                youSavedBanner.textContent = 'You saved ' + formatRupees(totalsState.discount);
+                youSavedBanner.style.display = '';
+            } else {
+                youSavedBanner.style.display = 'none';
+            }
+        }
+    }
+
+    function recalcTotalsFromShipping() {
+        const rate = determineDeliveryRate(
+            shippingStateInput ? shippingStateInput.value : '',
+            shippingPincodeInput ? shippingPincodeInput.value : '',
+            shippingAddressInput ? shippingAddressInput.value : ''
+        );
+        totalsState.deliveryRate = rate;
+        const charge = safeNumber((totalsState.weight || 0) * rate, totalsState.deliveryCharge);
+        totalsState.deliveryCharge = Number(charge.toFixed(2));
+        updateTotalsDisplay();
+    }
+
+    function appendShipping(formData) {
+        if (!formData) return;
+        if (shippingAddressInput) formData.append('shipping_address', shippingAddressInput.value || '');
+        if (shippingStateInput) formData.append('shipping_state', shippingStateInput.value || '');
+        if (shippingPincodeInput) formData.append('shipping_pincode', shippingPincodeInput.value || '');
+    }
+
+    function updateTotalsFromResponse(data) {
+        if (!data) return;
+        if (typeof data.total !== 'undefined') {
+            totalsState.subtotal = safeNumber(data.total, totalsState.subtotal);
+        }
+        if (typeof data.discount !== 'undefined') {
+            totalsState.discount = safeNumber(data.discount, totalsState.discount);
+        }
+        if (typeof data.total_weight !== 'undefined') {
+            totalsState.weight = safeNumber(data.total_weight, totalsState.weight);
+        }
+        if (typeof data.delivery_rate !== 'undefined') {
+            totalsState.deliveryRate = safeNumber(data.delivery_rate, totalsState.deliveryRate);
+        }
+        if (typeof data.delivery_charge !== 'undefined') {
+            totalsState.deliveryCharge = Number(safeNumber(data.delivery_charge, totalsState.deliveryCharge).toFixed(2));
+        } else {
+            const fallbackCharge = safeNumber((totalsState.weight || 0) * totalsState.deliveryRate, totalsState.deliveryCharge);
+            totalsState.deliveryCharge = Number(fallbackCharge.toFixed(2));
+        }
+        if (typeof data.kerala_delivery_rate !== 'undefined') {
+            totalsState.keralaRate = safeNumber(data.kerala_delivery_rate, totalsState.keralaRate);
+        }
+        if (typeof data.default_delivery_rate !== 'undefined') {
+            totalsState.defaultRate = safeNumber(data.default_delivery_rate, totalsState.defaultRate);
+        }
+        updateTotalsDisplay();
+    }
+
+    window.__checkoutTotals = totalsState;
+    window.__checkoutDetermineRate = determineDeliveryRate;
+    window.__checkoutUpdateSummary = updateTotalsDisplay;
+    window.__checkoutRecalculateShipping = recalcTotalsFromShipping;
+
+    let shippingDebounce = null;
+    [shippingAddressInput, shippingStateInput, shippingPincodeInput].forEach(function(input) {
+        if (!input) return;
+        input.addEventListener('input', function() {
+            clearTimeout(shippingDebounce);
+            shippingDebounce = setTimeout(recalcTotalsFromShipping, 180);
+        });
+        input.addEventListener('change', recalcTotalsFromShipping);
+    });
+
+    updateTotalsDisplay();
+    recalcTotalsFromShipping();
+
     function escapeHtml(unsafe) {
         return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
     function computeEstimateFromCard(card) {
         if (!card) return null;
-        const totalEl = document.getElementById('order-summary-body');
-        const total = totalEl ? parseFloat(totalEl.dataset.total || '0') : 0;
-        const pct = parseFloat(card.dataset.discountPct || card.dataset.discountPct === undefined ? (card.dataset.discountPct || card.getAttribute('data-discount-pct')) : card.dataset.discountPct);
-        // fallback: try direct attribute access
         const pctAttr = card.getAttribute('data-discount-pct');
         const maxAttr = card.getAttribute('data-max-discount');
-        const pctVal = (!isNaN(parseFloat(pctAttr))) ? parseFloat(pctAttr) : NaN;
-        const maxVal = (!isNaN(parseFloat(maxAttr))) ? parseFloat(maxAttr) : 0;
-        if (isNaN(pctVal)) return null;
-        let discount = (total * pctVal) / 100;
-        if (maxVal && maxVal > 0) discount = Math.min(discount, maxVal);
-        const final_total = Math.max(0, total - discount);
-        return { total, discount, final_total, pct: pctVal, max: maxVal };
+        const pctVal = Number(pctAttr);
+        if (!Number.isFinite(pctVal)) return null;
+        const maxVal = Number.isFinite(Number(maxAttr)) ? Number(maxAttr) : 0;
+        let discount = (totalsState.subtotal * pctVal) / 100;
+        if (maxVal > 0) discount = Math.min(discount, maxVal);
+        const finalTotal = Math.max(0, totalsState.subtotal - discount) + totalsState.deliveryCharge;
+        return { total: totalsState.subtotal, discount, final_total: finalTotal, pct: pctVal, max: maxVal };
     }
     function showMessage(message, type) {
         const msgDiv = document.getElementById('coupon-message');
@@ -509,6 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.debug('applyCoupon called with', code);
         const formData = new FormData();
         formData.append('coupon_code', code);
+        appendShipping(formData);
 
         // Disable suggestion apply buttons during request
         document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = true);
@@ -545,27 +739,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            updateTotalsFromResponse(data);
             showMessage(data.message, 'success');
 
-            // Update totals and discount UI if server provided values
-            if (typeof data.final_total !== 'undefined') {
-                const finalEl = document.getElementById('final-total');
-                if (finalEl) finalEl.textContent = formatRupees(data.final_total);
+            const finalEl = document.getElementById('final-total');
+            if (finalEl) finalEl.textContent = formatRupees(totalsState.final);
 
-                const discountEl = document.getElementById('discount-amount');
-                if (discountEl) discountEl.textContent = formatRupees(data.discount || 0);
+            const discountEl = document.getElementById('discount-amount');
+            if (discountEl) discountEl.textContent = formatRupees(totalsState.discount);
 
-                const discountLabel = document.getElementById('discount-label');
-                if (discountLabel && data.coupon_code) {
-                    const pct = data.discount_percentage ? ` (${data.discount_percentage}%)` : '';
-                    discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(data.coupon_code)}</strong>${pct}:`;
-                }
+            const discountLabel = document.getElementById('discount-label');
+            if (discountLabel && data.coupon_code) {
+                const pct = data.discount_percentage ? ` (${data.discount_percentage}%)` : '';
+                discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(data.coupon_code)}</strong>${pct}:`;
+            }
 
-                const youSavedEl = document.getElementById('you-saved');
-                if (youSavedEl) {
-                    youSavedEl.textContent = 'You saved ' + formatRupees(data.discount || 0);
-                    youSavedEl.style.display = (data.discount && Number(data.discount) > 0) ? '' : 'none';
-                }
+            const youSavedEl = document.getElementById('you-saved');
+            if (youSavedEl) {
+                youSavedEl.textContent = 'You saved ' + formatRupees(totalsState.discount);
+                youSavedEl.style.display = totalsState.discount > 0 ? '' : 'none';
             }
 
             // Replace coupon body with applied summary and wire remove handler
@@ -577,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-check-circle me-2"></i>
                             <strong>${escapeHtml(data.coupon_code)}</strong> applied!
                             <br>
-                            <small>You saved ${formatRupees(data.discount || 0)}</small>
+                            <small>You saved ${formatRupees(totalsState.discount)}</small>
                         </div>
                         <button type="button" class="btn btn-sm btn-outline-danger" id="remove-coupon-btn">
                             <i class="fas fa-times"></i> Remove
@@ -608,10 +800,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('.apply-suggested-coupon').forEach(btn => btn.disabled = false);
                 const applyBtn = document.getElementById('apply-coupon-btn'); if (applyBtn) applyBtn.disabled = false;
             }
-            // Refresh the page shortly after applying so server-rendered state is authoritative
-            try { setTimeout(() => { window.location.reload(); }, 800); } catch(e){}
+            if (data.force_refresh) {
+                try { setTimeout(() => { window.location.reload(); }, 800); } catch(e){}
+            }
         })
         .catch(error => {
+            if (error && error.message === 'auth') return;
             console.error('Error applying coupon:', error);
             console.debug('applyCoupon: error object', error);
             showMessage('An error occurred. Please try again.', 'danger');
@@ -626,6 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData();
         formData.append('coupon_code', code);
         formData.append('preview', '1');
+        appendShipping(formData);
 
         return fetch('{% url "apply_coupon" %}', {
             method: 'POST',
@@ -656,25 +851,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 return data;
             }
 
-            // Update UI with authoritative server-side preview values
-            if (typeof data.final_total !== 'undefined') {
-                const finalEl = document.getElementById('final-total');
-                if (finalEl) finalEl.textContent = formatRupees(data.final_total);
+            updateTotalsFromResponse(data);
 
-                const discountEl = document.getElementById('discount-amount');
-                if (discountEl) discountEl.textContent = formatRupees(data.discount || 0);
+            const finalEl = document.getElementById('final-total');
+            if (finalEl) finalEl.textContent = formatRupees(totalsState.final);
 
-                const discountLabel = document.getElementById('discount-label');
-                if (discountLabel && data.coupon_code) {
-                    const pct = data.discount_percentage ? ` (${data.discount_percentage}%)` : '';
-                    discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(data.coupon_code)}</strong>${pct}:`;
-                }
+            const discountEl = document.getElementById('discount-amount');
+            if (discountEl) discountEl.textContent = formatRupees(totalsState.discount);
 
-                const youSavedEl = document.getElementById('you-saved');
-                if (youSavedEl) {
-                    youSavedEl.textContent = 'You saved ' + formatRupees(data.discount || 0);
-                    youSavedEl.style.display = (data.discount && Number(data.discount) > 0) ? '' : 'none';
-                }
+            const discountLabel = document.getElementById('discount-label');
+            if (discountLabel && data.coupon_code) {
+                const pct = data.discount_percentage ? ` (${data.discount_percentage}%)` : '';
+                discountLabel.innerHTML = `<i class="fas fa-tag me-1"></i>Coupon <strong>${escapeHtml(data.coupon_code)}</strong>${pct}:`;
+            }
+
+            if (youSavedBanner) {
+                youSavedBanner.textContent = 'You saved ' + formatRupees(totalsState.discount);
+                youSavedBanner.style.display = totalsState.discount > 0 ? '' : 'none';
             }
 
             return data;
@@ -784,13 +977,16 @@ document.addEventListener('DOMContentLoaded', function() {
             removeBtn.addEventListener('click', function() {
                 // Proceed immediately when user clicks Remove (no confirm dialog)
                 console.debug('remove coupon: starting fetch');
+                const formData = new FormData();
+                appendShipping(formData);
                 fetch('{% url "remove_coupon" %}', {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
                         'X-CSRFToken': csrftoken,
                         'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    },
+                    body: formData
                 })
                 .then(response => {
                     console.debug('remove coupon: fetch completed, status', response.status, 'url', response.url);
@@ -809,13 +1005,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (!data.success) { showMessage(data.message || 'Could not remove coupon', 'danger'); return; }
 
-                    // Update totals and remove discount display
-                    const finalEl = document.getElementById('final-total');
-                    if (finalEl && typeof data.final_total !== 'undefined') finalEl.textContent = formatRupees(data.final_total);
+                    updateTotalsFromResponse(data);
+                    totalsState.discount = 0;
+                    updateTotalsDisplay();
 
-                    const discountEl = document.getElementById('discount-amount'); if (discountEl) discountEl.textContent = '';
+                    const finalEl = document.getElementById('final-total');
+                    if (finalEl) finalEl.textContent = formatRupees(totalsState.final);
+
+                    const discountEl = document.getElementById('discount-amount'); if (discountEl) discountEl.textContent = formatRupees(0);
                     const discountLabel = document.getElementById('discount-label'); if (discountLabel) discountLabel.innerHTML = '';
-                    const youSavedEl = document.getElementById('you-saved'); if (youSavedEl) youSavedEl.style.display = 'none';
+                    if (youSavedBanner) youSavedBanner.style.display = 'none';
 
                     // Restore original coupon input area and re-bind handlers
                     const body = document.getElementById('coupon-input-body');
@@ -823,8 +1022,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         body.innerHTML = originalCouponBodyHTML;
                         initCouponUI();
                     }
-                    // Refresh page shortly after removing coupon to reflect server-side state
-                    try { setTimeout(() => { window.location.reload(); }, 700); } catch(e){}
+                    if (data.force_refresh) {
+                        try { setTimeout(() => { window.location.reload(); }, 700); } catch(e){}
+                    }
                 })
                 .catch(err => { if (err.message === 'auth') return; console.error('Remove error', err); showMessage('Could not remove coupon', 'danger'); });
             });

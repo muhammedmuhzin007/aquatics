@@ -44,36 +44,41 @@
     <form method="post" action="{% if editing %}{% url 'admin_edit_combo' combo.id %}{% else %}{% url 'admin_add_combo' %}{% endif %}">
       {% csrf_token %}
       <!-- Combo styles moved to global stylesheet: static/css/style.css -->
-      <div class="mb-3">
-        <label class="form-label">Title</label>
-        <input name="title" class="form-control" value="{% if editing %}{{ combo.title }}{% else %}{{ title|default:'' }}{% endif %}" required />
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Title</label>
+          <input name="title" class="form-control" value="{% firstof title combo.title '' %}" required />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Bundle Price (₹)</label>
+          <input name="bundle_price" class="form-control" value="{% firstof bundle_price combo.bundle_price '' %}" placeholder="e.g. 999.00" />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Total Weight (kg)</label>
+          <input name="weight" type="number" step="0.001" min="0" class="form-control" value="{% firstof weight combo.weight '' %}" placeholder="e.g. 1.250" />
+          <small class="text-muted">Optional: Total combined weight of items in kilograms.</small>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Category</label>
+          {% with selected_id=selected_category_id|default:'' %}
+          <select name="category_id" class="form-select">
+            <option value="">-- Select Combo Category --</option>
+            {% for category in categories %}
+              <option value="{{ category.id }}" {% if category.id|stringformat:'s' == selected_id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+          </select>
+          {% endwith %}
+        </div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Bundle Price (optional)</label>
-        <input name="bundle_price" class="form-control" value="{% if editing %}{{ combo.bundle_price }}{% else %}{{ bundle_price|default:'' }}{% endif %}" placeholder="e.g. 999.00" />
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Category</label>
-        <select name="category_id" class="form-select" required>
-          <option value="">-- select category --</option>
-          {% for category in categories %}
-            <option value="{{ category.id }}"
-              {% if selected_category_id %}
-                {% if category.id|stringformat:'s' == selected_category_id|stringformat:'s' %}selected{% endif %}
-              {% elif editing and combo %}
-                {% if category.id == combo.category_id %}selected{% endif %}
-              {% endif %}
-            >{{ category.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-check mb-3">
-        <input type="checkbox" name="is_active" id="is_active" class="form-check-input" {% if editing %}{% if combo.is_active %}checked{% endif %}{% else %}{% if is_active %}checked{% endif %}{% endif %} />
-        <label for="is_active" class="form-check-label">Active</label>
-      </div>
-      <div class="form-check mb-3">
-        <input type="checkbox" name="show_on_homepage" id="show_on_homepage" class="form-check-input" {% if editing %}{% if combo.show_on_homepage %}checked{% endif %}{% else %}{% if show_on_homepage %}checked{% endif %}{% endif %} />
-        <label for="show_on_homepage" class="form-check-label">Show on homepage</label>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6 form-check form-switch">
+          <input type="checkbox" name="is_active" id="is_active" class="form-check-input" {% if is_active %}checked{% endif %} />
+          <label class="form-check-label" for="is_active">Active</label>
+        </div>
+        <div class="col-md-6 form-check form-switch">
+          <input type="checkbox" name="show_on_homepage" id="show_on_homepage" class="form-check-input" {% if show_on_homepage %}checked{% endif %} />
+          <label class="form-check-label" for="show_on_homepage">Show on Homepage</label>
+        </div>
       </div>
       {# Removed: show_in_limited_offers checkbox - combos are not shown in Limited Offers banner anymore #}
 

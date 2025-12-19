@@ -158,6 +158,7 @@ class Fish(models.Model):
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     size = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text='Size in inches')
+    weight = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, help_text='Average weight in kilograms (optional)')
     stock_quantity = models.IntegerField(default=0)
     minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
     image = models.ImageField(upload_to='fishes/', blank=True, null=True)
@@ -368,6 +369,7 @@ class ComboOffer(models.Model):
     banner_image = models.ImageField(upload_to='combo_banners/', null=True, blank=True)
     # If true, present this combo as a homepage banner (not as a card in Combo Deals)
     show_as_banner = models.BooleanField(default=False)
+    weight = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, help_text='Total combo weight in kilograms (optional)')
     # Whether to include this combo in the Limited Offers banner/rotation
     # NOTE: `show_in_limited_offers` removed — combos are managed separately and
     # presented only in the dedicated "Combo Deals" section on the homepage.
@@ -435,6 +437,8 @@ class Order(models.Model):
     coupon = models.ForeignKey('Coupon', on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     final_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    delivery_charge = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    total_weight = models.DecimalField(max_digits=8, decimal_places=3, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='card')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -442,6 +446,8 @@ class Order(models.Model):
     # Provider's order id (e.g., Stripe PaymentIntent id or other provider id)
     provider_order_id = models.CharField(max_length=200, blank=True, null=True)
     shipping_address = models.TextField(blank=True, null=True)
+    shipping_state = models.CharField(max_length=100, blank=True)
+    shipping_pincode = models.CharField(max_length=20, blank=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -466,6 +472,21 @@ class Order(models.Model):
         if os.path.exists(invoice_path):
             return settings.MEDIA_URL + f'invoices/invoice-{self.order_number}.pdf'
         return None
+
+
+class ShippingChargeSetting(models.Model):
+    key = models.CharField(max_length=32, unique=True, default='default', editable=False)
+    kerala_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('60.00'))
+    default_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('100.00'))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Shipping Charge Setting'
+        verbose_name_plural = 'Shipping Charge Settings'
+
+    def __str__(self):
+        return f"Shipping Charges (Kerala: ₹{self.kerala_rate}, Other: ₹{self.default_rate})"
 
 
 class OrderItem(models.Model):
@@ -548,6 +569,7 @@ class Accessory(models.Model):
     description = models.TextField(blank=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='accessories')
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    weight = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, help_text='Weight in kilograms (optional)')
     stock_quantity = models.IntegerField(default=0)
     minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
     image = models.ImageField(upload_to='accessories/', blank=True, null=True)
@@ -577,6 +599,7 @@ class Plant(models.Model):
     )
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    weight = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, help_text='Weight in kilograms (optional)')
     stock_quantity = models.IntegerField(default=0)
     minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
     image = models.ImageField(upload_to='plants/', blank=True, null=True)

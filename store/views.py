@@ -1,7 +1,8 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect
 from datetime import timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from functools import lru_cache
 
 from .payments import razorpay as razorpay_provider
 
@@ -259,12 +260,124 @@ def _build_guest_cart_items(request):
     _save_guest_cart(request, cart)
     return guest_fish_items, guest_accessories, guest_plants
 
+
+KERALA_PIN_PREFIXES = ('67', '68', '69')
+
+
+def _calculate_total_weight(cart_items, accessory_items, plant_items):
+    """Compute total cart weight in kilograms, respecting combo bundle weights."""
+    total_weight = Decimal('0')
+
+    combo_groups = {}
+    combo_ids = set()
+    standalone_items = []
+
+    for item in cart_items:
+        if item.combo_id:
+            combo_groups.setdefault(item.combo_id, {'items': []})['items'].append(item)
+            combo_ids.add(item.combo_id)
+        else:
+            fish_weight = Decimal(item.fish.weight or 0)
+            total_weight += fish_weight * Decimal(item.quantity or 0)
+
+    combos_prefetched = {}
+    if combo_ids:
+        combos_prefetched = {
+            combo.id: combo
+            for combo in ComboOffer.objects.filter(id__in=combo_ids).prefetch_related('items__fish')
+        }
+
+    for combo_id, data in combo_groups.items():
+        items = data['items']
+        combo = combos_prefetched.get(combo_id)
+        if not combo:
+            for it in items:
+                fish_weight = Decimal(it.fish.weight or 0)
+                total_weight += fish_weight * Decimal(it.quantity or 0)
+            continue
+
+        combo_items = list(combo.items.all())
+        requirements = {ci.fish_id: int(ci.quantity or 1) for ci in combo_items}
+        bundle_counts = []
+        for it in items:
+            req = max(1, requirements.get(it.fish_id, 1))
+            try:
+                bundle_counts.append(int(it.quantity) // req)
+            except Exception:
+                bundle_counts.append(0)
+        bundle_count = min(bundle_counts) if bundle_counts else 0
+
+        if combo.weight is not None and bundle_count > 0:
+            total_weight += Decimal(combo.weight) * Decimal(bundle_count)
+        elif bundle_count > 0:
+            for ci in combo_items:
+                fish_weight = Decimal(ci.fish.weight or 0)
+                total_weight += fish_weight * Decimal(int(ci.quantity or 1) * bundle_count)
+
+        for it in items:
+            req = max(1, requirements.get(it.fish_id, 1)) if requirements else 1
+            assigned = bundle_count * req
+            leftover = max(0, int(it.quantity) - assigned)
+            if leftover:
+                fish_weight = Decimal(it.fish.weight or 0)
+                total_weight += fish_weight * Decimal(leftover)
+
+    for accessory_item in accessory_items:
+        accessory_weight = Decimal(accessory_item.accessory.weight or 0)
+        total_weight += accessory_weight * Decimal(accessory_item.quantity or 0)
+
+    for plant_item in plant_items:
+        plant_weight = Decimal(plant_item.plant.weight or 0)
+        total_weight += plant_weight * Decimal(plant_item.quantity or 0)
+
+    return total_weight
+
+
+def _is_kerala_destination(state=None, pincode=None, address=None):
+    state = (state or '').strip().lower()
+    if state == 'kerala':
+        return True
+
+    digits = ''.join(ch for ch in (pincode or '') if ch.isdigit())
+    if len(digits) >= 2 and digits[:2] in KERALA_PIN_PREFIXES:
+        return True
+
+    if address and 'kerala' in address.lower():
+        return True
+
+    return False
+
+
+@lru_cache(maxsize=1)
+def _get_shipping_rates():
+    try:
+        setting, _ = ShippingChargeSetting.objects.get_or_create(
+            key='default',
+            defaults={'kerala_rate': Decimal('60.00'), 'default_rate': Decimal('100.00')},
+        )
+        kerala_rate = Decimal(setting.kerala_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        default_rate = Decimal(setting.default_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return kerala_rate, default_rate
+    except Exception:
+        logging.getLogger(__name__).exception('Falling back to default shipping rates')
+        return Decimal('60.00'), Decimal('100.00')
+
+
+def _calculate_delivery_charge(total_weight, state=None, pincode=None, address=None):
+    kerala_rate, default_rate = _get_shipping_rates()
+    is_kerala = _is_kerala_destination(state=state, pincode=pincode, address=address)
+    rate = kerala_rate if is_kerala else default_rate
+    if total_weight <= 0:
+        return Decimal('0.00'), rate
+    charge = (total_weight * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return charge, rate
+
 @login_required
 @user_passes_test(is_customer)
 def checkout_view(request):
     """Render the checkout page with cart, coupons and payment options."""
     cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
-    accessory_items = AccessoryCart.objects.filter(user=request.user)
+    accessory_items = AccessoryCart.objects.filter(user=request.user).select_related('accessory')
     plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
 
     if not cart_items and not accessory_items and not plant_items:
@@ -325,6 +438,8 @@ def checkout_view(request):
     total += sum(Decimal(item.get_total()) for item in accessory_items)
     total += sum(Decimal(item.get_total()) for item in plant_items)
 
+    total_weight = _calculate_total_weight(cart_items, accessory_items, plant_items)
+
     # Applied coupon from session
     applied_coupon = None
     discount = Decimal('0')
@@ -340,6 +455,30 @@ def checkout_view(request):
                 final_total = total - discount
         except Coupon.DoesNotExist:
             request.session.pop('applied_coupon_code', None)
+
+    # Prefill shipping details from last order or user profile
+    last_order = Order.objects.filter(user=request.user).order_by('-created_at').first()
+    shipping_address_prefill = ''
+    shipping_state_prefill = ''
+    shipping_pincode_prefill = ''
+    if last_order:
+        shipping_address_prefill = last_order.shipping_address or ''
+        shipping_state_prefill = last_order.shipping_state or ''
+        shipping_pincode_prefill = last_order.shipping_pincode or ''
+    if not shipping_address_prefill:
+        shipping_address_prefill = getattr(request.user, 'address', '') or ''
+
+    delivery_charge, delivery_rate = _calculate_delivery_charge(
+        total_weight,
+        state=shipping_state_prefill,
+        pincode=shipping_pincode_prefill,
+        address=shipping_address_prefill,
+    )
+
+    net_total = max(Decimal('0'), final_total)
+    final_total = net_total + delivery_charge
+
+    kerala_delivery_rate, default_delivery_rate = _get_shipping_rates()
 
     # Available coupon suggestions (simple rules)
     now = timezone.now()
@@ -373,6 +512,14 @@ def checkout_view(request):
         'discount': discount,
         'final_total': final_total,
         'available_coupons': available_coupons,
+        'total_weight': total_weight,
+        'delivery_charge': delivery_charge,
+        'delivery_rate': delivery_rate,
+        'kerala_delivery_rate': kerala_delivery_rate,
+        'default_delivery_rate': default_delivery_rate,
+        'shipping_address_prefill': shipping_address_prefill,
+        'shipping_state_prefill': shipping_state_prefill,
+        'shipping_pincode_prefill': shipping_pincode_prefill,
     })
 from django.contrib.auth.decorators import login_required, user_passes_test
 
@@ -443,6 +590,7 @@ from .models import (
     Plant,
     PlantCart,
     PlantMedia,
+    ShippingChargeSetting,
 )
 from django.contrib import messages
 from .forms import (
@@ -462,6 +610,7 @@ from .forms import (
     LimitedOfferForm,
     PlantForm,
     PlantMediaForm,
+    ShippingChargeForm,
 )
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import user_passes_test
@@ -607,7 +756,7 @@ def mark_notifications_read_view(request):
         if request.POST.get('all') == '1':
             marked = Notification.objects.filter(is_read=False).update(is_read=True)
         else:
-            ids = request.POST.getlist('ids[]') or ( [request.POST.get('id')] if request.POST.get('id') else [] )
+            ids = request.POST.getlist('ids[]') or ([request.POST.get('id')] if request.POST.get('id') else [])
             ids = [int(x) for x in ids if x]
             if ids:
                 marked = Notification.objects.filter(id__in=ids, is_read=False).update(is_read=True)
@@ -2804,14 +2953,27 @@ def apply_coupon_view(request):
         # Calculate cart total including accessories. For anonymous users the
         # DB-backed cart will be empty; total will be 0. We still allow saving
         # the coupon into session so it can be applied later when a cart exists.
-        cart_items = Cart.objects.filter(user=request.user)
-        accessory_items = AccessoryCart.objects.filter(user=request.user)
-        plant_items = PlantCart.objects.filter(user=request.user)
+        cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
+        accessory_items = AccessoryCart.objects.filter(user=request.user).select_related('accessory')
+        plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
         total = (
             sum(item.get_total() for item in cart_items)
             + sum(item.get_total() for item in accessory_items)
             + sum(item.get_total() for item in plant_items)
         )
+
+        total_weight = _calculate_total_weight(cart_items, accessory_items, plant_items)
+
+        shipping_state = request.POST.get('shipping_state') or getattr(request.user, 'address', '')
+        shipping_pincode = request.POST.get('shipping_pincode') or ''
+        shipping_address = request.POST.get('shipping_address') or getattr(request.user, 'address', '')
+        delivery_charge, delivery_rate = _calculate_delivery_charge(
+            total_weight,
+            state=shipping_state,
+            pincode=shipping_pincode,
+            address=shipping_address,
+        )
+        kerala_rate_value, default_rate_value = _get_shipping_rates()
 
         # Check minimum order amount unless force_apply
         if not getattr(coupon, 'force_apply', False):
@@ -2826,7 +2988,7 @@ def apply_coupon_view(request):
         if coupon.max_discount_amount:
             discount = min(discount, coupon.max_discount_amount)
 
-        final_total = total - discount
+        final_total = max(Decimal('0'), Decimal(total) - Decimal(discount)) + delivery_charge
 
 
         # Store in session so the coupon persists for the visitor (unless preview)
@@ -2844,6 +3006,11 @@ def apply_coupon_view(request):
                 'final_total': 0.0,
                 'coupon_code': coupon_code,
                 'discount_percentage': float(coupon.discount_percentage),
+                'delivery_charge': float(delivery_charge),
+                'delivery_rate': float(delivery_rate),
+                'total_weight': float(total_weight),
+                'kerala_delivery_rate': float(kerala_rate_value),
+                'default_delivery_rate': float(default_rate_value),
                 'preview': preview_flag,
             })
 
@@ -2854,6 +3021,11 @@ def apply_coupon_view(request):
             'final_total': float(final_total),
             'coupon_code': coupon_code,
             'discount_percentage': float(coupon.discount_percentage),
+            'delivery_charge': float(delivery_charge),
+            'delivery_rate': float(delivery_rate),
+            'total_weight': float(total_weight),
+            'kerala_delivery_rate': float(kerala_rate_value),
+            'default_delivery_rate': float(default_rate_value),
             'preview': preview_flag,
         })
     except Exception as e:
@@ -2866,23 +3038,42 @@ def remove_coupon_view(request):
     if 'applied_coupon_code' in request.session:
         del request.session['applied_coupon_code']
     
-    cart_items = Cart.objects.filter(user=request.user)
-    accessory_items = AccessoryCart.objects.filter(user=request.user)
-    plant_items = PlantCart.objects.filter(user=request.user)
+    cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
+    accessory_items = AccessoryCart.objects.filter(user=request.user).select_related('accessory')
+    plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
     total = (
         sum(item.get_total() for item in cart_items)
         + sum(item.get_total() for item in accessory_items)
         + sum(item.get_total() for item in plant_items)
     )
+    total_weight = _calculate_total_weight(cart_items, accessory_items, plant_items)
+
+    shipping_state = request.POST.get('shipping_state') or getattr(request.user, 'address', '')
+    shipping_pincode = request.POST.get('shipping_pincode') or ''
+    shipping_address = request.POST.get('shipping_address') or getattr(request.user, 'address', '')
+    delivery_charge, delivery_rate = _calculate_delivery_charge(
+        total_weight,
+        state=shipping_state,
+        pincode=shipping_pincode,
+        address=shipping_address,
+    )
+    kerala_rate_value, default_rate_value = _get_shipping_rates()
+
+    final_total = max(Decimal('0'), Decimal(total)) + delivery_charge
     # When removed, discount is zero and final_total equals total
     return JsonResponse({
         'success': True,
         'message': 'Coupon removed',
         'total': float(total),
-        'final_total': float(total),
+        'final_total': float(final_total),
         'discount': 0.0,
         'coupon_code': '',
         'discount_percentage': 0.0,
+        'delivery_charge': float(delivery_charge),
+        'delivery_rate': float(delivery_rate),
+        'total_weight': float(total_weight),
+        'kerala_delivery_rate': float(kerala_rate_value),
+        'default_delivery_rate': float(default_rate_value),
     })
 
 
@@ -2929,9 +3120,9 @@ def create_draft_order(request):
     Returns JSON: { order_id, order_number, final_amount }
     """
     try:
-        cart_items = Cart.objects.filter(user=request.user)
-        accessory_items = AccessoryCart.objects.filter(user=request.user)
-        plant_items = PlantCart.objects.filter(user=request.user)
+        cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
+        accessory_items = AccessoryCart.objects.filter(user=request.user).select_related('accessory')
+        plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
 
         if not cart_items and not accessory_items and not plant_items:
             return JsonResponse({'error': 'Cart is empty'}, status=400)
@@ -2941,19 +3132,21 @@ def create_draft_order(request):
             + sum(item.get_total() for item in accessory_items)
             + sum(item.get_total() for item in plant_items)
         )
+        total = Decimal(total)
+        total_weight = _calculate_total_weight(cart_items, accessory_items, plant_items)
 
         # Get applied coupon from session if present
         applied_coupon = None
-        discount = 0
+        discount = Decimal('0')
         final_total = total
         if 'applied_coupon_code' in request.session:
             try:
                 coupon = Coupon.objects.get(code=request.session['applied_coupon_code'])
                 if coupon.is_valid() and coupon.can_use(request.user):
                     applied_coupon = coupon
-                    discount = (total * coupon.discount_percentage) / 100
+                    discount = (total * Decimal(coupon.discount_percentage)) / Decimal('100')
                     if coupon.max_discount_amount:
-                        discount = min(discount, coupon.max_discount_amount)
+                        discount = min(discount, Decimal(coupon.max_discount_amount))
                     final_total = total - discount
             except Coupon.DoesNotExist:
                 pass
@@ -2961,10 +3154,21 @@ def create_draft_order(request):
         shipping_address = (request.POST.get('shipping_address')
                              or getattr(request.user, 'address', '')
                              or '')
+        shipping_state = request.POST.get('shipping_state', '')
+        shipping_pincode = request.POST.get('shipping_pincode', '')
         phone_number = (request.POST.get('phone_number')
                         or getattr(request.user, 'phone_number', '')
                         or '')
         payment_method = request.POST.get('payment_method') or 'card'
+
+        delivery_charge, delivery_rate = _calculate_delivery_charge(
+            total_weight,
+            state=shipping_state,
+            pincode=shipping_pincode,
+            address=shipping_address,
+        )
+        kerala_rate_value, default_rate_value = _get_shipping_rates()
+        final_total = max(Decimal('0'), final_total) + delivery_charge
 
         # Try to reuse a recent draft
         draft_cutoff = timezone.now() - timedelta(minutes=30)
@@ -2983,7 +3187,11 @@ def create_draft_order(request):
                 coupon=applied_coupon,
                 discount_amount=discount,
                 final_amount=final_total,
+                delivery_charge=delivery_charge,
+                total_weight=total_weight,
                 shipping_address=shipping_address,
+                shipping_state=shipping_state,
+                shipping_pincode=shipping_pincode,
                 phone_number=phone_number,
                 payment_method=payment_method,
                 payment_status='pending',
@@ -3016,12 +3224,16 @@ def create_draft_order(request):
             draft_order.discount_amount = discount
             draft_order.final_amount = final_total
             draft_order.shipping_address = shipping_address
+            draft_order.shipping_state = shipping_state
+            draft_order.shipping_pincode = shipping_pincode
             draft_order.phone_number = phone_number
             draft_order.payment_method = payment_method
             draft_order.status = 'pending'
             draft_order.payment_status = 'pending'
             draft_order.transaction_id = None
             draft_order.provider_order_id = None
+            draft_order.delivery_charge = delivery_charge
+            draft_order.total_weight = total_weight
             draft_order.save()
 
             # Replace line items so the order mirrors the latest cart contents
@@ -3056,6 +3268,11 @@ def create_draft_order(request):
             'order_number': draft_order.order_number,
             'final_amount': float(draft_order.final_amount),
             'payment_method': draft_order.payment_method,
+            'delivery_charge': float(delivery_charge),
+            'delivery_rate': float(delivery_rate),
+            'total_weight': float(total_weight),
+            'kerala_delivery_rate': float(kerala_rate_value),
+            'default_delivery_rate': float(default_rate_value),
         }
 
         if draft_order.payment_method == 'upi':
@@ -3248,7 +3465,9 @@ def admin_add_combo_view(request):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         raw_bundle_price = (request.POST.get('bundle_price') or '').strip()
+        raw_weight = (request.POST.get('weight') or '').strip()
         bundle_price = None
+        weight = None
         is_active = request.POST.get('is_active') == 'on'
         show_on_homepage = request.POST.get('show_on_homepage') == 'on'
         category_id = request.POST.get('category_id') or None
@@ -3277,6 +3496,14 @@ def admin_add_combo_view(request):
             except InvalidOperation:
                 errors.append('Bundle price must be a valid decimal number.')
 
+        if raw_weight:
+            try:
+                weight = Decimal(raw_weight)
+                if weight < 0:
+                    errors.append('Weight cannot be negative.')
+            except InvalidOperation:
+                errors.append('Weight must be a valid decimal number.')
+
         if errors:
             fishes = Fish.objects.all().order_by('name')
             combos = ComboOffer.objects.all().order_by('-created_at')
@@ -3287,6 +3514,7 @@ def admin_add_combo_view(request):
                 'categories': combo_categories,
                 'title': title,
                 'bundle_price': raw_bundle_price,
+                'weight': raw_weight,
                 'is_active': is_active,
                 'show_on_homepage': show_on_homepage,
                 'selected_category_id': category_id,
@@ -3295,6 +3523,7 @@ def admin_add_combo_view(request):
         combo = ComboOffer.objects.create(
             title=title,
             bundle_price=bundle_price,
+            weight=weight,
             is_active=is_active,
             show_on_homepage=show_on_homepage,
             category=selected_category,
@@ -3335,6 +3564,9 @@ def admin_add_combo_view(request):
         'combos': combos,
         'prefill_fish_ids': prefill_fish_ids,
         'categories': combo_categories,
+        'selected_category_id': '',
+        'is_active': True,
+        'show_on_homepage': False,
     })
     
     # Check if order is cancelled
@@ -3352,7 +3584,9 @@ def admin_edit_combo_view(request, combo_id):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         raw_bundle_price = (request.POST.get('bundle_price') or '').strip()
+        raw_weight = (request.POST.get('weight') or '').strip()
         bundle_price = None
+        weight = None
         is_active = request.POST.get('is_active') == 'on'
         show_on_homepage = request.POST.get('show_on_homepage') == 'on'
         category_id = request.POST.get('category_id') or None
@@ -3381,6 +3615,14 @@ def admin_edit_combo_view(request, combo_id):
             except InvalidOperation:
                 errors.append('Bundle price must be a valid decimal number.')
 
+        if raw_weight:
+            try:
+                weight = Decimal(raw_weight)
+                if weight < 0:
+                    errors.append('Weight cannot be negative.')
+            except InvalidOperation:
+                errors.append('Weight must be a valid decimal number.')
+
         if errors:
             fishes = Fish.objects.all().order_by('name')
             combos = ComboOffer.objects.all().order_by('-created_at')
@@ -3392,12 +3634,17 @@ def admin_edit_combo_view(request, combo_id):
                 'combo': combo,
                 'categories': combo_categories,
                 'selected_category_id': category_id,
+                'title': title,
                 'bundle_price': raw_bundle_price,
+                'weight': raw_weight,
+                'is_active': is_active,
+                'show_on_homepage': show_on_homepage,
             })
 
         # Update combo fields
         combo.title = title
         combo.bundle_price = bundle_price
+        combo.weight = weight
         combo.is_active = is_active
         combo.show_on_homepage = show_on_homepage
         combo.category = selected_category
@@ -3425,7 +3672,9 @@ def admin_edit_combo_view(request, combo_id):
         'editing': True,
         'combo': combo,
         'categories': combo_categories,
-        'selected_category_id': combo.category_id,
+        'selected_category_id': str(combo.category_id) if combo.category_id else '',
+        'is_active': combo.is_active,
+        'show_on_homepage': combo.show_on_homepage,
     })
 
 
@@ -4736,6 +4985,30 @@ def admin_delete_blog_view(request, post_id):
 # -------------------- Contact Info (Admin Managed) --------------------
 @login_required
 @user_passes_test(is_admin)
+def admin_shipping_charges_view(request):
+    setting, _ = ShippingChargeSetting.objects.get_or_create(
+        key='default',
+        defaults={'kerala_rate': Decimal('60.00'), 'default_rate': Decimal('100.00')},
+    )
+
+    if request.method == 'POST':
+        form = ShippingChargeForm(request.POST, instance=setting)
+        if form.is_valid():
+            form.save()
+            _get_shipping_rates.cache_clear()
+            messages.success(request, 'Shipping charges updated successfully.')
+            return redirect('admin_shipping_charges')
+    else:
+        form = ShippingChargeForm(instance=setting)
+
+    context = {
+        'form': form,
+        'setting': setting,
+        'last_updated': setting.updated_at,
+    }
+    return render(request, 'store/admin/shipping_charges.html', context)
+
+
 @login_required
 @user_passes_test(is_admin)
 def admin_contact_view(request):

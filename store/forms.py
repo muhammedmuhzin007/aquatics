@@ -19,6 +19,7 @@ from .models import (
     Plant,
     PlantMedia,
     BlogPost,
+    ShippingChargeSetting,
 )
 
 
@@ -121,18 +122,19 @@ class BreedForm(forms.ModelForm):
 class FishForm(forms.ModelForm):
     class Meta:
         model = Fish
-        fields = ['name', 'category', 'breed', 'description', 'price', 'size', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_available', 'is_featured']
+        fields = ['name', 'category', 'breed', 'description', 'price', 'size', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_available', 'is_featured']
         widgets = {
             'size': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'placeholder': 'e.g., 4.5'}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.001', 'min': '0', 'placeholder': 'e.g., 0.25'}),
             'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'placeholder': 'e.g., 1'}),
         }
         labels = {
             'size': 'Size (inches)',
+            'weight': 'Weight (kg)',
             'minimum_order_quantity': 'Minimum Order Quantity',
             'is_featured': 'Featured',
         }
         help_texts = {
-            'size': 'Enter size in inches',
             'minimum_order_quantity': 'Minimum quantity required per order',
         }
     
@@ -292,19 +294,42 @@ class ServiceForm(forms.ModelForm):
             'display_order': 'Order',
         }
 
+
+class ShippingChargeForm(forms.ModelForm):
+    class Meta:
+        model = ShippingChargeSetting
+        fields = ['kerala_rate', 'default_rate']
+        widgets = {
+            'kerala_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'default_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+        }
+        labels = {
+            'kerala_rate': 'Kerala Rate (₹ per kg)',
+            'default_rate': 'Other States Rate (₹ per kg)',
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        for field in ('kerala_rate', 'default_rate'):
+            value = cleaned.get(field)
+            if value is not None and value <= 0:
+                self.add_error(field, 'Rate must be greater than zero.')
+        return cleaned
+
 class AccessoryForm(forms.ModelForm):
-    field_order = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+    field_order = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
 
     class Meta:
         model = Accessory
         # Put minimum_order_quantity (Min order) right after stock_quantity as requested
         # Removed 'display_order' so the 'Order' input is not shown in add/edit accessory forms
-        fields = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+        fields = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Accessory name'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.001', 'min': 0, 'placeholder': 'e.g., 0.75'}),
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'e.g., 1'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
@@ -312,6 +337,7 @@ class AccessoryForm(forms.ModelForm):
         }
         labels = {
             'category': 'Category',
+            'weight': 'Weight (kg)',
             'minimum_order_quantity': 'Minimum Order Quantity',
             'is_active': 'Active',
         }
@@ -326,16 +352,17 @@ class AccessoryForm(forms.ModelForm):
 
 
 class PlantForm(forms.ModelForm):
-    field_order = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+    field_order = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
 
     class Meta:
         model = Plant
-        fields = ['name', 'category', 'description', 'price', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+        fields = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Plant name'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Optional details about the plant'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': 0}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.001', 'min': 0, 'placeholder': 'e.g., 0.15'}),
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'e.g., 1'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
@@ -344,6 +371,7 @@ class PlantForm(forms.ModelForm):
         labels = {
             'category': 'Plant Category',
             'price': 'Price (optional)',
+            'weight': 'Weight (kg)',
             'minimum_order_quantity': 'Minimum Order Quantity',
             'is_active': 'Active',
         }

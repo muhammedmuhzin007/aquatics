@@ -1,3 +1,6 @@
+import re
+
+from django import forms
 from django.contrib import admin
 from .models import (
     CustomUser,
@@ -21,6 +24,7 @@ from .models import (
     AccessoryCategory,
     PlantCategory,
     Plant,
+    ShippingChargeSetting,
 )
 
 admin.site.register(CustomUser)
@@ -61,6 +65,59 @@ class BaseCategoryAdmin(admin.ModelAdmin):
         if self.category_type:
             obj.category_type = self.category_type
         super().save_model(request, obj, form, change)
+
+
+class TagListWidget(forms.Widget):
+    """Render newline-delimited values as removable chips in admin forms."""
+    template_name = 'admin/widgets/tag_list_widget.html'
+
+    def _split_values(self, value):
+        if not value:
+            return []
+        if isinstance(value, (list, tuple)):
+            return [self._clean_item(item) for item in value if self._clean_item(item)]
+        parts = re.split(r'[,\n]+', str(value))
+        return [self._clean_item(part) for part in parts if self._clean_item(part)]
+
+    @staticmethod
+    def _clean_item(item):
+        text = str(item or '').strip()
+        return text or None
+
+    def format_value(self, value):
+        return self._split_values(value)
+
+    def value_from_datadict(self, data, files, name):
+        values = self._split_values(data.get(name, ''))
+        seen = set()
+        unique = []
+        for value in values:
+            key = value.lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(value)
+        return '\n'.join(unique)
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        tokens = self._split_values(value)
+        widget_ctx = context['widget']
+        widget_ctx['tag_values'] = tokens
+        widget_ctx['joined_value'] = '\n'.join(tokens)
+        placeholder = (attrs or {}).get('placeholder') if attrs else None
+        widget_ctx['input_placeholder'] = placeholder or 'Add state'
+        attrs_copy = widget_ctx.get('attrs', {}).copy()
+        attrs_copy.pop('placeholder', None)
+        widget_ctx['attrs'] = attrs_copy
+        if 'id' not in widget_ctx['attrs']:
+            widget_ctx['attrs']['id'] = f'id_{name}'
+        return context
+
+    class Media:
+        css = {
+            'all': ('store/admin/tag_list_widget.css',),
+        }
+        js = ('store/admin/tag_list_widget.js',)
 
 
 @admin.register(FishCategory)
@@ -111,6 +168,40 @@ class PlantAdmin(admin.ModelAdmin):
         if not obj.created_by:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+class ShippingChargeSettingAdminForm(forms.ModelForm):
+    class Meta:
+        model = ShippingChargeSetting
+        fields = '__all__'
+        widgets = {
+            'unserviceable_states': TagListWidget(attrs={
+                'placeholder': 'Add state',
+            })
+        }
+        labels = {
+            'unserviceable_states': 'Delivery Not Available In (States)'
+        }
+
+
+@admin.register(ShippingChargeSetting)
+class ShippingChargeSettingAdmin(admin.ModelAdmin):
+    form = ShippingChargeSettingAdminForm
+    list_display = ('kerala_rate', 'default_rate', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Shipping Rates', {
+            'fields': ('kerala_rate', 'default_rate')
+        }),
+        ('Unavailable States', {
+            'fields': ('unserviceable_states',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):

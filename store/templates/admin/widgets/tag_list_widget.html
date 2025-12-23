@@ -1,0 +1,12 @@
+<div class="taglist-widget" data-target-input="{{ widget.attrs.id }}">
+  <div class="taglist-chiplist">
+    {% for tag in widget.tag_values %}
+      <span class="tag-chip" data-value="{{ tag }}">
+        <span class="tag-label">{{ tag }}</span>
+        <button type="button" class="tag-remove" aria-label="Remove {{ tag }}">×</button>
+      </span>
+    {% endfor %}
+  </div>
+  <input type="text" class="taglist-input" id="{{ widget.attrs.id }}_input" autocomplete="off" placeholder="{{ widget.input_placeholder }}">
+  <input type="hidden" name="{{ widget.name }}" value="{{ widget.joined_value }}" id="{{ widget.attrs.id }}">
+</div>

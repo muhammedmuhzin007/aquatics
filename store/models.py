@@ -478,6 +478,11 @@ class ShippingChargeSetting(models.Model):
     key = models.CharField(max_length=32, unique=True, default='default', editable=False)
     kerala_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('60.00'))
     default_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('100.00'))
+    unserviceable_states = models.TextField(
+        blank=True,
+        default='',
+        help_text='List Indian states where delivery is currently unavailable.'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

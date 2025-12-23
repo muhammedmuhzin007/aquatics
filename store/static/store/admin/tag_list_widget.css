@@ -1,0 +1,51 @@
+.taglist-widget {
+  display: block;
+  max-width: 32rem;
+}
+
+.taglist-chiplist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.85rem;
+  color: #111827;
+}
+
+.tag-chip .tag-remove {
+  background: transparent;
+  border: 0;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.tag-chip .tag-remove:hover {
+  color: #ef4444;
+}
+
+.taglist-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+}
+
+.taglist-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}

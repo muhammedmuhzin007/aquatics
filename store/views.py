@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_protect
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import lru_cache
+import re
 
 from .payments import razorpay as razorpay_provider
 
@@ -334,18 +335,49 @@ def _calculate_total_weight(cart_items, accessory_items, plant_items):
 
 
 def _is_kerala_destination(state=None, pincode=None, address=None):
-    state = (state or '').strip().lower()
-    if state == 'kerala':
-        return True
-
+    state_value = (state or '').strip().lower()
     digits = ''.join(ch for ch in (pincode or '') if ch.isdigit())
-    if len(digits) >= 2 and digits[:2] in KERALA_PIN_PREFIXES:
+
+    state_matches = state_value == 'kerala'
+    pin_matches = len(digits) >= 2 and digits[:2] in KERALA_PIN_PREFIXES
+
+    # When both state and pincode are supplied, require them to agree before
+    # granting Kerala shipping rates to avoid mismatched combinations.
+    if state_value and digits:
+        return state_matches and pin_matches
+
+    # Fall back to whichever signal is available if only one field is present.
+    if state_matches or pin_matches:
         return True
 
     if address and 'kerala' in address.lower():
         return True
 
     return False
+
+
+STATE_SPLIT_PATTERN = re.compile(r'[\n,]+')
+
+
+def _normalize_state_value(value):
+    if not value:
+        return ''
+    return re.sub(r'\s+', ' ', value).strip().lower()
+
+
+def _parse_unserviceable_states(raw_value):
+    if not raw_value:
+        return []
+    cleaned = raw_value.replace('\r', '\n')
+    entries = [part.strip() for part in STATE_SPLIT_PATTERN.split(cleaned) if part.strip()]
+    return entries
+
+
+class ShippingUnavailableError(Exception):
+    def __init__(self, state_display):
+        state_display = (state_display or '').strip() or 'the selected state'
+        self.state = state_display
+        super().__init__(f'Delivery is not available in {state_display}.')
 
 
 @lru_cache(maxsize=1)
@@ -357,19 +389,36 @@ def _get_shipping_rates():
         )
         kerala_rate = Decimal(setting.kerala_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         default_rate = Decimal(setting.default_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        return kerala_rate, default_rate
+        unserviceable = tuple(
+            _normalize_state_value(entry)
+            for entry in _parse_unserviceable_states(getattr(setting, 'unserviceable_states', ''))
+            if _normalize_state_value(entry)
+        )
+        return kerala_rate, default_rate, unserviceable
     except Exception:
         logging.getLogger(__name__).exception('Falling back to default shipping rates')
-        return Decimal('60.00'), Decimal('100.00')
+        return Decimal('60.00'), Decimal('100.00'), tuple()
 
 
 def _calculate_delivery_charge(total_weight, state=None, pincode=None, address=None):
-    kerala_rate, default_rate = _get_shipping_rates()
+    kerala_rate, default_rate, unserviceable_states = _get_shipping_rates()
+    normalized_state = _normalize_state_value(state)
+    if normalized_state and normalized_state in unserviceable_states:
+        raise ShippingUnavailableError(state)
+
     is_kerala = _is_kerala_destination(state=state, pincode=pincode, address=address)
     rate = kerala_rate if is_kerala else default_rate
-    if total_weight <= 0:
+
+    try:
+        weight = Decimal(total_weight)
+    except (TypeError, InvalidOperation):
+        weight = Decimal('0')
+
+    if weight <= 0:
         return Decimal('0.00'), rate
-    charge = (total_weight * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    billable_weight = max(weight, Decimal('1.00'))
+    charge = (billable_weight * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     return charge, rate
 
 @login_required
@@ -468,17 +517,32 @@ def checkout_view(request):
     if not shipping_address_prefill:
         shipping_address_prefill = getattr(request.user, 'address', '') or ''
 
-    delivery_charge, delivery_rate = _calculate_delivery_charge(
-        total_weight,
-        state=shipping_state_prefill,
-        pincode=shipping_pincode_prefill,
-        address=shipping_address_prefill,
+    shipping_setting = ShippingChargeSetting.objects.filter(key='default').only('unserviceable_states').first()
+    unserviceable_state_list = _parse_unserviceable_states(
+        getattr(shipping_setting, 'unserviceable_states', '') if shipping_setting else ''
     )
+
+    shipping_blocked_state = None
+    try:
+        delivery_charge, delivery_rate = _calculate_delivery_charge(
+            total_weight,
+            state=shipping_state_prefill,
+            pincode=shipping_pincode_prefill,
+            address=shipping_address_prefill,
+        )
+    except ShippingUnavailableError as exc:
+        shipping_blocked_state = exc.state
+        delivery_charge = Decimal('0.00')
+        delivery_rate = Decimal('0.00')
+        messages.error(
+            request,
+            f'Delivery is not available in {exc.state}. Please choose a different state to continue.',
+        )
 
     net_total = max(Decimal('0'), final_total)
     final_total = net_total + delivery_charge
 
-    kerala_delivery_rate, default_delivery_rate = _get_shipping_rates()
+    kerala_delivery_rate, default_delivery_rate, _ = _get_shipping_rates()
 
     # Available coupon suggestions (simple rules)
     now = timezone.now()
@@ -520,36 +584,8 @@ def checkout_view(request):
         'shipping_address_prefill': shipping_address_prefill,
         'shipping_state_prefill': shipping_state_prefill,
         'shipping_pincode_prefill': shipping_pincode_prefill,
-    })
-from django.contrib.auth.decorators import login_required, user_passes_test
-
-def is_customer(user):
-    return user.is_authenticated and user.role == 'customer'
-
-def is_staff(user):
-    return user.is_authenticated and (user.role == 'staff' or user.role == 'admin')
-
-def is_admin(user):
-    return user.is_authenticated and user.role == 'admin'
-
-# ...existing code...
-
-@login_required
-@user_passes_test(is_customer)
-def order_confirmation_view(request, order_id):
-    order = get_object_or_404(Order, id=order_id, user=request.user)
-    # Attach invoice_url if paid and invoice exists
-    invoice_url = None
-    if order.payment_status == 'paid':
-        # Assume invoices are saved as media/invoices/invoice-<order_number>.pdf
-        from django.conf import settings
-        import os
-        invoice_path = os.path.join(settings.MEDIA_ROOT, 'invoices', f'invoice-{order.order_number}.pdf')
-        if os.path.exists(invoice_path):
-            invoice_url = settings.MEDIA_URL + f'invoices/invoice-{order.order_number}.pdf'
-    return render(request, 'store/customer/order_confirmation.html', {
-        'order': order,
-        'invoice_url': invoice_url,
+        'unserviceable_state_names': unserviceable_state_list,
+        'shipping_blocked_state': shipping_blocked_state,
     })
 from .models import CustomUser, Category, Breed, Fish, Order, OrderItem, Review, Service, ContactInfo, Coupon, LimitedOffer
 from django.shortcuts import render, redirect, get_object_or_404
@@ -2967,13 +3003,19 @@ def apply_coupon_view(request):
         shipping_state = request.POST.get('shipping_state') or getattr(request.user, 'address', '')
         shipping_pincode = request.POST.get('shipping_pincode') or ''
         shipping_address = request.POST.get('shipping_address') or getattr(request.user, 'address', '')
-        delivery_charge, delivery_rate = _calculate_delivery_charge(
-            total_weight,
-            state=shipping_state,
-            pincode=shipping_pincode,
-            address=shipping_address,
-        )
-        kerala_rate_value, default_rate_value = _get_shipping_rates()
+        try:
+            delivery_charge, delivery_rate = _calculate_delivery_charge(
+                total_weight,
+                state=shipping_state,
+                pincode=shipping_pincode,
+                address=shipping_address,
+            )
+        except ShippingUnavailableError as exc:
+            return JsonResponse({
+                'success': False,
+                'message': f'Delivery is not available in {exc.state}. Please update your shipping state.'
+            }, status=400)
+        kerala_rate_value, default_rate_value, _ = _get_shipping_rates()
 
         # Check minimum order amount unless force_apply
         if not getattr(coupon, 'force_apply', False):
@@ -3051,13 +3093,19 @@ def remove_coupon_view(request):
     shipping_state = request.POST.get('shipping_state') or getattr(request.user, 'address', '')
     shipping_pincode = request.POST.get('shipping_pincode') or ''
     shipping_address = request.POST.get('shipping_address') or getattr(request.user, 'address', '')
-    delivery_charge, delivery_rate = _calculate_delivery_charge(
-        total_weight,
-        state=shipping_state,
-        pincode=shipping_pincode,
-        address=shipping_address,
-    )
-    kerala_rate_value, default_rate_value = _get_shipping_rates()
+    try:
+        delivery_charge, delivery_rate = _calculate_delivery_charge(
+            total_weight,
+            state=shipping_state,
+            pincode=shipping_pincode,
+            address=shipping_address,
+        )
+    except ShippingUnavailableError as exc:
+        return JsonResponse({
+            'success': False,
+            'message': f'Delivery is not available in {exc.state}. Please update your shipping state.'
+        }, status=400)
+    kerala_rate_value, default_rate_value, _ = _get_shipping_rates()
 
     final_total = max(Decimal('0'), Decimal(total)) + delivery_charge
     # When removed, discount is zero and final_total equals total
@@ -3161,13 +3209,19 @@ def create_draft_order(request):
                         or '')
         payment_method = request.POST.get('payment_method') or 'card'
 
-        delivery_charge, delivery_rate = _calculate_delivery_charge(
-            total_weight,
-            state=shipping_state,
-            pincode=shipping_pincode,
-            address=shipping_address,
-        )
-        kerala_rate_value, default_rate_value = _get_shipping_rates()
+        try:
+            delivery_charge, delivery_rate = _calculate_delivery_charge(
+                total_weight,
+                state=shipping_state,
+                pincode=shipping_pincode,
+                address=shipping_address,
+            )
+        except ShippingUnavailableError as exc:
+            return JsonResponse({
+                'error': f'Delivery is not available in {exc.state}. Please choose a different state.',
+                'shipping_blocked': True
+            }, status=400)
+        kerala_rate_value, default_rate_value, _ = _get_shipping_rates()
         final_total = max(Decimal('0'), final_total) + delivery_charge
 
         # Try to reuse a recent draft
@@ -3312,6 +3366,22 @@ def order_detail_view(request, order_id):
         'order': order,
         'review_form': review_form,
         'existing_review': existing_review,
+    })
+
+
+@login_required
+@user_passes_test(is_customer)
+def order_confirmation_view(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    invoice_url = None
+    if order.payment_status == 'paid':
+        invoice_filename = f'invoice-{order.order_number}.pdf'
+        invoice_path = os.path.join(settings.MEDIA_ROOT, 'invoices', invoice_filename)
+        if os.path.exists(invoice_path):
+            invoice_url = settings.MEDIA_URL + f'invoices/{invoice_filename}'
+    return render(request, 'store/customer/order_confirmation.html', {
+        'order': order,
+        'invoice_url': invoice_url,
     })
 
 

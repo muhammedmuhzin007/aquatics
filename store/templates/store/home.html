@@ -1251,41 +1251,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
 {% endif %}
     
 
-<!-- Categories Section -->
-{% if categories %}
-    <div class="container-fluid">
-        <h2 class="section-heading">Categories</h2>
-        <div class="categories-carousel-container">
-            <div class="categories-carousel-track">
-                {% for category in categories %}
-                <div class="category-carousel-item">
-                    <div class="card category-card">
-                        {% if category.image %}
-                        <img src="{{ category.image.url }}" class="card-img-top" alt="{{ category.name }}">
-                        {% else %}
-                        <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
-                        </div>
-                        {% endif %}
-                        <div class="card-body">
-                            <h5 class="card-title">{{ category.name }}</h5>
-                            <p class="card-text">{{ category.description|truncatewords:20 }}</p>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            
-            <!-- Navigation Buttons -->
-            <button class="category-carousel-nav category-carousel-prev" id="categoryPrev" aria-label="Previous categories">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="category-carousel-nav category-carousel-next" id="categoryNext" aria-label="Next categories">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
-    </div>
-{% endif %}
+{# Removed categories carousel from home page #}
 
 <!-- Featured Fishes Section -->
 {% if fishes %}

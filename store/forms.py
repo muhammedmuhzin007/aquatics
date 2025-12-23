@@ -44,9 +44,37 @@ class CustomUserCreationForm(UserCreationForm):
     phone_number = forms.CharField(max_length=15, required=False)
     address = forms.CharField(widget=forms.Textarea, required=False)
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Hide Django's default password guidance bullets
+        for field_name in ('password1', 'password2'):
+            if field_name in self.fields:
+                self.fields[field_name].help_text = ''
+
     class Meta:
         model = CustomUser
         fields = ('username', 'email', 'password1', 'password2', 'phone_number', 'address')
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError(self.error_messages['password_mismatch'], code='password_mismatch')
+
+        if password1 and len(password1) < 8:
+            raise forms.ValidationError('Password must be at least 8 characters long.', code='password_too_short')
+
+        if password2 and len(password2) < 8:
+            raise forms.ValidationError('Password must be at least 8 characters long.', code='password_too_short')
+
+        return password2
+
+    def _post_clean(self):
+        forms.ModelForm._post_clean(self)
+        password = self.cleaned_data.get('password2')
+        if password:
+            self.instance.set_password(password)
 
 
 class StaffCreateForm(forms.ModelForm):
@@ -298,14 +326,20 @@ class ServiceForm(forms.ModelForm):
 class ShippingChargeForm(forms.ModelForm):
     class Meta:
         model = ShippingChargeSetting
-        fields = ['kerala_rate', 'default_rate']
+        fields = ['kerala_rate', 'default_rate', 'unserviceable_states']
         widgets = {
             'kerala_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
             'default_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'unserviceable_states': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Example: Lakshadweep, Nagaland, Mizoram'
+            }),
         }
         labels = {
             'kerala_rate': 'Kerala Rate (₹ per kg)',
             'default_rate': 'Other States Rate (₹ per kg)',
+            'unserviceable_states': 'Delivery Not Available In (States)'
         }
 
     def clean(self):

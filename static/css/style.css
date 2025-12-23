@@ -1901,14 +1901,28 @@ html[data-theme='light'] .deal-badge-large {
     
     .top-nav-content {
         padding: 0 20px;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .top-nav-right {
         flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
     }
-    
+
     .top-nav-link {
-        display: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 4px 10px;
+        flex: 0 1 auto;
     }
-    
+
     .top-nav-icons {
+        justify-content: center;
         gap: 10px;
     }
     

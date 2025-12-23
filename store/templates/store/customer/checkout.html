@@ -223,6 +223,18 @@
                             <div class="mb-4">
                                 <label class="form-label">State *</label>
                                 <input type="text" class="form-control" name="shipping_state" value="{{ shipping_state_prefill }}" required placeholder="State / Region">
+                                {% if unserviceable_state_names %}
+                                {% endif %}
+                                <div id="shipping-blocked-banner" class="alert alert-danger mt-3" data-template=" currently deliver to {state} is unavailable.." {% if not shipping_blocked_state %}style="display:none;"{% endif %}>
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    <span id="shipping-blocked-message">
+                                        {% if shipping_blocked_state %}
+                                            Deliver to {{ shipping_blocked_state }} is currently unavailable.
+                                        {% else %}
+                                            Delivery is unavailable for the selected place.
+                                        {% endif %}
+                                    </span>
+                                </div>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">Pincode *</label>
@@ -279,7 +291,7 @@
                             </div>
                             <div class="d-flex justify-content-between">
                                 <span class="text-white">Delivery Charge (<span id="delivery-rate-text" data-rate="{{ delivery_rate }}">₹{{ delivery_rate|floatformat:0 }}</span>/kg)</span>
-                                <span class="text-white" id="delivery-charge-display" data-amount="{{ delivery_charge }}">{{ delivery_charge|rupees }}</span>
+                                <span class="text-white" id="delivery-charge-display" data-amount="{{ delivery_charge }}">{{ delivery_charge|rupees:0 }}</span>
                             </div>
                             <div class="d-flex justify-content-between text-success" id="discount-row" {% if discount|floatformat:2 == '0.00' %}style="display:none;"{% endif %}>
                                 <span id="discount-label">
@@ -443,7 +455,7 @@
                     </div>
 
                     <div class="d-grid gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn">
+                        <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn" data-state-blocked="{% if shipping_blocked_state %}true{% else %}false{% endif %}" {% if shipping_blocked_state %}disabled{% endif %}>
                             <span id="place-order-btn-text"><i class="fas fa-check"></i> Place Order</span>
                             <span id="place-order-btn-spinner" style="display:none"><i class="fas fa-spinner fa-spin"></i> Processing...</span>
                         </button>
@@ -457,6 +469,8 @@
         </div>
     </div>
 </section>
+
+{{ unserviceable_state_names|json_script:"unserviceable-states-data" }}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -506,6 +520,57 @@ document.addEventListener('DOMContentLoaded', function() {
     const shippingAddressInput = document.querySelector('textarea[name="shipping_address"]');
     const shippingStateInput = document.querySelector('input[name="shipping_state"]');
     const shippingPincodeInput = document.querySelector('input[name="shipping_pincode"]');
+    const shippingBlockedBanner = document.getElementById('shipping-blocked-banner');
+    const shippingBlockedMessage = document.getElementById('shipping-blocked-message');
+    const shippingBlockedTemplate = shippingBlockedBanner ? (shippingBlockedBanner.dataset.template || '') : '';
+    const blockedStatesElement = document.getElementById('unserviceable-states-data');
+    let blockedStates = [];
+    try {
+        blockedStates = blockedStatesElement ? JSON.parse(blockedStatesElement.textContent || '[]') : [];
+    } catch (err) {
+        blockedStates = [];
+    }
+    blockedStates = blockedStates
+        .map(state => (typeof state === 'string' ? state.trim().toLowerCase() : ''))
+        .filter(Boolean);
+
+    function normalizeState(value) {
+        if (!value) return '';
+        return value.toString().trim().toLowerCase();
+    }
+
+    function stateIsBlocked(value) {
+        const normalized = normalizeState(value);
+        if (!normalized) return false;
+        return blockedStates.includes(normalized);
+    }
+
+    function updateShippingBlocking(stateValue) {
+        const originalValue = typeof stateValue === 'string' ? stateValue : (shippingStateInput ? shippingStateInput.value : '');
+        const blocked = stateIsBlocked(originalValue);
+        window.__shippingBlocked = blocked;
+
+        if (shippingBlockedBanner && shippingBlockedMessage) {
+            if (blocked) {
+                const displayName = originalValue && originalValue.trim() ? originalValue.trim() : 'the selected state';
+                const template = shippingBlockedTemplate || 'Delivery is not available in {state}. Please choose a different state to continue.';
+                shippingBlockedMessage.textContent = template.replace('{state}', displayName);
+                shippingBlockedBanner.style.display = '';
+            } else {
+                shippingBlockedBanner.style.display = 'none';
+            }
+        }
+
+        window.__shippingBlockedStateLabel = originalValue;
+        if (typeof window.__onShippingBlockingUpdated === 'function') {
+            try {
+                window.__onShippingBlockingUpdated();
+            } catch (err) {
+                console.warn('shipping block callback failed', err);
+            }
+        }
+        return blocked;
+    }
 
     function coalesce(value, fallback) {
         return value === undefined || value === null ? fallback : value;
@@ -530,6 +595,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return '₹' + safeNumber(value, 0).toFixed(2);
     }
 
+    function calculateDeliveryCharge(weight, rate) {
+        const numericWeight = safeNumber(weight, 0);
+        const numericRate = safeNumber(rate, 0);
+        if (numericWeight <= 0 || numericRate <= 0) return 0;
+        const billableWeight = Math.max(1, numericWeight);
+        return billableWeight * numericRate;
+    }
+
     const totalsState = window.__checkoutTotals || {};
     const subtotalValue = extractNumeric(orderSummary ? orderSummary.dataset.total : null);
     const discountDataValue = extractNumeric(orderSummary ? orderSummary.dataset.discount : null);
@@ -548,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
     totalsState.keralaRate = coalesce(totalsState.keralaRate, baseKeralaRate);
     totalsState.defaultRate = coalesce(totalsState.defaultRate, baseDefaultRate);
     totalsState.deliveryRate = coalesce(totalsState.deliveryRate, rateValue !== null ? rateValue : baseDefaultRate);
-    const derivedCharge = safeNumber((totalsState.weight || 0) * totalsState.deliveryRate, 0);
+    const derivedCharge = calculateDeliveryCharge(totalsState.weight, totalsState.deliveryRate);
     totalsState.deliveryCharge = coalesce(totalsState.deliveryCharge, chargeValue !== null ? chargeValue : derivedCharge);
     totalsState.deliveryCharge = Number(safeNumber(totalsState.deliveryCharge, 0).toFixed(2));
     totalsState.final = Math.max(0, totalsState.subtotal - totalsState.discount) + totalsState.deliveryCharge;
@@ -558,11 +631,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const keralaRate = safeNumber(totalsState.keralaRate, baseKeralaRate);
         const defaultRate = safeNumber(totalsState.defaultRate, baseDefaultRate);
         const stateValue = (state || '').toString().trim().toLowerCase();
-        if (stateValue === 'kerala') return keralaRate;
         const digits = (pincode || '').toString().replace(/\D/g, '');
-        if (digits.length >= 2 && (digits.startsWith('67') || digits.startsWith('68') || digits.startsWith('69'))) return keralaRate;
+        const stateMatches = stateValue === 'kerala';
+        const pinMatches = digits.length >= 2 && (digits.startsWith('67') || digits.startsWith('68') || digits.startsWith('69'));
+
+        if (stateValue && digits) {
+            return stateMatches && pinMatches ? keralaRate : defaultRate;
+        }
+
+        if (stateMatches || pinMatches) return keralaRate;
+
         const addressValue = (address || '').toString().toLowerCase();
         if (addressValue.includes('kerala')) return keralaRate;
+
         return defaultRate;
     }
 
@@ -584,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (deliveryChargeDisplay) {
             deliveryChargeDisplay.dataset.amount = totalsState.deliveryCharge.toFixed(2);
-            deliveryChargeDisplay.textContent = formatRupees(totalsState.deliveryCharge);
+            deliveryChargeDisplay.textContent = '₹' + Number(totalsState.deliveryCharge).toFixed(0);
         }
         if (discountRow) {
             discountRow.style.display = totalsState.discount > 0 ? 'flex' : 'none';
@@ -610,13 +691,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function recalcTotalsFromShipping() {
+        const stateValue = shippingStateInput ? shippingStateInput.value : '';
+        const blocked = updateShippingBlocking(stateValue);
+        if (blocked) {
+            totalsState.deliveryRate = 0;
+            totalsState.deliveryCharge = 0;
+            updateTotalsDisplay();
+            return;
+        }
+
         const rate = determineDeliveryRate(
-            shippingStateInput ? shippingStateInput.value : '',
+            stateValue,
             shippingPincodeInput ? shippingPincodeInput.value : '',
             shippingAddressInput ? shippingAddressInput.value : ''
         );
         totalsState.deliveryRate = rate;
-        const charge = safeNumber((totalsState.weight || 0) * rate, totalsState.deliveryCharge);
+        const charge = calculateDeliveryCharge(totalsState.weight, rate);
         totalsState.deliveryCharge = Number(charge.toFixed(2));
         updateTotalsDisplay();
     }
@@ -645,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof data.delivery_charge !== 'undefined') {
             totalsState.deliveryCharge = Number(safeNumber(data.delivery_charge, totalsState.deliveryCharge).toFixed(2));
         } else {
-            const fallbackCharge = safeNumber((totalsState.weight || 0) * totalsState.deliveryRate, totalsState.deliveryCharge);
+            const fallbackCharge = calculateDeliveryCharge(totalsState.weight, totalsState.deliveryRate);
             totalsState.deliveryCharge = Number(fallbackCharge.toFixed(2));
         }
         if (typeof data.kerala_delivery_rate !== 'undefined') {
@@ -654,6 +744,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof data.default_delivery_rate !== 'undefined') {
             totalsState.defaultRate = safeNumber(data.default_delivery_rate, totalsState.defaultRate);
         }
+        const blocked = updateShippingBlocking(shippingStateInput ? shippingStateInput.value : '');
+        if (blocked) {
+            totalsState.deliveryRate = 0;
+            totalsState.deliveryCharge = 0;
+        }
         updateTotalsDisplay();
     }
 
@@ -661,6 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.__checkoutDetermineRate = determineDeliveryRate;
     window.__checkoutUpdateSummary = updateTotalsDisplay;
     window.__checkoutRecalculateShipping = recalcTotalsFromShipping;
+    window.__updateShippingBlocking = updateShippingBlocking;
 
     let shippingDebounce = null;
     [shippingAddressInput, shippingStateInput, shippingPincodeInput].forEach(function(input) {
@@ -1048,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageDiv = document.getElementById('checkout-message');
     const csrfInput = checkoutForm.querySelector('input[name="csrfmiddlewaretoken"]');
     const csrfToken = csrfInput ? csrfInput.value : null;
+    const shippingStateInput = document.querySelector('input[name="shipping_state"]');
 
     const createDraftUrl = "{% url 'create_draft_order' %}";
     const createPaymentTemplate = "{% url 'create_razorpay_payment' 0 %}";
@@ -1070,11 +1167,39 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
     }
 
+    function refreshButtonState() {
+        if (!placeOrderBtn) return;
+        if (placeOrderBtn.dataset.processing === 'true') {
+            placeOrderBtn.disabled = true;
+            return;
+        }
+        let blocked;
+        if (typeof window.__shippingBlocked === 'boolean') {
+            blocked = window.__shippingBlocked;
+        } else {
+            blocked = placeOrderBtn.dataset.stateBlocked === 'true';
+        }
+        placeOrderBtn.disabled = !!blocked;
+        placeOrderBtn.dataset.stateBlocked = placeOrderBtn.disabled ? 'true' : 'false';
+    }
+
     function setButtonState(disabled) {
         if (!placeOrderBtn) return;
-        placeOrderBtn.disabled = disabled;
+        if (disabled) {
+            placeOrderBtn.dataset.processing = 'true';
+            placeOrderBtn.disabled = true;
+        } else {
+            delete placeOrderBtn.dataset.processing;
+            refreshButtonState();
+        }
         if (btnText) btnText.style.display = disabled ? 'none' : '';
         if (btnSpinner) btnSpinner.style.display = disabled ? '' : 'none';
+        if (!disabled && btnSpinner) {
+            btnSpinner.style.display = 'none';
+        }
+        if (placeOrderBtn) {
+            placeOrderBtn.dataset.stateBlocked = placeOrderBtn.disabled ? 'true' : 'false';
+        }
     }
 
     const upiQrSection = document.getElementById('upi-qr-section');
@@ -1166,6 +1291,27 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = resolveConfirmationUrl(orderId);
     }
 
+    const externalUpdateShipping = typeof window.__updateShippingBlocking === 'function' ? window.__updateShippingBlocking : null;
+    if (externalUpdateShipping) {
+        window.__updateShippingBlocking = function(stateValue) {
+            const blocked = externalUpdateShipping(stateValue);
+            if (!placeOrderBtn || placeOrderBtn.dataset.processing === 'true') {
+                return blocked;
+            }
+            placeOrderBtn.disabled = blocked;
+            return blocked;
+        };
+    }
+
+    if (shippingStateInput) {
+        shippingStateInput.addEventListener('input', refreshButtonState);
+        shippingStateInput.addEventListener('change', refreshButtonState);
+    }
+
+    window.__onShippingBlockingUpdated = refreshButtonState;
+
+    refreshButtonState();
+
     if (checkoutForm) {
         const paymentRadios = checkoutForm.querySelectorAll('input[name="payment_method"]');
         paymentRadios.forEach((input) => {
@@ -1179,6 +1325,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     checkoutForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (window.__shippingBlocked) {
+            showCheckoutMessage('Delivery is not available for the selected state. Please update your shipping details.', 'warning');
+            setButtonState(false);
+            return;
+        }
         setButtonState(true);
         showCheckoutMessage('');
         hideUpiDetails();
@@ -1307,6 +1458,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Checkout error', error);
             showCheckoutMessage(error.message || 'Unable to process payment. Please try again.');
             setButtonState(false);
+            refreshButtonState();
         }
     });
 })();

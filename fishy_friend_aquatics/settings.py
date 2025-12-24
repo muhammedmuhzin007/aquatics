@@ -9,6 +9,7 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS = ['fishyfriendaqua.in', 'www.fishyfriendaqua.in']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -27,6 +28,7 @@ SITE_NAME = 'FISHY FRIEND AQUA'
 # Public site base URL used by background tasks to build absolute links when
 # no HttpRequest object is available. Override in .env for production.
 SITE_URL = os.getenv('SITE_URL', 'http://127.0.0.1:8000')
+# SITE_URL = os.getenv('SITE_URL', 'http://fishyfriendaqua.in')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

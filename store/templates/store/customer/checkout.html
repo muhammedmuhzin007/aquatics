@@ -1158,6 +1158,19 @@ document.addEventListener('DOMContentLoaded', function() {
         wallet: { card: false, upi: false, netbanking: false, wallet: true }
     };
 
+    let razorpayPopupRef = null;
+
+    function closeRazorpayPopup() {
+        try {
+            if (razorpayPopupRef && !razorpayPopupRef.closed) {
+                razorpayPopupRef.close();
+            }
+        } catch (err) {
+            // Ignore cross-origin restrictions when closing the Razorpay fallback window.
+        }
+        razorpayPopupRef = null;
+    }
+
     function showCheckoutMessage(message, type = 'danger') {
         if (!messageDiv) return;
         if (!message) {
@@ -1215,6 +1228,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function resolveConfirmationUrl(orderId) {
         return confirmationTemplate.replace('0/', `${orderId}/`);
+    }
+
+    function redirectToConfirmation(orderId) {
+        const url = resolveConfirmationUrl(orderId);
+        const attemptClose = () => {
+            try {
+                window.close();
+                if (!window.closed) {
+                    window.open('', '_self');
+                    window.close();
+                }
+            } catch (err) {
+                // Ignore; some browsers block window.close on primary tabs.
+            }
+        };
+
+        const targets = [window.opener, window.parent];
+        for (const target of targets) {
+            if (!target || target === window) {
+                continue;
+            }
+            try {
+                target.location.href = url;
+                attemptClose();
+                return;
+            } catch (err) {
+                // Ignore cross-origin access issues and fall back to current window.
+            }
+        }
+        window.location.href = url;
     }
 
     function hideUpiDetails() {
@@ -1288,7 +1331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!response.ok || !data.success) {
             throw new Error(data.message || 'Payment verification failed.');
         }
-        window.location.href = resolveConfirmationUrl(orderId);
+        redirectToConfirmation(orderId);
     }
 
     const externalUpdateShipping = typeof window.__updateShippingBlocking === 'function' ? window.__updateShippingBlocking : null;
@@ -1436,12 +1479,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     } catch (err) {
                         showCheckoutMessage(err.message || 'Payment verification failed.');
                         setButtonState(false);
+                    } finally {
+                        try {
+                            rzp.close();
+                        } catch (closeErr) {
+                            // Ignore; Razorpay already closed or unavailable.
+                        }
+                        closeRazorpayPopup();
                     }
                 },
                 modal: {
                     ondismiss: function() {
                         showCheckoutMessage('Payment flow cancelled by user.', 'warning');
                         setButtonState(false);
+                        closeRazorpayPopup();
                     }
                 }
             }, config ? { config } : {});
@@ -1452,13 +1503,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 const message = err.description || err.reason || 'Payment failed. Please try again.';
                 showCheckoutMessage(message);
                 setButtonState(false);
+                closeRazorpayPopup();
             });
-            rzp.open();
+
+            const originalWindowOpen = window.open;
+            try {
+                window.open = function(...args) {
+                    const popup = originalWindowOpen.apply(window, args);
+                    razorpayPopupRef = popup;
+                    return popup;
+                };
+                rzp.open();
+            } finally {
+                window.open = originalWindowOpen;
+            }
         } catch (error) {
             console.error('Checkout error', error);
             showCheckoutMessage(error.message || 'Unable to process payment. Please try again.');
             setButtonState(false);
             refreshButtonState();
+            closeRazorpayPopup();
         }
     });
 })();

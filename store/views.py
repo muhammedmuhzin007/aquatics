@@ -1209,14 +1209,21 @@ def finalize_order_payment(order, payment_id=None, request=None):
 
         if recipient:
             subject = f'Invoice - {settings.SITE_NAME} - {order.order_number}'
-            try:
-                from store.tasks import send_order_email
-                site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
-                send_order_email.delay(order.id, 'invoice', subject, recipient, site_base)
-            except Exception:
-                logger.info('Celery unavailable or task failed; sending invoice synchronously for %s', getattr(order, 'order_number', None))
+            site_base = request.build_absolute_uri('/') if request is not None else getattr(settings, 'SITE_URL', None)
+            dispatched = False
+
+            if getattr(settings, 'ORDER_EMAILS_ASYNC', False):
+                try:
+                    from store.tasks import send_order_email
+                    send_order_email.delay(order.id, 'invoice', subject, recipient, site_base)
+                    dispatched = True
+                except Exception:
+                    logger.info('Async invoice queueing failed; falling back to synchronous send for %s', getattr(order, 'order_number', None))
+
+            if not dispatched:
                 try:
                     _send_order_email(order, 'invoice', subject, recipient, request=request)
+                    dispatched = True
                 except Exception:
                     logger.exception('Synchronous invoice send failed for order %s', getattr(order, 'order_number', None))
         else:

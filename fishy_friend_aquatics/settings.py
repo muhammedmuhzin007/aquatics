@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
-DEBUG = True
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here-change-in-production')
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes', 'on')
 ALLOWED_HOSTS = ['*']
 # ALLOWED_HOSTS = ['fishyfriendaqua.in', 'www.fishyfriendaqua.in']
 
@@ -100,12 +100,20 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 EMAIL_HOST_ENV = os.getenv('EMAIL_HOST')
 EMAIL_HOST_USER_ENV = os.getenv('EMAIL_HOST_USER')
 
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
+RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', '')
+PAYMENT_PROVIDER = os.getenv('PAYMENT_PROVIDER', 'razorpay')
+
 
 def _parse_bool_env(name: str, default: bool) -> bool:
     v = os.getenv(name)
     if v is None:
         return default
     return v.lower() in ("true", "1", "yes", "on")
+
+
+ORDER_EMAILS_ASYNC = _parse_bool_env('ORDER_EMAILS_ASYNC', False)
 
 
 # If SMTP settings are provided via environment variables, configure SMTP backend.
@@ -163,7 +171,3 @@ LOGGING = {
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
-
-# razorpay
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')

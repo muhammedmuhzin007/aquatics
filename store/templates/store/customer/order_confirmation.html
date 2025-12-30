@@ -60,6 +60,7 @@
             </ul>
             {% if order.payment_status == 'paid' and invoice_url %}
               <a href="{{ invoice_url }}" class="btn btn-success mb-2" target="_blank"><i class="fas fa-file-invoice"></i> Download Invoice</a>
+              <p class="text-muted">We also emailed a copy of the invoice to {{ order.user.email }}.</p>
             {% elif order.payment_status == 'paid' %}
               <p class="text-muted mb-2">Invoice will be available shortly. Please check back from your orders list.</p>
             {% endif %}

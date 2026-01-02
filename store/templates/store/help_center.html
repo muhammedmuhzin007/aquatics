@@ -1,0 +1,20 @@
+{% extends 'store/base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h1 class="mb-4 text-center">Help Center</h1>
+            <p class="lead">Need assistance? The {{ SITE_NAME }} Help Center provides quick answers to common questions.</p>
+            <h2 class="mt-4">Contact Support</h2>
+            <p>Email us at <a href="mailto:{{ EMAIL_HOST_USER_ENV }}">{{ EMAIL_HOST_USER_ENV }}</a> or call our customer care line.</p>
+            <h2 class="mt-4">Shipping &amp; Delivery</h2>
+            <p>Review estimated delivery times and shipping charges in your order confirmation emails.</p>
+            <h2 class="mt-4">Order Tracking</h2>
+            <p>Visit the <a href="{% url 'customer_orders' %}">Orders page</a> to review your purchase history and order status updates.</p>
+            <h2 class="mt-4">Returns &amp; Refunds</h2>
+            <p>See our <a href="{% url 'return_policy' %}">Return Policy</a> for eligibility and instructions.</p>
+            <p class="mt-4">Still have questions? Reach out and we will be happy to help.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2191,6 +2191,30 @@ def about_view(request):
     })
 
 
+def terms_and_conditions_view(request):
+    return render(request, 'store/terms_and_conditions.html')
+
+
+def privacy_policy_view(request):
+    return render(request, 'store/privacy_policy.html')
+
+
+def return_policy_view(request):
+    return render(request, 'store/return_policy.html')
+
+
+def cookie_policy_view(request):
+    return render(request, 'store/cookie_policy.html')
+
+
+def terms_of_use_view(request):
+    return render(request, 'store/terms_of_use.html')
+
+
+def help_center_view(request):
+    return render(request, 'store/help_center.html')
+
+
 def blog_list_view(request):
     """Public blog list showing published posts."""
     from .models import BlogPost

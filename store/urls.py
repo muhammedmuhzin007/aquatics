@@ -20,6 +20,12 @@ urlpatterns = [
     # Home
     path('', views.home_view, name='home'),
     path('about/', views.about_view, name='about'),
+    path('terms-and-conditions/', views.terms_and_conditions_view, name='terms_and_conditions'),
+    path('privacy-policy/', views.privacy_policy_view, name='privacy_policy'),
+    path('return-policy/', views.return_policy_view, name='return_policy'),
+    path('cookie-policy/', views.cookie_policy_view, name='cookie_policy'),
+    path('terms-of-use/', views.terms_of_use_view, name='terms_of_use'),
+    path('help-center/', views.help_center_view, name='help_center'),
     # Blog
     path('blog/', views.blog_list_view, name='blog_list'),
     path('blog/<slug:slug>/', views.blog_detail_view, name='blog_detail'),

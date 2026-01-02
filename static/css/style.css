@@ -1648,6 +1648,17 @@ html[data-theme='light'] input[type="file"]:focus {
     margin-top: 80px;
 }
 
+.aquatic-footer .footer-link {
+    color: var(--text-gray);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.aquatic-footer .footer-link:hover {
+    color: var(--accent-light-blue);
+    text-decoration: none;
+}
+
 /* Fish Cards Grid */
 .fish-grid {
     display: grid;

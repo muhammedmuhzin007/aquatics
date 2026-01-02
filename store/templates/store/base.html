@@ -511,8 +511,15 @@
     <footer class="aquatic-footer mt-5">
         <div class="container text-center py-4">
             <div class="row">
-                <!-- Social icons removed per request -->
                 <div class="col-md-12">
+                    <ul class="list-inline mb-3">
+                        <li class="list-inline-item"><a class="footer-link" href="{% url 'terms_and_conditions' %}">Terms &amp; Conditions</a></li>
+                        <li class="list-inline-item"><a class="footer-link" href="{% url 'privacy_policy' %}">Privacy Policy</a></li>
+                        <li class="list-inline-item"><a class="footer-link" href="{% url 'return_policy' %}">Return Policy</a></li>
+                        <li class="list-inline-item"><a class="footer-link" href="{% url 'cookie_policy' %}">Cookie Policy</a></li>
+                        <li class="list-inline-item"><a class="footer-link" href="{% url 'terms_of_use' %}">Terms of Use</a></li>
+                        <li class="list-inline-item"><a class="footer-link" href="{% url 'help_center' %}">Help Center</a></li>
+                    </ul>
                     <p class="mb-0 text-gray">&copy; 2024 {{ SITE_NAME }}. Dive into the aquatic world!</p>
                 </div>
             </div>

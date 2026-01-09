@@ -1,0 +1,1 @@
+from fishy_friend_aquatics.wsgi import application

@@ -1,3 +1,4 @@
+{% load static %}
 <html>
   <body>
     <p>Hello {{ order.user.first_name|default:order.user.username }},</p>

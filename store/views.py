@@ -656,7 +656,6 @@ from urllib.parse import quote_plus
 from datetime import timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
-import pandas as pd
 import qrcode
 from io import BytesIO
 import base64

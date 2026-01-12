@@ -8,8 +8,12 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here-change-in-production')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes', 'on')
-ALLOWED_HOSTS = ['*']
+
 # ALLOWED_HOSTS = ['fishyfriendaqua.in', 'www.fishyfriendaqua.in']
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -27,8 +31,8 @@ SITE_NAME = 'FISHY FRIEND AQUA'
 
 # Public site base URL used by background tasks to build absolute links when
 # no HttpRequest object is available. Override in .env for production.
-SITE_URL = os.getenv('SITE_URL', 'http://127.0.0.1:8000')
-# SITE_URL = os.getenv('SITE_URL', 'http://fishyfriendaqua.in')
+
+SITE_URL = os.getenv('SITE_URL', 'https://fishyfriendaqua.in')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -119,11 +123,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+STATIC_ROOT = '/home/fishyfr2/public_html/static/'
+MEDIA_ROOT = '/home/fishyfr2/public_html/media/'
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'store.CustomUser'

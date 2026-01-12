@@ -171,6 +171,8 @@ class GuestFishCartItem:
         self.quantity = max(int(quantity or 0), 0)
         self.combo = combo
         self.combo_id = getattr(combo, 'id', None)
+        # expose fish_id so guest items can share combo logic with DB-backed items
+        self.fish_id = getattr(fish, 'id', None)
 
     def get_total(self):
         try:

@@ -228,6 +228,8 @@ html[data-theme='light'] .btn-buy-tickets:hover {
 html[data-theme='light'] .navbar-toggler-icon {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2826, 35, 50, 0.7%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
+/* Ensure hamburger bars adopt dark color in light theme */
+html[data-theme='light'] .aquatic-nav .navbar-toggler { color: var(--light-text); }
 
 /* Light mode button visibility fixes */
 html[data-theme='light'] .btn-success {
@@ -344,6 +346,8 @@ body.aquatic-bg {
     position: relative;
     display: flex;
     flex-direction: column;
+    /* Reserve space for fixed top header (top-nav + main nav) */
+    padding-top: var(--header-h, 0px);
 }
 
 /* Top Navigation Bar */
@@ -351,6 +355,12 @@ body.aquatic-bg {
     background: var(--darker-bg);
     padding: 8px 0;
     border-bottom: 1px solid var(--border-color);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 3100;
 }
 
 .top-nav-content {
@@ -688,6 +698,42 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     color: var(--light-text);
 }
 
+/* Animated hamburger (3 bars morph to X) */
+.aquatic-nav .navbar-toggler { position: relative; color: rgba(255,255,255,0.95); }
+.navbar-toggler .navbar-toggler-icon {
+    background-image: none !important; /* override Bootstrap SVG */
+    position: relative;
+    display: inline-block;
+    width: 26px; height: 3px; /* thicker line */
+    background-color: currentColor;
+    border-radius: 2px;
+    transition: background-color .25s ease, transform .55s cubic-bezier(.2,.8,.2,1); /* slower */
+}
+.navbar-toggler .navbar-toggler-icon::before,
+.navbar-toggler .navbar-toggler-icon::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 26px; height: 3px; /* thicker line */
+    background-color: currentColor;
+    border-radius: 2px;
+    transition: transform .55s cubic-bezier(.2,.8,.2,1), top .55s cubic-bezier(.2,.8,.2,1), opacity .35s ease; /* slower */
+}
+.navbar-toggler .navbar-toggler-icon::before { top: -8px; }
+.navbar-toggler .navbar-toggler-icon::after  { top:  8px; }
+
+.navbar-toggler[aria-expanded="true"] .navbar-toggler-icon {
+    background-color: transparent;
+}
+.navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::before {
+    top: 0;
+    transform: rotate(45deg);
+}
+.navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::after {
+    top: 0;
+    transform: rotate(-45deg);
+}
+
 .top-nav-icons i:hover {
     color: var(--text-white);
 }
@@ -698,6 +744,12 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     padding: 15px 0;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
+    position: fixed;
+    top: var(--top-nav-h, 0px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 3000;
 }
 
 .navbar-brand {
@@ -756,6 +808,100 @@ html[data-theme='light'] .nav-theme-toggle:hover {
 
 .dropdown-toggle.nav-link {
     cursor: pointer;
+}
+
+/* Mobile fullscreen menu with clip-path reveal */
+@media (max-width: 991.98px) {
+    body.nav-open {
+        overflow: hidden;
+        overscroll-behavior: contain;
+        touch-action: none;
+    }
+    /* Keep variables for animation origin; positioning is handled globally (fixed header) */
+    .aquatic-nav { --nav-origin-x: 50%; --nav-origin-y: 50%; }
+
+    /* Ensure the toggler stays clickable above the overlay */
+    .aquatic-nav .navbar-toggler { position: relative; z-index: 2002; }
+
+    /* Make the collapsed menu a fullscreen overlay */
+    .aquatic-nav .navbar-collapse {
+        position: fixed;
+        inset: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 64px 24px 180px; /* top, sides, bottom */
+        /* Respect device bottom safe area (iOS home indicator) */
+        padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+        /* Old Safari fallback */
+        padding-bottom: calc(180px + constant(safe-area-inset-bottom));
+        background: #000; /* solid black as requested */
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(-8px);
+        /* Radial reveal from top-right corner (remove rectangle look) */
+        clip-path: circle(0% at 100% 0);
+        transition: opacity .34s ease, transform .34s ease, clip-path .48s ease-out;
+        will-change: opacity, transform, clip-path;
+        text-align: center;
+        z-index: 2000;
+    }
+    /* In light mode, use the light surface for the overlay */
+    html[data-theme='light'] .aquatic-nav .navbar-collapse { background: var(--light-bg-alt); }
+
+    /* Open state driven by Bootstrap's .show class */
+    .aquatic-nav .navbar-collapse.show {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: none;
+        clip-path: circle(150% at 100% 0);
+    }
+
+    /* Stack links and animate them in with a subtle stagger */
+    .aquatic-nav .navbar-collapse .navbar-nav {
+        flex-direction: column;
+        gap: 18px;
+        width: 100%;
+        max-width: 420px;
+        margin: 0 auto;
+        align-items: center;
+        justify-content: center;
+    }
+    .aquatic-nav .navbar-collapse .nav-link {
+        font-size: 1.6rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 12px 0 !important;
+        color: var(--text-white) !important;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity .35s ease, transform .35s ease;
+        text-align: center;
+        width: 100%;
+    }
+    html[data-theme='light'] .aquatic-nav .navbar-collapse .nav-link { color: var(--light-text) !important; }
+
+    .aquatic-nav .navbar-collapse.show .nav-link { opacity: 1; transform: none; }
+    .aquatic-nav .navbar-collapse.show .navbar-nav .nav-link:nth-child(1) { transition-delay: 60ms; }
+    .aquatic-nav .navbar-collapse.show .navbar-nav .nav-link:nth-child(2) { transition-delay: 120ms; }
+    .aquatic-nav .navbar-collapse.show .navbar-nav .nav-link:nth-child(3) { transition-delay: 180ms; }
+    .aquatic-nav .navbar-collapse.show .navbar-nav .nav-link:nth-child(4) { transition-delay: 240ms; }
+    .aquatic-nav .navbar-collapse.show .navbar-nav .nav-link:nth-child(5) { transition-delay: 300ms; }
+    .aquatic-nav .navbar-collapse.show .navbar-nav .nav-link:nth-child(6) { transition-delay: 360ms; }
+}
+
+/* Reduced motion: disable animated transforms/clip-path for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    @media (max-width: 991.98px) {
+        .aquatic-nav .navbar-collapse { transition: none; transform: none; clip-path: none; opacity: 1; visibility: visible; }
+        .aquatic-nav .navbar-collapse:not(.show) { opacity: 0; visibility: hidden; }
+        .aquatic-nav .navbar-collapse .nav-link { transition: none; opacity: 1; transform: none; }
+    }
 }
 
 /* Hero Section */
@@ -845,7 +991,7 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    z-index: 10;
+    z-index: 5;
     font-size: 1.2rem;
     backdrop-filter: blur(8px);
     outline: none;
@@ -873,7 +1019,7 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     transform: translateX(-50%);
     display: flex;
     gap: 12px;
-    z-index: 10;
+    z-index: 5;
 }
 
 .hero-dot {
@@ -926,6 +1072,33 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     
     .hero-nav-next {
         right: 15px;
+    }
+
+    .hero-actions {
+        margin-top: 28px;
+        display: inline-flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .hero-actions .btn {
+        min-width: 180px;
+        text-align: center;
+    }
+
+    @media (max-width: 576px) {
+        .hero-actions {
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .hero-actions .btn {
+            width: min(280px, 100%);
+        }
     }
 }
 

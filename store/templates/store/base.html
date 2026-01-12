@@ -901,6 +901,61 @@
                 // (Removed category-select replacement behavior) 
             });
         </script>
+        <script>
+            // Robust scroll lock: fix body and restore previous scroll on close
+            (function(){
+                document.addEventListener('DOMContentLoaded', function(){
+                    var coll = document.querySelector('.navbar-collapse');
+                    if (!coll) return;
+                    var lockedScrollY = 0;
+
+                    function updateHeaderHeights(){
+                        try {
+                            var topNav = document.querySelector('.top-nav');
+                            var mainNav = document.querySelector('.aquatic-nav');
+                            if (!mainNav) return;
+                            var topH = topNav ? topNav.offsetHeight : 0;
+                            var mainH = mainNav.offsetHeight || 0;
+                            var root = document.documentElement;
+                            root.style.setProperty('--top-nav-h', topH + 'px');
+                            root.style.setProperty('--main-nav-h', mainH + 'px');
+                            root.style.setProperty('--header-h', (topH + mainH) + 'px');
+                        } catch(e) {}
+                    }
+
+                    updateHeaderHeights();
+                    window.addEventListener('resize', updateHeaderHeights);
+                    window.addEventListener('load', updateHeaderHeights);
+
+                    function lockScroll(){
+                        try {
+                            lockedScrollY = window.scrollY || window.pageYOffset || 0;
+                            document.body.classList.add('nav-open');
+                            document.body.style.position = 'fixed';
+                            document.body.style.top = '-' + lockedScrollY + 'px';
+                            document.body.style.left = '0';
+                            document.body.style.right = '0';
+                            document.body.style.width = '100%';
+                        } catch(e) {}
+                    }
+
+                    function unlockScroll(){
+                        try {
+                            document.body.classList.remove('nav-open');
+                            document.body.style.position = '';
+                            document.body.style.top = '';
+                            document.body.style.left = '';
+                            document.body.style.right = '';
+                            document.body.style.width = '';
+                            window.scrollTo(0, lockedScrollY || 0);
+                        } catch(e) {}
+                    }
+
+                    coll.addEventListener('show.bs.collapse', lockScroll);
+                    coll.addEventListener('hidden.bs.collapse', unlockScroll);
+                });
+            })();
+        </script>
                 <script>
                     (function(){
                         function getCookie(name) {

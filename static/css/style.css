@@ -2153,6 +2153,23 @@ html[data-theme='light'] .deal-badge-large {
     .filter-actions .btn { width: 100%; }
 }
 
+/* Fish detail page: ensure action buttons stack and match width on small screens */
+@media (max-width: 767.98px) {
+    .card .card-body > .mt-4 .btn,
+    .card .card-body > .mt-4 a.btn,
+    .card .card-body > .mt-4 button.btn {
+        width: 100% !important;
+        display: block !important;
+        text-align: center !important;
+        margin-left: 0 !important;
+    }
+
+    .card .card-body > .mt-4 .btn + .btn,
+    .card .card-body > .mt-4 a.btn + button.btn {
+        margin-top: 0.5rem !important;
+    }
+}
+
 /* Badges */
 .badge {
     padding: 6px 12px;

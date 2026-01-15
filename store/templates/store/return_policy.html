@@ -1,20 +1,274 @@
 {% extends 'store/base.html' %}
 {% load static %}
 {% block content %}
+<style>
+    .policy-hero {
+        background: linear-gradient(135deg, rgba(30, 136, 229, 0.15) 0%, rgba(66, 165, 245, 0.1) 100%);
+        border-bottom: 2px solid rgba(30, 136, 229, 0.3);
+        padding: 60px 0 40px;
+        margin-bottom: 40px;
+    }
+    .policy-hero h1 {
+        color: var(--dark-text);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    .policy-container {
+        background: rgba(15, 25, 40, 0.6);
+        border: 1px solid rgba(30, 136, 229, 0.2);
+        border-radius: 12px;
+        padding: 40px;
+        line-height: 1.8;
+    }
+    .policy-container h2 {
+        color: #64B5F6;
+        margin-top: 2.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        border-left: 4px solid #1E88E5;
+        padding-left: 15px;
+        font-size: 1.5rem;
+    }
+    .policy-container h3 {
+        color: #B3E5FC;
+        margin-top: 1.8rem;
+        margin-bottom: 0.8rem;
+        font-weight: 500;
+    }
+    .policy-container p {
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 1rem;
+    }
+    .policy-container ul, .policy-container ol {
+        margin-left: 1.5rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .policy-container li {
+        margin-bottom: 0.5rem;
+    }
+    .last-updated {
+        background: rgba(30, 136, 229, 0.15);
+        border-left: 4px solid #1E88E5;
+        padding: 15px 20px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+        color: #64B5F6;
+        font-weight: 500;
+    }
+    .alert-info {
+        background: rgba(30, 136, 229, 0.15);
+        border: 1px solid rgba(30, 136, 229, 0.3);
+        border-left: 4px solid #1E88E5;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 20px 0;
+        color: #B3E5FC;
+    }
+</style>
+
+<div class="policy-hero">
+    <div class="container">
+        <h1>Return & Refund Policy</h1>
+    </div>
+</div>
+
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <h1 class="mb-4 text-center">Return Policy</h1>
-            <p class="lead">We want you to be happy with every aquatic purchase. Review the details below to understand our return process.</p>
-            <h2 class="mt-4">1. Eligibility</h2>
-            <p>Returns are accepted within 7 days of delivery for unopened dry goods. Live stock is evaluated on a case-by-case basis.</p>
-            <h2 class="mt-4">2. Condition of Items</h2>
-            <p>Items must be unused, in the original packaging, and accompanied by proof of purchase.</p>
-            <h2 class="mt-4">3. Refund Process</h2>
-            <p>Approved returns are refunded to the original payment method once the item is inspected.</p>
-            <h2 class="mt-4">4. Shipping Costs</h2>
-            <p>Return shipping costs are the responsibility of the customer unless the item arrived damaged or incorrect.</p>
-            <p class="mt-4">Contact the Help Center to initiate a return or clarify any questions.</p>
+        <div class="col-lg-9">
+            <div class="last-updated">
+                <strong>Last Updated:</strong> January 2026
+            </div>
+            <div class="policy-container">
+                <p class="lead">At Fishy Friend Aquatics, your satisfaction is our priority. We want you to be completely happy with your purchase. If you're not satisfied with your order, we offer a hassle-free return and refund process as outlined below. Please read this policy carefully to understand your rights and our procedures.</p>
+
+                <h2>1. RETURN ELIGIBILITY</h2>
+                <h3>1.1 General Eligibility Criteria</h3>
+                <p>To be eligible for return, your items must meet the following conditions:</p>
+                <ul>
+                    <li>Items must be returned within 7 days of delivery</li>
+                    <li>Items must be unused, unopened, and in original condition</li>
+                    <li>Original packaging must be intact and undamaged</li>
+                    <li>You must have the original proof of purchase (order receipt or invoice)</li>
+                    <li>All accessories, documentation, and original materials must be included</li>
+                </ul>
+
+                <h3>1.2 Non-Returnable Items</h3>
+                <p>The following items are not eligible for return:</p>
+                <ul>
+                    <li><strong>Live Stock:</strong> Live fish, plants, and other aquatic organisms</li>
+                    <li><strong>Custom Orders:</strong> Items specifically ordered or customized per customer request</li>
+                    <li><strong>Used Items:</strong> Items that have been used, tested, or opened</li>
+                    <li><strong>Damaged Due to Misuse:</strong> Items damaged by the customer through improper handling</li>
+                    <li><strong>Clearance Items:</strong> Final sale and clearance items marked as non-returnable</li>
+                    <li><strong>Gift Cards:</strong> Purchased gift cards cannot be returned</li>
+                </ul>
+
+                <h3>1.3 Live Stock Policy</h3>
+                <p>Due to the nature of live aquatic organisms, special provisions apply:</p>
+                <ul>
+                    <li>Dead-on-Arrival (DOA) claims must be reported within 24 hours of delivery</li>
+                    <li>Photographic or video evidence of deceased animals is required</li>
+                    <li>We will provide a replacement or store credit for confirmed DOA claims</li>
+                    <li>We are not responsible for mortality due to improper care, tank conditions, or factors beyond our control</li>
+                    <li>Quarantine procedures and acclimation guidelines are the customer's responsibility</li>
+                </ul>
+
+                <h2>2. DAMAGED OR INCORRECT ITEMS</h2>
+                <h3>2.1 Damage During Shipping</h3>
+                <p>If your items arrive damaged due to shipping negligence:</p>
+                <ol>
+                    <li>Inspect your package immediately upon delivery</li>
+                    <li>Document all damage with clear photographs</li>
+                    <li>Contact us within 48 hours with photographic evidence</li>
+                    <li>We will arrange replacement or full refund at no cost to you</li>
+                    <li>Return shipping will be covered by Fishy Friend Aquatics</li>
+                </ol>
+
+                <h3>2.2 Incorrect Items</h3>
+                <p>If you receive an incorrect or wrong item:</p>
+                <ol>
+                    <li>Contact us immediately with order number and item details</li>
+                    <li>Provide proof of the discrepancy</li>
+                    <li>We will ship the correct item and provide a prepaid return label</li>
+                    <li>Once the incorrect item is returned, we'll issue a full refund if desired</li>
+                </ol>
+
+                <h2>3. HOW TO INITIATE A RETURN</h2>
+                <h3>3.1 Return Request Process</h3>
+                <ol>
+                    <li>Contact our customer support team at <a href="mailto:{{ EMAIL_HOST_USER }}" style="color: #17a2b8;">{{ EMAIL_HOST_USER }}</a> within 7 days of delivery</li>
+                    <li>Provide your order number and reason for return</li>
+                    <li>We will review your request and respond within 2 business days</li>
+                    <li>Upon approval, we will provide you with return instructions and a return label</li>
+                    <li>Pack items securely in original packaging if possible</li>
+                    <li>Use the provided return label to ship items back to us</li>
+                    <li>Keep tracking information for your records</li>
+                </ol>
+
+                <h3>3.2 Return Address</h3>
+                <p>Complete return address will be provided with your return authorization. Do not ship returns without obtaining proper return authorization.</p>
+
+                <h3>3.3 Shipping Costs</h3>
+                <ul>
+                    <li>Free return shipping is provided for defective or damaged items</li>
+                    <li>Free return shipping is provided for incorrect items</li>
+                    <li>For returns due to change of mind, customer is responsible for return shipping costs</li>
+                    <li>We recommend using insured, tracked shipping for high-value items</li>
+                </ul>
+
+                <h2>4. REFUND PROCESSING</h2>
+                <h3>4.1 Refund Conditions</h3>
+                <p>Refunds will be issued after we:</p>
+                <ul>
+                    <li>Receive your returned items</li>
+                    <li>Verify the items meet return eligibility criteria</li>
+                    <li>Inspect the items for condition and completeness</li>
+                    <li>Confirm all original packaging and accessories are included</li>
+                </ul>
+
+                <h3>4.2 Refund Timeline</h3>
+                <ul>
+                    <li>Items received at our facility will be processed within 5-7 business days</li>
+                    <li>Once approved, refunds are issued to the original payment method</li>
+                    <li>Refunds may take 5-10 business days to appear in your account (depending on your financial institution)</li>
+                    <li>You will receive email confirmation once your refund is processed</li>
+                </ul>
+
+                <h3>4.3 Partial Refunds</h3>
+                <p>Partial refunds may be issued if:</p>
+                <ul>
+                    <li>Items show signs of use or opening, but are otherwise acceptable</li>
+                    <li>Packaging damage is due to customer handling</li>
+                    <li>Items are returned without complete original packaging</li>
+                </ul>
+
+                <h2>5. EXCHANGES</h2>
+                <h3>5.1 Exchange Process</h3>
+                <p>If you'd prefer to exchange an item instead of returning it for a refund:</p>
+                <ol>
+                    <li>Contact us with your original order number and the exchange request</li>
+                    <li>We'll help you select a suitable replacement</li>
+                    <li>If the replacement is of equal value, shipping is free</li>
+                    <li>If the replacement is more expensive, you'll pay the difference</li>
+                    <li>If the replacement is less expensive, the difference will be refunded</li>
+                </ol>
+
+                <h3>5.2 Out of Stock Replacements</h3>
+                <p>If your desired replacement is out of stock, we'll offer:</p>
+                <ul>
+                    <li>Alternative similar items at the same or lower price</li>
+                    <li>Full refund</li>
+                    <li>Store credit for future purchase</li>
+                </ul>
+
+                <h2>6. WARRANTY CLAIMS</h2>
+                <h3>6.1 Equipment and Accessories Warranty</h3>
+                <p>We provide manufacturer's warranty coverage on qualifying equipment and accessories:</p>
+                <ul>
+                    <li>Warranty period: 30 days from purchase for manufacturing defects</li>
+                    <li>Warranty covers defects in material and workmanship</li>
+                    <li>Warranty does not cover user damage or misuse</li>
+                    <li>Contact us with warranty claims within 30 days of purchase</li>
+                </ul>
+
+                <h3>6.2 Warranty Claim Process</h3>
+                <ol>
+                    <li>Contact our support team with order number and detailed description of defect</li>
+                    <li>Provide photographs or video demonstrating the defect</li>
+                    <li>We'll assess the claim and provide resolution options</li>
+                    <li>Approved claims receive replacement or refund</li>
+                </ol>
+
+                <h2>7. REFUSAL AND RESTRICTIONS</h2>
+                <h3>7.1 We May Refuse Returns If:</h3>
+                <ul>
+                    <li>The return request is made after 7 days from delivery</li>
+                    <li>Items have been used, opened, or show signs of wear</li>
+                    <li>Original packaging is damaged or missing</li>
+                    <li>The customer cannot provide proof of purchase</li>
+                    <li>Items are not in their original condition</li>
+                </ul>
+
+                <h3>7.2 Fraudulent Returns</h3>
+                <p>We reserve the right to refuse processing and take legal action if we detect fraudulent return attempts, including:</p>
+                <ul>
+                    <li>False DOA claims</li>
+                    <li>Returning counterfeit items</li>
+                    <li>Returning stolen or damaged items with false claims</li>
+                </ul>
+
+                <h2>8. SPECIAL CIRCUMSTANCES</h2>
+                <h3>8.1 International Returns</h3>
+                <p>For international customers, return shipping costs are typically the responsibility of the customer unless the item arrived damaged. We recommend purchasing return shipping insurance.</p>
+
+                <h3>8.2 Gift Returns</h3>
+                <p>Gift purchases can be returned for store credit or exchange. If returned items cannot be verified with proof of purchase, store credit will be issued at the current selling price.</p>
+
+                <h3>8.3 Sale and Clearance Items</h3>
+                <p>Items purchased during sales or marked as clearance are final sale unless defective or damaged in transit.</p>
+
+                <h2>9. CONTACT INFORMATION FOR RETURNS</h2>
+                <p>For any return-related inquiries or to initiate a return:</p>
+                <p>
+                    <strong>Fishy Friend Aquatics - Customer Support</strong><br>
+                    Email: <a href="mailto:{{ EMAIL_HOST_USER }}" style="color: #17a2b8;">{{ EMAIL_HOST_USER }}</a><br>
+                    Help Center: <a href="{% url 'help_center' %}" style="color: #17a2b8;">Visit Help Center</a><br>
+                    Response Time: We aim to respond to return requests within 24-48 hours
+                </p>
+
+                <div class="alert-info">
+                    <strong>Pro Tip:</strong> Keep your original packaging and documentation for at least 30 days after delivery. This helps expedite the return process if needed.
+                </div>
+
+                <h2>10. POLICY CHANGES</h2>
+                <p>Fishy Friend Aquatics reserves the right to modify this Return & Refund Policy at any time. Changes will be effective immediately upon posting. Your continued use of our services following any changes constitutes your acceptance of the updated policy.</p>
+
+                <hr style="border-color: rgba(30, 136, 229, 0.3); margin: 3rem 0;">
+                <p style="font-size: 14px; color: rgba(255, 255, 255, 0.6);">
+                    <strong>Disclaimer:</strong> This policy complies with applicable consumer protection laws in India. For any disputes, customers have rights under the Consumer Protection Act, 2019, and may escalate complaints to relevant consumer protection authorities.
+                </p>
+            </div>
         </div>
     </div>
 </div>

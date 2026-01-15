@@ -1,20 +1,234 @@
 {% extends 'store/base.html' %}
 {% load static %}
 {% block content %}
+<style>
+    .policy-hero {
+        background: linear-gradient(135deg, rgba(30, 136, 229, 0.15) 0%, rgba(66, 165, 245, 0.1) 100%);
+        border-bottom: 2px solid rgba(30, 136, 229, 0.3);
+        padding: 60px 0 40px;
+        margin-bottom: 40px;
+    }
+    .policy-hero h1 {
+        color: var(--dark-text);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    .policy-container {
+        background: rgba(15, 25, 40, 0.6);
+        border: 1px solid rgba(30, 136, 229, 0.2);
+        border-radius: 12px;
+        padding: 40px;
+        line-height: 1.8;
+    }
+    .policy-container h2 {
+        color: #64B5F6;
+        margin-top: 2.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        border-left: 4px solid #1E88E5;
+        padding-left: 15px;
+        font-size: 1.5rem;
+    }
+    .policy-container h3 {
+        color: #B3E5FC;
+        margin-top: 1.8rem;
+        margin-bottom: 0.8rem;
+        font-weight: 500;
+    }
+    .policy-container p {
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 1rem;
+    }
+    .policy-container ul, .policy-container ol {
+        margin-left: 1.5rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .policy-container li {
+        margin-bottom: 0.5rem;
+    }
+    .last-updated {
+        background: rgba(30, 136, 229, 0.15);
+        border-left: 4px solid #1E88E5;
+        padding: 15px 20px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+        color: #64B5F6;
+        font-weight: 500;
+    }
+</style>
+
+<div class="policy-hero">
+    <div class="container">
+        <h1>Privacy Policy</h1>
+    </div>
+</div>
+
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <h1 class="mb-4 text-center">Privacy Policy</h1>
-            <p class="lead">We value your privacy and are committed to protecting your personal data when you interact with {{ SITE_NAME }}.</p>
-            <h2 class="mt-4">1. Information We Collect</h2>
-            <p>We collect personal information such as name, contact details, and order history to provide a tailored shopping experience.</p>
-            <h2 class="mt-4">2. How We Use Information</h2>
-            <p>Information is used to process orders, improve services, and communicate with you about updates or promotions.</p>
-            <h2 class="mt-4">3. Data Security</h2>
-            <p>We implement industry-standard security measures to protect your data from unauthorized access.</p>
-            <h2 class="mt-4">4. Your Rights</h2>
-            <p>You can request access, correction, or deletion of your personal data by contacting our support team.</p>
-            <p class="mt-4">Contact us through the Help Center if you have questions about this policy.</p>
+        <div class="col-lg-9">
+            <div class="last-updated">
+                <strong>Last Updated:</strong> January 2026
+            </div>
+            <div class="policy-container">
+                <p class="lead">Fishy Friend Aquatics ("we," "us," "our," or the "Company") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services. Please read this Privacy Policy carefully. If you do not agree with our practices, please do not use our website.</p>
+
+                <h2>1. INFORMATION WE COLLECT</h2>
+                <h3>1.1 Information You Provide Voluntarily</h3>
+                <p>We collect information you voluntarily provide when you interact with our website, such as:</p>
+                <ul>
+                    <li><strong>Registration Information:</strong> Name, email address, phone number, date of birth, gender, and password when you create an account</li>
+                    <li><strong>Billing Information:</strong> Billing address, shipping address, credit card details, and other payment information</li>
+                    <li><strong>Profile Information:</strong> Profile picture, bio, interests, and preferences you choose to share</li>
+                    <li><strong>Communication:</strong> Messages, inquiries, feedback, reviews, ratings, and comments you submit</li>
+                    <li><strong>Customer Support:</strong> Information provided when you contact our support team, including issue descriptions and attachments</li>
+                </ul>
+
+                <h3>1.2 Information Collected Automatically</h3>
+                <p>We automatically collect certain information about your device and how you interact with our website:</p>
+                <ul>
+                    <li><strong>Device Information:</strong> Device type, operating system, browser type, IP address, and device identifiers</li>
+                    <li><strong>Usage Data:</strong> Pages visited, time spent on pages, links clicked, searches performed, and other browsing behavior</li>
+                    <li><strong>Location Data:</strong> General location information based on IP address (not precise location unless you grant permission)</li>
+                    <li><strong>Cookies and Tracking:</strong> Information collected through cookies, web beacons, pixels, and similar tracking technologies</li>
+                </ul>
+
+                <h3>1.3 Information from Third Parties</h3>
+                <p>We may receive information about you from:</p>
+                <ul>
+                    <li>Payment processors and financial institutions</li>
+                    <li>Courier and shipping partners for delivery tracking</li>
+                    <li>Analytics providers and social media platforms</li>
+                    <li>Business partners and promotional partners</li>
+                </ul>
+
+                <h2>2. HOW WE USE YOUR INFORMATION</h2>
+                <p>We use the information we collect for various purposes:</p>
+                <ul>
+                    <li><strong>Order Processing:</strong> Creating and managing your account, processing orders, and managing payments</li>
+                    <li><strong>Communication:</strong> Sending order confirmations, shipment updates, customer service responses, and promotional offers</li>
+                    <li><strong>Personalization:</strong> Tailoring product recommendations, content, and marketing to your preferences</li>
+                    <li><strong>Analytics:</strong> Analyzing website traffic, user behavior, and service performance to improve our offerings</li>
+                    <li><strong>Security:</strong> Detecting and preventing fraud, abuse, and unauthorized access</li>
+                    <li><strong>Legal Compliance:</strong> Complying with applicable laws, regulations, and court orders</li>
+                    <li><strong>Customer Support:</strong> Responding to inquiries and resolving issues</li>
+                    <li><strong>Marketing:</strong> Sending promotional emails, newsletters, and special offers (with your consent)</li>
+                </ul>
+
+                <h2>3. HOW WE SHARE YOUR INFORMATION</h2>
+                <h3>3.1 Third-Party Service Providers</h3>
+                <p>We share your information with trusted third parties who assist us in operating our website and conducting our business, including:</p>
+                <ul>
+                    <li>Payment processors and financial institutions</li>
+                    <li>Shipping and logistics providers</li>
+                    <li>Email service providers</li>
+                    <li>Analytics and data analysis providers</li>
+                    <li>Customer relationship management (CRM) platforms</li>
+                </ul>
+
+                <h3>3.2 Business Transfers</h3>
+                <p>If Fishy Friend Aquatics is involved in a merger, acquisition, bankruptcy, or sale of assets, your information may be transferred as part of that transaction. We will provide notice before your information becomes subject to a different privacy policy.</p>
+
+                <h3>3.3 Legal Requirements</h3>
+                <p>We may disclose your information when required by law or when we believe in good faith that such disclosure is necessary to:</p>
+                <ul>
+                    <li>Comply with legal obligations, court orders, or government requests</li>
+                    <li>Protect the rights, safety, and property of Fishy Friend Aquatics, our users, and the public</li>
+                    <li>Detect, prevent, or address fraud, security, or technical issues</li>
+                    <li>Enforce our Terms and Conditions and other agreements</li>
+                </ul>
+
+                <h3>3.4 With Your Consent</h3>
+                <p>We may share your information with other companies or organizations only with your explicit consent for specific purposes.</p>
+
+                <h2>4. DATA RETENTION</h2>
+                <p>We retain your personal information for as long as necessary to provide our services and fulfill the purposes outlined in this Privacy Policy. Retention periods vary depending on the type of information and the context:</p>
+                <ul>
+                    <li><strong>Account Information:</strong> Retained until you delete your account or request deletion</li>
+                    <li><strong>Order Information:</strong> Retained for minimum 7 years for accounting and legal purposes</li>
+                    <li><strong>Marketing Information:</strong> Retained until you unsubscribe or opt-out</li>
+                    <li><strong>Cookies:</strong> Retained as per individual cookie settings or until you clear them</li>
+                </ul>
+
+                <p>When information is no longer needed, we securely delete or anonymize it.</p>
+
+                <h2>5. SECURITY OF YOUR INFORMATION</h2>
+                <h3>5.1 Security Measures</h3>
+                <p>We implement comprehensive security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction, including:</p>
+                <ul>
+                    <li>SSL/TLS encryption for data in transit</li>
+                    <li>Secure password hashing and storage</li>
+                    <li>Regular security audits and updates</li>
+                    <li>Restricted access to personal information</li>
+                    <li>Secure data centers and backup systems</li>
+                </ul>
+
+                <h3>5.2 No Guarantee of Security</h3>
+                <p>While we employ industry-standard security measures, no method of transmission over the Internet or electronic storage is 100% secure. We cannot guarantee absolute security of your information.</p>
+
+                <h2>6. YOUR PRIVACY RIGHTS</h2>
+                <h3>6.1 Access and Portability</h3>
+                <p>You have the right to access your personal information and request a copy in a portable format. Contact us using the information provided below.</p>
+
+                <h3>6.2 Correction and Update</h3>
+                <p>You can update, correct, or modify your personal information at any time by logging into your account or contacting our support team.</p>
+
+                <h3>6.3 Deletion</h3>
+                <p>You have the right to request deletion of your personal information, subject to certain legal and operational exceptions. We will comply with deletion requests within 30 days, except where information must be retained for legal compliance.</p>
+
+                <h3>6.4 Opt-Out</h3>
+                <p>You can opt-out of marketing communications by clicking the "unsubscribe" link in any promotional email or adjusting your preferences in your account settings.</p>
+
+                <h3>6.5 Non-Discrimination</h3>
+                <p>We will not discriminate against you for exercising your privacy rights.</p>
+
+                <h2>7. COOKIES AND TRACKING TECHNOLOGIES</h2>
+                <h3>7.1 What Are Cookies?</h3>
+                <p>Cookies are small text files stored on your device that help us recognize you and enhance your browsing experience. For detailed information about how we use cookies, please refer to our <a href="{% url 'cookie_policy' %}" style="color: #17a2b8; text-decoration: none;"><strong>Cookie Policy</strong></a>.</p>
+
+                <h3>7.2 Types of Cookies We Use</h3>
+                <ul>
+                    <li><strong>Essential Cookies:</strong> Required for website functionality</li>
+                    <li><strong>Performance Cookies:</strong> Measure website performance and user behavior</li>
+                    <li><strong>Functional Cookies:</strong> Remember your preferences and settings</li>
+                    <li><strong>Marketing Cookies:</strong> Track your interests for personalized advertising</li>
+                </ul>
+
+                <h3>7.3 Managing Cookies</h3>
+                <p>You can control cookies through your browser settings. Most browsers allow you to refuse cookies or alert you when cookies are being sent. However, disabling cookies may limit functionality on our website.</p>
+
+                <h2>8. CHILDREN'S PRIVACY</h2>
+                <p>Our website is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13. If we discover that we have collected information from a child under 13 without parental consent, we will delete such information immediately. If you believe we have collected information from a child under 13, please contact us immediately.</p>
+
+                <h2>9. THIRD-PARTY LINKS</h2>
+                <p>Our website may contain links to third-party websites. We are not responsible for the privacy practices of other websites. We encourage you to review the privacy policies of any third-party sites before providing your personal information.</p>
+
+                <h2>10. CALIFORNIA CONSUMER PRIVACY RIGHTS</h2>
+                <p>If you are a California resident, you have specific rights under the California Consumer Privacy Act (CCPA) and California Privacy Rights Act (CPRA), including the right to know, delete, opt-out, and correct your personal information. For more information or to exercise these rights, please contact us using the information below.</p>
+
+                <h2>11. EUROPEAN PRIVACY RIGHTS</h2>
+                <p>If you are located in the European Union or United Kingdom, your personal information may be subject to additional protections under the General Data Protection Regulation (GDPR). You have rights to access, correct, delete, and restrict processing of your data. For more information, please contact us.</p>
+
+                <h2>12. INTERNATIONAL DATA TRANSFERS</h2>
+                <p>Your information may be transferred to, stored in, and processed in countries other than your country of residence, which may have different data protection laws. By using our website, you consent to such transfers.</p>
+
+                <h2>13. UPDATES TO THIS PRIVACY POLICY</h2>
+                <p>We may update this Privacy Policy from time to time to reflect changes in our practices, technology, or legal requirements. We will notify you of material changes by posting the updated policy on our website with a new "Last Updated" date. Your continued use of our website following such changes constitutes your acceptance of the updated Privacy Policy.</p>
+
+                <h2>14. CONTACT INFORMATION</h2>
+                <p>If you have questions, concerns, or requests regarding this Privacy Policy or our privacy practices, please contact us at:</p>
+                <p>
+                    <strong>Fishy Friend Aquatics - Privacy Team</strong><br>
+                    Email: <a href="mailto:{{ EMAIL_HOST_USER }}" style="color: #17a2b8; text-decoration: none;">{{ EMAIL_HOST_USER }}</a><br>
+                    Help Center: <a href="{% url 'help_center' %}" style="color: #17a2b8; text-decoration: none;">Visit Help Center</a><br>
+                    Response Time: We aim to respond to privacy inquiries within 14 business days.
+                </p>
+
+                <hr style="border-color: rgba(30, 136, 229, 0.3); margin: 3rem 0;">
+                <p style="font-size: 14px; color: rgba(255, 255, 255, 0.6);">
+                    <strong>Note:</strong> This Privacy Policy is for informational purposes. If you have disputes regarding privacy practices, we encourage you to contact us first to resolve the issue informally.
+                </p>
+            </div>
         </div>
     </div>
 </div>

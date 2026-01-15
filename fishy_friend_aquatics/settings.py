@@ -9,7 +9,8 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here-change-in-production')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes', 'on')
 
-ALLOWED_HOSTS = ['fishyfriendaqua.in', 'www.fishyfriendaqua.in','15.235.185.50']
+# ALLOWED_HOSTS = ['fishyfriendaqua.in', 'www.fishyfriendaqua.in','15.235.185.50']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'fishyfriendaqua.in', 'www.fishyfriendaqua.in','15.235.185.50']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -80,13 +81,14 @@ WSGI_APPLICATION = 'fishy_friend_aquatics.wsgi.application'
 
 # Production Security Settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = False
+    SECURE_SSL_REDIRECT = False  # Keep False, let .htaccess handle it
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    # STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+    
+
     
     # Trust the reverse proxy (cPanel/Nginx)
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

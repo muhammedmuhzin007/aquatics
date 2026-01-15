@@ -1,20 +1,228 @@
 {% extends 'store/base.html' %}
 {% load static %}
 {% block content %}
+<style>
+    .policy-hero {
+        background: linear-gradient(135deg, rgba(30, 136, 229, 0.15) 0%, rgba(66, 165, 245, 0.1) 100%);
+        border-bottom: 2px solid rgba(30, 136, 229, 0.3);
+        padding: 60px 0 40px;
+        margin-bottom: 40px;
+    }
+    .policy-hero h1 {
+        color: var(--dark-text);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    .policy-container {
+        background: rgba(15, 25, 40, 0.6);
+        border: 1px solid rgba(30, 136, 229, 0.2);
+        border-radius: 12px;
+        padding: 40px;
+        line-height: 1.8;
+    }
+    .policy-container h2 {
+        color: #64B5F6;
+        margin-top: 2.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        border-left: 4px solid #1E88E5;
+        padding-left: 15px;
+        font-size: 1.5rem;
+    }
+    .policy-container h3 {
+        color: #B3E5FC;
+        margin-top: 1.8rem;
+        margin-bottom: 0.8rem;
+        font-weight: 500;
+    }
+    .policy-container p {
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 1rem;
+    }
+    .policy-container ul, .policy-container ol {
+        margin-left: 1.5rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .policy-container li {
+        margin-bottom: 0.5rem;
+    }
+    .last-updated {
+        background: rgba(30, 136, 229, 0.15);
+        border-left: 4px solid #1E88E5;
+        padding: 15px 20px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+        color: #64B5F6;
+        font-weight: 500;
+    }
+</style>
+
+<div class="policy-hero">
+    <div class="container">
+        <h1>Terms and Conditions</h1>
+    </div>
+</div>
+
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <h1 class="mb-4 text-center">Terms and Conditions</h1>
-            <p class="lead">Welcome to {{ SITE_NAME }}. These terms and conditions outline the rules and regulations for the use of our website and services.</p>
-            <h2 class="mt-4">1. Acceptance of Terms</h2>
-            <p>By accessing this website we assume you accept these terms and conditions. Do not continue to use {{ SITE_NAME }} if you do not agree to all of the terms and conditions stated on this page.</p>
-            <h2 class="mt-4">2. Service Availability</h2>
-            <p>Product availability is subject to change without notice. We reserve the right to modify or discontinue any product or service at any time.</p>
-            <h2 class="mt-4">3. Orders and Payments</h2>
-            <p>All orders are subject to acceptance and availability. Pricing and payment information must be accurate and complete at the time of checkout.</p>
-            <h2 class="mt-4">4. Liability</h2>
-            <p>We are not liable for any indirect or consequential loss arising in connection with the use of our products or website.</p>
-            <p class="mt-4">If you have questions regarding these terms, please reach out to our support team via the Help Center.</p>
+        <div class="col-lg-9">
+            <div class="last-updated">
+                <strong>Last Updated:</strong> January 2026
+            </div>
+            <div class="policy-container">
+                <p class="lead">Welcome to Fishy Friend Aquatics ("Company," "we," "us," "our," or "our website"). These Terms and Conditions ("Terms") govern your access to and use of our website, including all content, products, services, and transactions available therein. By accessing and using our website, you accept and agree to be bound by these Terms. If you do not agree to abide by the above, please do not use this service.</p>
+
+                <h2>1. ACCEPTANCE OF TERMS</h2>
+                <p>By accessing and using the Fishy Friend Aquatics website, you acknowledge that you have read, understood, and agree to be bound by all the terms and conditions contained herein. If you do not agree with any part of these Terms, you may not access or use our services. We reserve the right to update or modify these Terms at any time without prior notice. Your continued use of the website following any such changes constitutes your acceptance of the new Terms.</p>
+
+                <h2>2. USE OF WEBSITE</h2>
+                <h3>2.1 License and Restrictions</h3>
+                <p>We grant you a limited, revocable, non-exclusive, and non-transferable license to access and use our website for lawful purposes only. You agree not to:</p>
+                <ul>
+                    <li>Violate any applicable laws or regulations</li>
+                    <li>Use the website in any manner that could damage, disable, overburden, or impair our servers or networks</li>
+                    <li>Attempt to gain unauthorized access to our systems, databases, or protected areas</li>
+                    <li>Use any automated systems, robots, or scraping tools to access our website</li>
+                    <li>Engage in any form of harassment, abuse, or discrimination</li>
+                    <li>Post or transmit spam, malware, viruses, or any harmful content</li>
+                </ul>
+
+                <h2>3. PRODUCT INFORMATION AND PRICING</h2>
+                <h3>3.1 Accuracy of Information</h3>
+                <p>We strive to provide accurate descriptions, images, and pricing for all aquatic products. However, we do not warrant that product descriptions, images, or other content is accurate, complete, or error-free. Product availability, specifications, and pricing are subject to change without notice.</p>
+
+                <h3>3.2 Pricing</h3>
+                <p>All prices are listed in Indian Rupees (INR) and are subject to applicable taxes and shipping charges. We reserve the right to change prices at any time. Price changes will only apply to orders placed after the change is implemented. Promotional pricing is valid for the specified period only.</p>
+
+                <h3>3.3 Product Availability</h3>
+                <p>We make no guarantee regarding product availability. Products are sold on a first-come, first-served basis. We reserve the right to limit quantities, cancel orders, or refuse service to anyone for any lawful reason, particularly where we reasonably suspect fraudulent activity.</p>
+
+                <h2>4. ORDERS AND ACCEPTANCE</h2>
+                <h3>4.1 Order Placement</h3>
+                <p>When you place an order through our website, you are offering to purchase products on the terms set forth herein. All orders are subject to our acceptance and confirmation. We reserve the right to refuse or cancel any order, in whole or in part, at any time for any lawful reason.</p>
+
+                <h3>4.2 Order Confirmation</h3>
+                <p>Your receipt of an order confirmation email does not constitute our acceptance of your order. We will send you another email to confirm that your order has been dispatched. Only at that point is the contract between us and you concluded.</p>
+
+                <h3>4.3 Special Orders</h3>
+                <p>Special orders for specific aquatic species or products may require extended lead times. Customers will be notified of estimated fulfillment dates. Non-standard requests are subject to availability and additional charges may apply.</p>
+
+                <h2>5. PAYMENT TERMS</h2>
+                <h3>5.1 Payment Methods</h3>
+                <p>We accept multiple secure payment methods including credit cards, debit cards, digital wallets, and UPI transfers. All transactions are processed through encrypted secure gateways.</p>
+
+                <h3>5.2 Payment Authorization</h3>
+                <p>By providing your payment information, you authorize us to charge your account for the purchase, including all applicable taxes and fees. You represent and warrant that:</p>
+                <ul>
+                    <li>You have the legal right to use the payment method provided</li>
+                    <li>The information you provide is true, accurate, and complete</li>
+                    <li>You will not use the payment method for any unlawful purpose</li>
+                </ul>
+
+                <h3>5.3 Failed Transactions</h3>
+                <p>If your payment is declined, we will not process your order. Your payment information will be securely discarded. You are responsible for resolving any payment issues with your financial institution.</p>
+
+                <h2>6. SHIPPING AND DELIVERY</h2>
+                <h3>6.1 Shipping Policy</h3>
+                <p>We ship orders throughout India via reliable courier services. Standard delivery timeframes are estimated at 3-7 business days from order confirmation, depending on your location. Expedited shipping options may be available for additional charges.</p>
+
+                <h3>6.2 Risk of Loss</h3>
+                <p>Products are shipped at your risk. Title and risk of loss pass to you upon delivery to the courier service. We strongly recommend that you obtain shipping insurance for high-value orders.</p>
+
+                <h3>6.3 Delivery Address</h3>
+                <p>You are responsible for providing accurate delivery information. We are not liable for delays or failed deliveries resulting from incorrect address information provided by you.</p>
+
+                <h3>6.4 Live Stock Shipping</h3>
+                <p>Live aquatic stock is shipped with specialized packaging and care instructions. Customers must inspect live stock upon delivery. Any dead-on-arrival (DOA) claims must be reported within 24 hours with photographic evidence.</p>
+
+                <h2>7. RETURNS AND REFUNDS</h2>
+                <p>Please refer to our <a href="{% url 'return_policy' %}" style="color: #17a2b8; text-decoration: none;"><strong>Return Policy</strong></a> for detailed information about returns, refunds, and exchanges. The Return Policy is an integral part of these Terms and Conditions.</p>
+
+                <h2>8. PRODUCT WARRANTIES</h2>
+                <h3>8.1 Disclaimer</h3>
+                <p>Except as expressly stated in our Return Policy, all products are sold "AS IS" without any warranties, express or implied. We disclaim all warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
+
+                <h3>8.2 Live Stock</h3>
+                <p>The health and longevity of live aquatic stock depend on proper care, maintenance, and environmental conditions provided by the customer. We are not responsible for mortality resulting from improper care, tank conditions, incompatible species, or factors beyond our control.</p>
+
+                <h2>9. LIMITATION OF LIABILITY</h2>
+                <h3>9.1 Exclusion of Damages</h3>
+                <p>In no event shall Fishy Friend Aquatics, its officers, directors, employees, or agents be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business interruption, arising out of or in connection with:</p>
+                <ul>
+                    <li>Your use or inability to use our website or services</li>
+                    <li>The quality, performance, or non-performance of any products</li>
+                    <li>Unauthorized access to or alteration of your personal data</li>
+                    <li>Any third-party content or services linked from our website</li>
+                </ul>
+
+                <h3>9.2 Liability Cap</h3>
+                <p>Our total liability to you shall not exceed the amount you paid for the product or service in question. Some jurisdictions do not allow the limitation or exclusion of liability, so this provision may not apply to you.</p>
+
+                <h2>10. INTELLECTUAL PROPERTY RIGHTS</h2>
+                <h3>10.1 Ownership</h3>
+                <p>All content, including text, images, graphics, logos, trademarks, designs, and product descriptions on our website, are the exclusive property of Fishy Friend Aquatics or used with permission from third parties.</p>
+
+                <h3>10.2 Limited License</h3>
+                <p>You are granted a limited, non-exclusive, non-transferable license to view and download content solely for personal, non-commercial use. You may not reproduce, modify, distribute, or display any content without our prior written consent.</p>
+
+                <h3>10.3 Prohibited Use</h3>
+                <p>You may not use our trademarks, logos, or product names in any manner that could create confusion or imply endorsement without our express written permission.</p>
+
+                <h2>11. USER ACCOUNTS AND SECURITY</h2>
+                <h3>11.1 Account Creation</h3>
+                <p>If you create an account on our website, you are responsible for maintaining the confidentiality of your login credentials. You agree to:</p>
+                <ul>
+                    <li>Provide accurate and complete information during registration</li>
+                    <li>Update your information as needed to keep it current</li>
+                    <li>Notify us immediately of any unauthorized use of your account</li>
+                    <li>Accept responsibility for all activities conducted through your account</li>
+                </ul>
+
+                <h3>11.2 Account Termination</h3>
+                <p>We reserve the right to suspend or terminate your account at any time, with or without cause, and without liability.</p>
+
+                <h2>12. THIRD-PARTY LINKS AND SERVICES</h2>
+                <p>Our website may contain links to third-party websites, services, or content. We are not responsible for the accuracy, completeness, or legality of any third-party content. Your access to and use of third-party websites are governed by their terms and conditions. We do not endorse any third-party websites or services.</p>
+
+                <h2>13. INDEMNIFICATION</h2>
+                <p>You agree to indemnify and hold harmless Fishy Friend Aquatics, its officers, directors, employees, and agents from any claims, damages, losses, or expenses (including attorney's fees) arising out of or in connection with:</p>
+                <ul>
+                    <li>Your violation of these Terms</li>
+                    <li>Your violation of any applicable law or regulation</li>
+                    <li>Your infringement of any third-party intellectual property rights</li>
+                    <li>Your use of our website or services</li>
+                </ul>
+
+                <h2>14. GOVERNING LAW AND JURISDICTION</h2>
+                <p>These Terms and Conditions are governed by and construed in accordance with the laws of India, without regard to its conflicts of law provisions. Both parties agree to submit to the exclusive jurisdiction of the courts located in the applicable jurisdiction in India for any disputes arising out of or in connection with these Terms.</p>
+
+                <h2>15. DISPUTE RESOLUTION</h2>
+                <h3>15.1 Informal Resolution</h3>
+                <p>Before initiating any formal legal proceedings, we encourage you to contact us at <a href="mailto:{{ EMAIL_HOST_USER }}" style="color: #17a2b8; text-decoration: none;">{{ EMAIL_HOST_USER }}</a> to attempt an amicable resolution of any dispute.</p>
+
+                <h3>15.2 Legal Action</h3>
+                <p>Any legal action or proceeding relating to these Terms must be brought exclusively in the courts of the jurisdiction specified above, and both parties consent to the jurisdiction and venue of such courts.</p>
+
+                <h2>16. SEVERABILITY</h2>
+                <p>If any provision of these Terms is found to be invalid or unenforceable, that provision shall be modified to the minimum extent necessary to make it valid and enforceable, and all other provisions shall remain in full force and effect.</p>
+
+                <h2>17. ENTIRE AGREEMENT</h2>
+                <p>These Terms and Conditions, along with our Privacy Policy, Cookie Policy, and Return Policy, constitute the entire agreement between you and Fishy Friend Aquatics regarding your use of our website and services, and supersede all prior and contemporaneous agreements, whether written or oral.</p>
+
+                <h2>18. CONTACT INFORMATION</h2>
+                <p>If you have any questions or concerns about these Terms and Conditions, please contact us at:</p>
+                <p>
+                    <strong>Fishy Friend Aquatics</strong><br>
+                    Email: <a href="mailto:{{ EMAIL_HOST_USER }}" style="color: #17a2b8; text-decoration: none;">{{ EMAIL_HOST_USER }}</a><br>
+                    Help Center: <a href="{% url 'help_center' %}" style="color: #17a2b8; text-decoration: none;">Visit Help Center</a>
+                </p>
+
+                <hr style="border-color: rgba(30, 136, 229, 0.3); margin: 3rem 0;">
+                <p style="font-size: 14px; color: rgba(255, 255, 255, 0.6);">
+                    <strong>Disclaimer:</strong> This document is for informational purposes and does not constitute legal advice. For legal interpretation or specific circumstances, we recommend consulting with a qualified legal professional.
+                </p>
+            </div>
         </div>
     </div>
 </div>

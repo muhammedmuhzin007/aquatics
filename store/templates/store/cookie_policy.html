@@ -1,20 +1,278 @@
 {% extends 'store/base.html' %}
 {% load static %}
 {% block content %}
+<style>
+    .policy-hero {
+        background: linear-gradient(135deg, rgba(30, 136, 229, 0.15) 0%, rgba(66, 165, 245, 0.1) 100%);
+        border-bottom: 2px solid rgba(30, 136, 229, 0.3);
+        padding: 60px 0 40px;
+        margin-bottom: 40px;
+    }
+    .policy-hero h1 {
+        color: var(--dark-text);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    .policy-container {
+        background: rgba(15, 25, 40, 0.6);
+        border: 1px solid rgba(30, 136, 229, 0.2);
+        border-radius: 12px;
+        padding: 40px;
+        line-height: 1.8;
+    }
+    .policy-container h2 {
+        color: #64B5F6;
+        margin-top: 2.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        border-left: 4px solid #1E88E5;
+        padding-left: 15px;
+        font-size: 1.5rem;
+    }
+    .policy-container h3 {
+        color: #B3E5FC;
+        margin-top: 1.8rem;
+        margin-bottom: 0.8rem;
+        font-weight: 500;
+    }
+    .policy-container p {
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 1rem;
+    }
+    .policy-container ul, .policy-container ol {
+        margin-left: 1.5rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .policy-container li {
+        margin-bottom: 0.5rem;
+    }
+    .last-updated {
+        background: rgba(30, 136, 229, 0.15);
+        border-left: 4px solid #1E88E5;
+        padding: 15px 20px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+        color: #64B5F6;
+        font-weight: 500;
+    }
+    .cookie-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    .cookie-table th, .cookie-table td {
+        border: 1px solid rgba(30, 136, 229, 0.3);
+        padding: 12px;
+        text-align: left;
+    }
+    .cookie-table th {
+        background-color: rgba(30, 136, 229, 0.2);
+        color: #64B5F6;
+        font-weight: 600;
+    }
+    .cookie-table tr:nth-child(even) {
+        background-color: rgba(30, 136, 229, 0.05);
+    }
+    .cookie-table td {
+        color: rgba(255, 255, 255, 0.8);
+    }
+</style>
+
+<div class="policy-hero">
+    <div class="container">
+        <h1>Cookie Policy</h1>
+    </div>
+</div>
+
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <h1 class="mb-4 text-center">Cookie Policy</h1>
-            <p class="lead">This cookie policy explains how {{ SITE_NAME }} uses cookies and similar technologies on our website.</p>
-            <h2 class="mt-4">1. What Are Cookies?</h2>
-            <p>Cookies are small data files placed on your device to help us deliver a personalized experience.</p>
-            <h2 class="mt-4">2. How We Use Cookies</h2>
-            <p>We use cookies to remember preferences, analyze site usage, and deliver relevant promotions.</p>
-            <h2 class="mt-4">3. Managing Cookies</h2>
-            <p>You can manage or disable cookies through your browser settings. Some features may not function properly if cookies are disabled.</p>
-            <h2 class="mt-4">4. Third-Party Cookies</h2>
-            <p>Third-party analytics providers may set cookies to help us understand site performance.</p>
-            <p class="mt-4">For questions about cookies, reach out via the Help Center.</p>
+        <div class="col-lg-9">
+            <div class="last-updated">
+                <strong>Last Updated:</strong> January 2026
+            </div>
+            <div class="policy-container">
+                <p class="lead">This Cookie Policy explains how Fishy Friend Aquatics ("we," "us," "our," or the "Company") uses cookies and similar tracking technologies on our website and services. By continuing to use our website, you consent to our use of cookies as described in this policy.</p>
+
+                <h2>1. WHAT ARE COOKIES?</h2>
+                <p>Cookies are small text files that are placed on your device (computer, smartphone, tablet, etc.) when you visit a website. They store information about your browsing activity and preferences to enhance your user experience. There are two main types of cookies:</p>
+                <ul>
+                    <li><strong>Session Cookies:</strong> Temporary cookies deleted when you close your browser</li>
+                    <li><strong>Persistent Cookies:</strong> Cookies that remain on your device for a set period or until you delete them</li>
+                </ul>
+
+                <h2>2. TYPES OF COOKIES WE USE</h2>
+                <h3>2.1 Essential/Necessary Cookies</h3>
+                <p>These cookies are required for the website to function properly and provide essential services:</p>
+                <table class="cookie-table">
+                    <tr>
+                        <th>Cookie Name</th>
+                        <th>Purpose</th>
+                        <th>Duration</th>
+                    </tr>
+                    <tr>
+                        <td>sessionid</td>
+                        <td>Maintains your user session and authentication</td>
+                        <td>Session/30 days</td>
+                    </tr>
+                    <tr>
+                        <td>csrftoken</td>
+                        <td>Security token to prevent cross-site request forgery attacks</td>
+                        <td>Session</td>
+                    </tr>
+                    <tr>
+                        <td>cart_items</td>
+                        <td>Stores items in your shopping cart</td>
+                        <td>30 days</td>
+                    </tr>
+                    <tr>
+                        <td>user_preferences</td>
+                        <td>Saves your website preferences and settings</td>
+                        <td>1 year</td>
+                    </tr>
+                </table>
+                <p><strong>Note:</strong> These cookies cannot be disabled as they are essential for website functionality. Blocking them may prevent proper operation of our services.</p>
+
+                <h3>2.2 Functional/Preference Cookies</h3>
+                <p>These cookies remember your choices and settings to provide a personalized experience:</p>
+                <ul>
+                    <li>Language and region preferences</li>
+                    <li>Display preferences (light/dark mode)</li>
+                    <li>Saved items and wishlist</li>
+                    <li>Previously viewed products</li>
+                </ul>
+                <p><strong>Consent Required:</strong> You can control these cookies through your browser or account settings.</p>
+
+                <h3>2.3 Performance/Analytics Cookies</h3>
+                <p>These cookies help us understand how you use our website, allowing us to improve site performance and user experience:</p>
+                <ul>
+                    <li>Pages you visit and time spent on each page</li>
+                    <li>Links you click and actions you take</li>
+                    <li>Website navigation patterns</li>
+                    <li>Error tracking and performance monitoring</li>
+                    <li>Traffic sources and device information</li>
+                </ul>
+                <p>We use analytics tools such as Google Analytics for this purpose. Your data is anonymized and aggregated.</p>
+
+                <h3>2.4 Marketing/Advertising Cookies</h3>
+                <p>These cookies track your interests and behavior to deliver personalized marketing content and advertisements:</p>
+                <ul>
+                    <li>Retargeting ads based on visited products</li>
+                    <li>Personalized product recommendations</li>
+                    <li>Campaign performance tracking</li>
+                    <li>Social media integration</li>
+                </ul>
+                <p><strong>Note:</strong> These cookies may be set by third-party advertising partners.</p>
+
+                <h2>3. THIRD-PARTY COOKIES</h2>
+                <h3>3.1 External Service Providers</h3>
+                <p>We may allow third-party service providers to place cookies on our website for specific functions:</p>
+                <ul>
+                    <li><strong>Payment Processors:</strong> Razorpay and other payment gateways</li>
+                    <li><strong>Analytics Providers:</strong> Google Analytics, Mixpanel</li>
+                    <li><strong>Social Media:</strong> Facebook, Instagram, Twitter for social sharing and tracking</li>
+                    <li><strong>Email Marketing:</strong> Email service providers for campaign tracking</li>
+                    <li><strong>Customer Support:</strong> Chat and support platforms</li>
+                </ul>
+
+                <h3>3.2 Third-Party Privacy Policies</h3>
+                <p>Third-party service providers have their own privacy policies. We encourage you to review their policies to understand how they use your information. We are not responsible for the practices of third-party websites.</p>
+
+                <h2>4. HOW WE USE COOKIE INFORMATION</h2>
+                <p>The information collected through cookies is used for:</p>
+                <ul>
+                    <li>Authenticating users and maintaining secure sessions</li>
+                    <li>Personalizing content and product recommendations</li>
+                    <li>Analyzing website traffic and user behavior</li>
+                    <li>Improving website performance and user experience</li>
+                    <li>Delivering targeted marketing and advertising</li>
+                    <li>Preventing fraud and enhancing security</li>
+                    <li>Complying with legal and regulatory requirements</li>
+                </ul>
+
+                <h2>5. YOUR COOKIE CHOICES AND CONTROLS</h2>
+                <h3>5.1 Browser Settings</h3>
+                <p>Most web browsers provide options to control cookies. You can typically:</p>
+                <ul>
+                    <li>Accept or reject all cookies</li>
+                    <li>Accept only essential cookies</li>
+                    <li>Choose which cookies to accept from which websites</li>
+                    <li>Delete existing cookies</li>
+                    <li>Set privacy levels for cookie acceptance</li>
+                </ul>
+                <p><strong>Instructions for common browsers:</strong></p>
+                <ul>
+                    <li><strong>Chrome:</strong> Settings → Privacy and Security → Cookies and other site data</li>
+                    <li><strong>Firefox:</strong> Preferences → Privacy & Security → Cookies and Site Data</li>
+                    <li><strong>Safari:</strong> Preferences → Privacy → Cookies and website data</li>
+                    <li><strong>Edge:</strong> Settings → Privacy, search, and services → Clear browsing data</li>
+                </ul>
+
+                <h3>5.2 Cookie Consent Management</h3>
+                <p>When you first visit our website, you will be presented with a cookie consent notice allowing you to:</p>
+                <ul>
+                    <li>Accept all cookies</li>
+                    <li>Accept only essential cookies</li>
+                    <li>Customize your cookie preferences</li>
+                    <li>Access this cookie policy</li>
+                </ul>
+                <p>You can update your preferences at any time in your account settings or by clicking the cookie banner.</p>
+
+                <h3>5.3 Opt-Out Options</h3>
+                <p>To opt-out of specific types of cookies:</p>
+                <ul>
+                    <li><strong>Google Analytics:</strong> Install the Google Analytics Opt-out Browser Add-on</li>
+                    <li><strong>Behavioral Advertising:</strong> Visit the Digital Advertising Alliance opt-out tool</li>
+                    <li><strong>Marketing Emails:</strong> Click "Unsubscribe" in any marketing email</li>
+                </ul>
+
+                <h2>6. DO NOT TRACK (DNT)</h2>
+                <p>Some browsers include Do Not Track features. Currently, there is no industry standard for recognizing DNT signals. Our website does not respond to DNT browser signals, but you can use browser settings to control cookies.</p>
+
+                <h2>7. CONSEQUENCES OF BLOCKING COOKIES</h2>
+                <p>If you choose to block or disable cookies, certain features and functionality of our website may not work properly, including:</p>
+                <ul>
+                    <li>User authentication and account access</li>
+                    <li>Shopping cart functionality</li>
+                    <li>Order processing and checkout</li>
+                    <li>Personalization features</li>
+                    <li>Website performance optimization</li>
+                </ul>
+                <p>We recommend allowing at least essential cookies to ensure a complete browsing experience.</p>
+
+                <h2>8. DATA SECURITY</h2>
+                <p>Information collected through cookies is protected by encryption and secure server infrastructure. However, no data transmission over the Internet is 100% secure. We cannot guarantee absolute security of cookie data.</p>
+
+                <h2>9. CHANGES TO COOKIES</h2>
+                <p>As technology evolves, we may add new cookies or modify existing ones. Updated information will be reflected in this Cookie Policy. Significant changes will be communicated through email notifications.</p>
+
+                <h2>10. INTERNATIONAL USERS</h2>
+                <h3>10.1 GDPR Compliance (European Users)</h3>
+                <p>If you are located in the European Union or United Kingdom, GDPR regulations apply. We obtain explicit consent for non-essential cookies before placing them on your device.</p>
+
+                <h3>10.2 California Consumer Privacy Rights</h3>
+                <p>California residents have rights under CCPA regarding cookies and tracking technologies. You can request information about cookies used and opt-out of certain data collection.</p>
+
+                <h2>11. CONTACT INFORMATION</h2>
+                <p>If you have questions about our use of cookies or this Cookie Policy, please contact us:</p>
+                <p>
+                    <strong>Fishy Friend Aquatics - Privacy Team</strong><br>
+                    Email: <a href="mailto:{{ EMAIL_HOST_USER }}" style="color: #17a2b8;">{{ EMAIL_HOST_USER }}</a><br>
+                    Help Center: <a href="{% url 'help_center' %}" style="color: #17a2b8;">Visit Help Center</a>
+                </p>
+
+                <h2>12. RELATED POLICIES</h2>
+                <p>This Cookie Policy should be read alongside our:</p>
+                <ul>
+                    <li><a href="{% url 'privacy_policy' %}" style="color: #17a2b8;">Privacy Policy</a></li>
+                    <li><a href="{% url 'terms_and_conditions' %}" style="color: #17a2b8;">Terms and Conditions</a></li>
+                </ul>
+
+                <hr style="border-color: rgba(30, 136, 229, 0.3); margin: 3rem 0;">
+                <p style="font-size: 14px; color: rgba(255, 255, 255, 0.6);">
+                    <strong>Last Updated:</strong> This Cookie Policy was last updated in January 2026. We review and update it regularly to ensure accuracy and compliance with applicable laws.
+                </p>
+            </div>
         </div>
     </div>
 </div>

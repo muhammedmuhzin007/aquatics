@@ -21,6 +21,18 @@
     box-sizing: border-box;
 }
 
+/* Optimize mobile scrolling performance */
+html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    overflow-x: hidden;
+    overscroll-behavior-y: none; /* Prevent bounce/rubber-band effect */
+}
+
 /* Generic responsive media defaults */
 img, svg, video, canvas {
     max-width: 100%;
@@ -361,6 +373,14 @@ body.aquatic-bg {
     right: 0;
     width: 100%;
     z-index: 3100;
+    transform: translateY(0);
+    transition: transform 0.3s ease-in-out;
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+}
+
+.top-nav.scroll-hidden {
+    transform: translateY(-100%);
 }
 
 .top-nav-content {
@@ -416,6 +436,11 @@ body.aquatic-bg {
     /* Keep logo square and circular on small screens */
     .top-nav-logo .site-logo { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; overflow: hidden; }
     .navbar-brand .navbar-logo { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; overflow: hidden; margin-right: 6px; }
+    
+    /* Reduce padding on mobile for better space usage */
+    .top-nav-content {
+        padding: 0 20px;
+    }
 }
 
 /* Combo inputs - theme-aware styling (used by admin combo form) */
@@ -750,6 +775,14 @@ html[data-theme='light'] .nav-theme-toggle:hover {
     right: 0;
     width: 100%;
     z-index: 3000;
+    transform: translateY(0);
+    transition: transform 0.3s ease-in-out;
+    will-change: transform;
+    touch-action: pan-y;
+}
+
+.aquatic-nav.nav-shifted-up {
+    transform: translateY(calc(-1 * var(--top-nav-h, 0px)));
 }
 
 .navbar-brand {
@@ -816,6 +849,12 @@ html[data-theme='light'] .nav-theme-toggle:hover {
         overflow: hidden;
         overscroll-behavior: contain;
         touch-action: none;
+    }
+    
+    /* Disable scroll animations on mobile when menu is open */
+    body.nav-open .top-nav,
+    body.nav-open .aquatic-nav {
+        transition: none;
     }
     /* Keep variables for animation origin; positioning is handled globally (fixed header) */
     .aquatic-nav { --nav-origin-x: 50%; --nav-origin-y: 50%; }

@@ -541,13 +541,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         <p class="text-gray">Hours not set.</p>
                     {% endif %}
                     <hr class="my-4" style="border-color:rgba(255,255,255,0.08);">
-                    <h4 class="text-white mb-3"><i class="fas fa-share-alt me-2" style="color:var(--accent-blue);"></i>Social</h4>
-                    <div class="d-flex flex-wrap gap-2">
-                        {% if contact.whatsapp %}<a href="https://wa.me/{{ contact.whatsapp|cut:'+' }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
-                        {% if contact.facebook_url %}<a href="{{ contact.facebook_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>{% endif %}
-                        {% if contact.instagram_url %}<a href="{{ contact.instagram_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
-                        {% if contact.twitter_url %}<a href="{{ contact.twitter_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>{% endif %}
-                        {% if contact.youtube_url %}<a href="{{ contact.youtube_url }}" class="btn btn-sm btn-outline-light" target="_blank" aria-label="YouTube"><i class="fab fa-youtube"></i></a>{% endif %}
+                    <div style="margin-top: 3rem;">
+                        <h4 class="text-white mb-3"><i class="fas fa-share-alt me-2" style="color:var(--accent-blue);"></i>Social</h4>
+                        <div class="d-flex gap-2 social-icons-container" style="flex-wrap: nowrap; overflow-x: auto;">
+                            {% if contact.whatsapp %}<a href="https://wa.me/{{ contact.whatsapp|cut:'+' }}" class="btn btn-sm btn-outline-light social-icon-btn" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
+                            {% if contact.facebook_url %}<a href="{{ contact.facebook_url }}" class="btn btn-sm btn-outline-light social-icon-btn" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>{% endif %}
+                            {% if contact.instagram_url %}<a href="{{ contact.instagram_url }}" class="btn btn-sm btn-outline-light social-icon-btn" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
+                            {% if contact.twitter_url %}<a href="{{ contact.twitter_url }}" class="btn btn-sm btn-outline-light social-icon-btn" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>{% endif %}
+                            {% if contact.youtube_url %}<a href="{{ contact.youtube_url }}" class="btn btn-sm btn-outline-light social-icon-btn" target="_blank" aria-label="YouTube"><i class="fab fa-youtube"></i></a>{% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -641,6 +643,38 @@ document.addEventListener('DOMContentLoaded', function () {
     word-break: break-word;
 }
 html[data-theme='light'] .contact-card { background:#fff; border:1px solid var(--light-border); }
+
+/* Social icons styling for both themes */
+.social-icon-btn {
+    border-color: var(--accent-blue) !important;
+    color: var(--accent-blue) !important;
+    background: rgba(30, 136, 229, 0.1) !important;
+    transition: all 0.3s ease;
+    padding: 0.85rem 1.1rem !important;
+    font-size: 1.6rem !important;
+    min-width: 56px;
+    min-height: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.social-icon-btn:hover {
+    background: var(--accent-blue) !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+}
+
+html[data-theme='light'] .social-icon-btn {
+    border-color: var(--light-accent) !important;
+    color: var(--light-accent) !important;
+    background: rgba(25, 118, 210, 0.1) !important;
+}
+
+html[data-theme='light'] .social-icon-btn:hover {
+    background: var(--light-accent) !important;
+    color: #fff !important;
+}
 
 html[data-theme='light'] .about-hero {
     /* Light theme: use the same image without overlay */

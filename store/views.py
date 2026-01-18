@@ -4489,6 +4489,19 @@ def admin_categories_view(request):
         },
     }
 
+    # Sanitize function for cleaning UTF-8 errors
+    def sanitize_string(value):
+        """Remove invalid UTF-8 characters from string."""
+        if not value:
+            return value
+        try:
+            # Try to encode and decode to ensure valid UTF-8
+            if isinstance(value, bytes):
+                return value.decode('utf-8', errors='ignore')
+            return value.encode('utf-8', errors='ignore').decode('utf-8')
+        except Exception:
+            return str(value).encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+
     all_categories_qs = Category.objects.all()
     counts_by_type = {key: all_categories_qs.filter(category_type=key).count() for key in type_configs.keys()}
 
@@ -4504,7 +4517,17 @@ def admin_categories_view(request):
             Q(name__icontains=search_query) | Q(description__icontains=search_query)
         )
 
-    categories = list(categories_qs.order_by('name'))
+    # Fetch and sanitize all categories
+    categories = []
+    for category in categories_qs.order_by('name'):
+        try:
+            # Sanitize category fields before using them
+            category.name = sanitize_string(category.name)
+            category.description = sanitize_string(category.description)
+            categories.append(category)
+        except Exception:
+            # Skip categories that can't be sanitized
+            continue
 
     filtered_counts_by_type = {key: categories_qs.filter(category_type=key).count() for key in type_configs.keys()}
 
@@ -4550,8 +4573,8 @@ def admin_categories_view(request):
         'type_config_map': type_configs,
         'add_category_url': add_category_url,
         'add_category_label': add_category_label,
-        'search_query': search_query,
-        'selected_type': type_filter if type_filter in type_configs else '',
+        'search_query': sanitize_string(search_query),
+        'selected_type': sanitize_string(type_filter if type_filter in type_configs else ''),
     }
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -4698,6 +4721,30 @@ def admin_add_category_view(request):
 
 @login_required
 @user_passes_test(is_admin)
+def admin_edit_category_view(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+    
+    if request.method == 'POST':
+        form = CategoryForm(request.POST, request.FILES, instance=category)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Category updated successfully.')
+            return redirect('admin_categories')
+    else:
+        form = CategoryForm(instance=category)
+    
+    return render(
+        request,
+        'store/admin/edit_category.html',
+        {
+            'form': form,
+            'category': category,
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin)
 def admin_delete_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id)
     category.delete()
@@ -4740,7 +4787,7 @@ def admin_delete_breed_view(request, breed_id):
 @login_required
 @user_passes_test(is_admin)
 def admin_fishes_view(request):
-    fishes = Fish.objects.all()
+    fishes = Fish.objects.all().order_by('-is_featured', '-created_at')
     return render(request, 'store/admin/fishes.html', {'fishes': fishes})
 
 

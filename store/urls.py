@@ -106,6 +106,7 @@ urlpatterns = [
     path('store-admin/unblock-staff/<int:user_id>/', views.unblock_staff_view, name='unblock_staff'),
     path('store-admin/categories/', views.admin_categories_view, name='admin_categories'),
     path('store-admin/add-category/', views.admin_add_category_view, name='admin_add_category'),
+    path('store-admin/edit-category/<int:category_id>/', views.admin_edit_category_view, name='admin_edit_category'),
     path('store-admin/delete-category/<int:category_id>/', views.admin_delete_category_view, name='admin_delete_category'),
     path('store-admin/plants/', views.admin_plants_view, name='admin_plants'),
     path('store-admin/add-plant/', views.admin_add_plant_view, name='admin_add_plant'),

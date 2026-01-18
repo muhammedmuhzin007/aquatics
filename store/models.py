@@ -73,6 +73,22 @@ class Category(models.Model):
     class Meta:
         ordering = ['category_type', 'name']
 
+    def _sanitize_string(self, value):
+        """Remove invalid UTF-8 characters from string."""
+        if not value:
+            return value
+        try:
+            # Try to encode and decode to ensure valid UTF-8
+            return value.encode('utf-8', errors='ignore').decode('utf-8')
+        except Exception:
+            return str(value).encode('utf-8', errors='ignore').decode('utf-8')
+
+    def save(self, *args, **kwargs):
+        # Sanitize text fields to prevent encoding issues
+        self.name = self._sanitize_string(self.name)
+        self.description = self._sanitize_string(self.description)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 

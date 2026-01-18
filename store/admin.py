@@ -29,7 +29,6 @@ from .models import (
 
 admin.site.register(CustomUser)
 admin.site.register(Breed)
-admin.site.register(Fish)
 admin.site.register(Cart)
 admin.site.register(Order)
 admin.site.register(OrderItem)
@@ -118,6 +117,36 @@ class TagListWidget(forms.Widget):
             'all': ('store/admin/tag_list_widget.css',),
         }
         js = ('store/admin/tag_list_widget.js',)
+
+
+@admin.register(Fish)
+class FishAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'category',
+        'breed',
+        'price',
+        'stock_quantity',
+        'is_available',
+        'is_featured',
+        'created_at',
+    )
+    list_filter = ('is_available', 'is_featured', 'category', 'breed')
+    search_fields = ('name', 'description', 'category__name', 'breed__name')
+    list_editable = ('is_available', 'is_featured')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Fish Details', {
+            'fields': ('name', 'category', 'breed', 'description', 'image')
+        }),
+        ('Pricing & Inventory', {
+            'fields': ('price', 'size', 'weight', 'stock_quantity', 'minimum_order_quantity', 'is_available', 'is_featured')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
 
 
 @admin.register(FishCategory)

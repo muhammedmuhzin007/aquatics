@@ -2,7 +2,7 @@
 <span class="badge bg-primary bg-opacity-25 text-uppercase fw-semibold" style="letter-spacing: 0.08em;">
     <i class="fas fa-tags me-2"></i>All Categories
 </span>
-<span class="badge bg-dark text-white">
+<span class="badge" style="background: rgba(30, 136, 229, 0.15); color: var(--accent-blue); border: 1px solid rgba(30, 136, 229, 0.3);">
     {% if search_query or selected_type %}
         Showing {{ total_categories }} of {{ overall_category_count }}
     {% else %}

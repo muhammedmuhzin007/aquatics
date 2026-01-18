@@ -73,6 +73,31 @@
     .modal-footer {
         border-top: 1px solid var(--border-color) !important;
     }
+    
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+        .fishes-management .d-flex.justify-content-between {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+        
+        .fishes-management .section-heading {
+            margin-bottom: 1rem !important;
+        }
+        
+        .fishes-management .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .fishes-management .btn.me-2 {
+            margin-right: 0 !important;
+        }
+        
+        .fishes-management .d-flex.justify-content-between > div {
+            width: 100%;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -105,6 +130,7 @@
                             <th class="admin-text-black">Stock</th>
                             <th class="admin-text-black">Size (inches)</th>
                             <th class="admin-text-black">Status</th>
+                            <th class="admin-text-black">Featured</th>
                             <th class="admin-text-black text-center">Actions</th>
                         </tr>
                     </thead>
@@ -146,6 +172,15 @@
                                     <span class="badge bg-success">Available</span>
                                 {% else %}
                                     <span class="badge bg-secondary">Unavailable</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if fish.is_featured %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-star"></i> Featured
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Not Featured</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">

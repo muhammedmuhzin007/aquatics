@@ -198,4 +198,62 @@
     document.addEventListener('DOMContentLoaded', initCategoryFilters);
 })();
 </script>
+
+<style>
+/* Mobile responsive styles for category cards */
+.category-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.category-edit-btn,
+.category-delete-btn {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Improve button spacing on small screens */
+@media (max-width: 576px) {
+    .category-card-actions .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem;
+    }
+    
+    .category-card-actions .btn i {
+        font-size: 1rem;
+    }
+    
+    .category-type-pill {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.625rem;
+    }
+    
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    .card-text {
+        font-size: 0.875rem;
+    }
+}
+
+/* Better layout for tablets */
+@media (min-width: 577px) and (max-width: 991px) {
+    .category-edit-btn span,
+    .category-delete-btn span {
+        display: inline !important;
+    }
+}
+
+/* Full text on larger screens */
+@media (min-width: 992px) {
+    .category-edit-btn span,
+    .category-delete-btn span {
+        display: inline !important;
+    }
+}
+</style>
 {% endblock %}

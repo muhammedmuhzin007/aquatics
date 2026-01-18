@@ -1006,6 +1006,82 @@
                         });
                     })();
                 </script>
+                <script>
+                    // Smooth scroll-hide with perfectly synchronized navbar movement
+                    (function(){
+                        let lastScrollTop = 0;
+                        const topNav = document.querySelector('.top-nav');
+                        const mainNav = document.querySelector('.aquatic-nav');
+                        // Detect mobile device
+                        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                        // Higher threshold on mobile for better UX
+                        const scrollThreshold = isMobile ? 80 : 50;
+                        const root = document.documentElement;
+                        let isHidden = false;
+                        
+                        // Store the top-nav height once on load
+                        const topNavHeight = topNav.offsetHeight;
+                        root.style.setProperty('--top-nav-h', topNavHeight + 'px');
+                        
+                        function updateNavPosition(hide){
+                            if (hide && !isHidden) {
+                                isHidden = true;
+                                topNav.classList.add('scroll-hidden');
+                                mainNav.classList.add('nav-shifted-up');
+                                
+                                // Update header height
+                                const mainH = mainNav ? mainNav.offsetHeight : 0;
+                                root.style.setProperty('--header-h', mainH + 'px');
+                            } else if (!hide && isHidden) {
+                                isHidden = false;
+                                topNav.classList.remove('scroll-hidden');
+                                mainNav.classList.remove('nav-shifted-up');
+                                
+                                // Update header height
+                                const mainH = mainNav ? mainNav.offsetHeight : 0;
+                                root.style.setProperty('--header-h', (topNavHeight + mainH) + 'px');
+                            }
+                        }
+                        
+                        // Throttle scroll handler with requestAnimationFrame
+                        let scrollTicking = false;
+                        
+                        window.addEventListener('scroll', function(){
+                            if (!scrollTicking) {
+                                window.requestAnimationFrame(function() {
+                                    const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+                                    
+                                    // Prevent negative scroll (bounce effect on mobile)
+                                    if (currentScroll < 0) {
+                                        scrollTicking = false;
+                                        return;
+                                    }
+                                    
+                                    if (currentScroll > scrollThreshold) {
+                                        if (currentScroll > lastScrollTop) {
+                                            // Scrolling down - hide
+                                            updateNavPosition(true);
+                                        } else {
+                                            // Scrolling up - show
+                                            updateNavPosition(false);
+                                        }
+                                    } else {
+                                        // At top - show
+                                        updateNavPosition(false);
+                                    }
+                                    
+                                    lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+                                    scrollTicking = false;
+                                });
+                                scrollTicking = true;
+                            }
+                        }, { passive: true });
+                        
+                        // Initialize header height
+                        const mainH = mainNav ? mainNav.offsetHeight : 0;
+                        root.style.setProperty('--header-h', (topNavHeight + mainH) + 'px');
+                    })();
+                </script>
                 {% block extra_js %}{% endblock %}
 </body>
 </html>

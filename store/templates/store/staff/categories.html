@@ -4,6 +4,43 @@
 {% block content %}
 <section class="section">
     <div class="container-fluid">
+        <style>
+            /* Improve light theme visibility for category header summary */
+            html[data-theme='light'] .category-section .card-header {
+                background: var(--light-card) !important;
+                color: var(--light-text) !important;
+                border-color: var(--light-border) !important;
+            }
+            html[data-theme='light'] .category-section .badge.bg-primary.bg-opacity-25 {
+                background: rgba(25,118,210,0.12) !important;
+                color: var(--light-text) !important;
+                border: 1px solid var(--light-border) !important;
+            }
+            /* Ensure the total count badge is readable in light mode */
+            html[data-theme='light'] .category-section .badge.bg-dark.text-white {
+                background: #111827 !important; /* slate-900 */
+                color: #ffffff !important;
+            }
+            /* Outline-light buttons are hard to see in light mode; override */
+            html[data-theme='light'] .category-section .category-reset-btn.btn-outline-light {
+                color: #374151 !important; /* slate-700 */
+                border-color: #cbd5e1 !important; /* slate-300 */
+            }
+            html[data-theme='light'] .category-section .category-reset-btn.btn-outline-light:hover {
+                background: #e5e7eb !important; /* slate-200 */
+            }
+            /* Category type pills */
+            html[data-theme='light'] .category-section .category-type-pill {
+                background: rgba(2,132,199,0.10) !important; /* cyan-ish tint */
+                color: var(--light-text) !important;
+                border: 1px solid var(--light-border) !important;
+            }
+            html[data-theme='dark'] .category-section .category-type-pill {
+                background: rgba(40,80,140,0.25) !important;
+                color: #fff !important;
+                border: 1px solid rgba(255,255,255,0.12) !important;
+            }
+        </style>
         <div class="mb-4 admin-categories-header">
             <h2 class="section-heading" style="margin-bottom: 0;">Categories</h2>
         </div>

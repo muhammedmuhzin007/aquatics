@@ -391,25 +391,33 @@ def _get_shipping_rates():
         )
         kerala_rate = Decimal(setting.kerala_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         default_rate = Decimal(setting.default_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        location_rates = {
+            _normalize_state_value(entry.location_name): Decimal(entry.shipping_charge).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            for entry in ShippingChargeByLocation.objects.all()
+            if _normalize_state_value(entry.location_name)
+        }
         unserviceable = tuple(
             _normalize_state_value(entry)
             for entry in _parse_unserviceable_states(getattr(setting, 'unserviceable_states', ''))
             if _normalize_state_value(entry)
         )
-        return kerala_rate, default_rate, unserviceable
+        return kerala_rate, default_rate, unserviceable, location_rates
     except Exception:
         logging.getLogger(__name__).exception('Falling back to default shipping rates')
-        return Decimal('60.00'), Decimal('100.00'), tuple()
+        return Decimal('60.00'), Decimal('100.00'), tuple(), {}
 
 
 def _calculate_delivery_charge(total_weight, state=None, pincode=None, address=None):
-    kerala_rate, default_rate, unserviceable_states = _get_shipping_rates()
+    kerala_rate, default_rate, unserviceable_states, location_rates = _get_shipping_rates()
     normalized_state = _normalize_state_value(state)
     if normalized_state and normalized_state in unserviceable_states:
         raise ShippingUnavailableError(state)
 
-    is_kerala = _is_kerala_destination(state=state, pincode=pincode, address=address)
-    rate = kerala_rate if is_kerala else default_rate
+    if normalized_state and normalized_state in location_rates:
+        rate = location_rates[normalized_state]
+    else:
+        is_kerala = _is_kerala_destination(state=state, pincode=pincode, address=address)
+        rate = kerala_rate if is_kerala else default_rate
 
     try:
         weight = Decimal(total_weight)
@@ -544,7 +552,10 @@ def checkout_view(request):
     net_total = max(Decimal('0'), final_total)
     final_total = net_total + delivery_charge
 
-    kerala_delivery_rate, default_delivery_rate, _ = _get_shipping_rates()
+    kerala_delivery_rate, default_delivery_rate, _, location_delivery_rates = _get_shipping_rates()
+    location_delivery_rates = {
+        key: float(rate) for key, rate in (location_delivery_rates or {}).items()
+    }
 
     # Available coupon suggestions (simple rules)
     now = timezone.now()
@@ -583,6 +594,7 @@ def checkout_view(request):
         'delivery_rate': delivery_rate,
         'kerala_delivery_rate': kerala_delivery_rate,
         'default_delivery_rate': default_delivery_rate,
+        'location_delivery_rates': location_delivery_rates,
         'shipping_address_prefill': shipping_address_prefill,
         'shipping_state_prefill': shipping_state_prefill,
         'shipping_pincode_prefill': shipping_pincode_prefill,
@@ -629,6 +641,7 @@ from .models import (
     PlantCart,
     PlantMedia,
     ShippingChargeSetting,
+    ShippingChargeByLocation,
 )
 from django.contrib import messages
 from .forms import (
@@ -649,6 +662,7 @@ from .forms import (
     PlantForm,
     PlantMediaForm,
     ShippingChargeForm,
+    ShippingChargeByLocationForm,
 )
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import user_passes_test
@@ -1852,9 +1866,10 @@ def home_view(request):
             'is_combo': True,
             'combo_id': combo.id,
             'images': images,
+            'item_names': [it.fish.name for it in items if getattr(it, 'fish', None)],
         })
     # Build `combo_deals` for homepage (only combos explicitly marked and not banners)
-    combo_deals_qs = ComboOffer.objects.filter(is_active=True, show_on_homepage=True, show_as_banner=False).order_by('-created_at')
+    combo_deals_qs = ComboOffer.objects.filter(is_active=True, show_on_homepage=True, show_as_banner=False).prefetch_related('items__fish').order_by('-created_at')
     combo_deals = []
     # Map to the same dict shape used for limited_offers so templates can use
     # a consistent structure when rendering banners/cards.
@@ -1895,10 +1910,11 @@ def home_view(request):
                 'is_combo': True,
                 'combo_id': combo.id,
                 'images': images,
+                'item_names': [it.fish.name for it in items if getattr(it, 'fish', None)],
             })
     # Build `combo_banners` for homepage (combos marked to show as banner)
     combo_banners = []
-    combo_banners_qs = ComboOffer.objects.filter(is_active=True, show_as_banner=True).order_by('-created_at')
+    combo_banners_qs = ComboOffer.objects.filter(is_active=True, show_as_banner=True).prefetch_related('items__fish').order_by('-created_at')
     for combo in combo_banners_qs:
         img = None
         try:
@@ -1911,7 +1927,34 @@ def home_view(request):
             'description': combo.description,
             'image': img,
             'combo_id': combo.id,
+            'item_names': [it.fish.name for it in combo.items.all() if getattr(it, 'fish', None)],
         })
+    # Provide a hero_items list for the homepage: prefer explicit combo banners,
+    # but fall back to combo_deals (which may have images in 'images' or 'fish')
+    hero_items = []
+    if combo_banners:
+        hero_items = combo_banners
+    else:
+        for cd in combo_deals:
+            img = cd.get('image')
+            if not img:
+                imgs = cd.get('images') or []
+                if imgs:
+                    img = imgs[0]
+                else:
+                    fish = cd.get('fish')
+                    try:
+                        img = fish.image.url if fish and getattr(fish, 'image', None) else None
+                    except Exception:
+                        img = None
+            hero_items.append({
+                'title': cd.get('title'),
+                'description': cd.get('description'),
+                'image': img,
+                'combo_id': cd.get('combo_id'),
+                'discount_text': cd.get('discount_text'),
+                'item_names': cd.get('item_names', []),
+            })
     first_category = Category.objects.first() if Category.objects.exists() else None
     reviews = (Review.objects.filter(approved=True)
                .select_related('order', 'user')
@@ -1925,6 +1968,7 @@ def home_view(request):
         'combo_offers': combo_offers,
         'combo_deals': combo_deals,
         'combo_banners': combo_banners,
+        'hero_items': hero_items,
     })
 
 @login_required
@@ -2019,18 +2063,13 @@ def admin_combo_deals_view(request):
                 sid = str(combo.id)
                 # Banner toggle input name: show_as_banner_<id>
                 show_banner_val = request.POST.get(f'show_as_banner_{sid}')
-                show_as_banner = True if show_banner_val in ('1', 'on', 'true', 'True') else False
-                # If combo is marked as banner, ensure it will not also show as a card
-                if show_as_banner:
-                    combo.show_on_homepage = False
-                else:
-                    # If not banner, preserve show_on_homepage from selected list
-                    combo.show_on_homepage = combo.id in selected_ids
+                requested_show_as_banner = True if show_banner_val in ('1', 'on', 'true', 'True') else False
 
                 # Handle uploaded file for banner image: input name banner_<id>
                 uploaded = request.FILES.get(f'banner_{sid}')
                 # Handle clear image checkbox: name clear_banner_<id>
                 clear_flag = request.POST.get(f'clear_banner_{sid}')
+
                 # If an uploaded file is provided, prefer it. Otherwise if clear flag is set, delete existing image.
                 if uploaded:
                     combo.banner_image = uploaded
@@ -2042,11 +2081,41 @@ def admin_combo_deals_view(request):
                         except Exception:
                             pass
                         combo.banner_image = None
+
+                # Only enable banner mode if an image exists (either previously uploaded or in this POST)
+                has_image = bool(getattr(combo, 'banner_image', None))
+                show_as_banner = requested_show_as_banner and has_image
+
+                if show_as_banner:
+                    # Ensure it will not also show as a card
+                    combo.show_on_homepage = False
+                else:
+                    # If not banner, preserve show_on_homepage from selected list
+                    combo.show_on_homepage = combo.id in selected_ids
+
+                # If the admin requested banner but no image was provided, warn them
+                if requested_show_as_banner and not has_image:
+                    messages.warning(request, f"Combo '{combo.title}' cannot be enabled as a banner without an image.")
+
                 combo.show_as_banner = show_as_banner
                 combo.save()
 
             messages.success(request, 'Combo homepage visibility and banners updated.')
             return redirect('admin_combo_deals')
+        # If form is invalid, fall through to re-render with errors
+        combos = ComboOffer.objects.order_by('-created_at').all()
+        cards_enabled = ComboOffer.objects.filter(is_active=True, show_on_homepage=True).exists()
+        banners_enabled = ComboOffer.objects.filter(is_active=True, show_as_banner=True).exists()
+        return render(
+            request,
+            'store/admin/combo_deals.html',
+            {
+                'combos': combos,
+                'form': form,
+                'cards_enabled': cards_enabled,
+                'banners_enabled': banners_enabled,
+            },
+        )
     else:
         # Initialize form with currently selected combos
         initial_qs = ComboOffer.objects.filter(is_active=True, show_on_homepage=True)
@@ -2056,6 +2125,26 @@ def admin_combo_deals_view(request):
         cards_enabled = ComboOffer.objects.filter(is_active=True, show_on_homepage=True).exists()
         banners_enabled = ComboOffer.objects.filter(is_active=True, show_as_banner=True).exists()
         return render(request, 'store/admin/combo_deals.html', {'combos': combos, 'form': form, 'cards_enabled': cards_enabled, 'banners_enabled': banners_enabled})
+
+    # Safety fallback: ensure an HttpResponse is always returned even if
+    # unforeseen code paths are hit during reloads or concurrent edits.
+    try:
+        fallback_combos = ComboOffer.objects.order_by('-created_at').all()
+        fallback_form = ComboDealsForm()
+        fallback_cards = ComboOffer.objects.filter(is_active=True, show_on_homepage=True).exists()
+        fallback_banners = ComboOffer.objects.filter(is_active=True, show_as_banner=True).exists()
+        return render(request, 'store/admin/combo_deals.html', {
+            'combos': fallback_combos,
+            'form': fallback_form,
+            'cards_enabled': fallback_cards,
+            'banners_enabled': fallback_banners,
+        })
+    except Exception:
+        # As an absolute last resort, return a simple HttpResponse so Django
+        # doesn't raise a ValueError about a missing response. Keep it minimal
+        # to avoid exposing internals.
+        from django.http import HttpResponse
+        return HttpResponse('Combo deals page temporarily unavailable', status=503)
 
 
 @login_required
@@ -2166,8 +2255,13 @@ def ajax_toggle_combo_cards(request):
 def about_view(request):
     services = Service.objects.filter(is_active=True)
     contact = ContactInfo.objects.first()
+    has_gallery = False
     map_url = None
     if contact:
+        try:
+            has_gallery = contact.gallery_media.exists()
+        except Exception:
+            has_gallery = False
         # Prefer a proper Google Maps embed URL if provided
         raw = (contact.map_embed_url or '').strip()
         if raw and 'google.com/maps/embed' in raw:
@@ -2188,6 +2282,7 @@ def about_view(request):
     return render(request, 'store/about.html', {
         'services': services,
         'contact': contact,
+        'has_gallery': has_gallery,
         'map_url': map_url,
     })
 
@@ -3846,27 +3941,62 @@ def staff_dashboard_view(request):
 @login_required
 @user_passes_test(is_staff)
 def staff_fish_list_view(request):
-    fishes = Fish.objects.all()
-    
-    search_query = request.GET.get('search', '')
-    
+    fishes = Fish.objects.select_related('category', 'breed').all()
+
+    search_query = (request.GET.get('search') or '').strip()
+    category_id = (request.GET.get('category') or '').strip()
+    breed_id = (request.GET.get('breed') or '').strip()
+    availability = (request.GET.get('availability') or '').strip()
+    featured = (request.GET.get('featured') or '').strip()
+
     if search_query:
         fishes = fishes.filter(
-            Q(name__icontains=search_query) | 
+            Q(name__icontains=search_query) |
             Q(description__icontains=search_query)
         )
+
+    if category_id:
+        fishes = fishes.filter(category_id=category_id)
+
+    if breed_id:
+        fishes = fishes.filter(breed_id=breed_id)
+
+
+    if availability == 'available':
+        fishes = fishes.filter(is_available=True)
+    elif availability == 'unavailable':
+        fishes = fishes.filter(is_available=False)
+    elif availability == 'in_stock':
+        fishes = fishes.filter(stock_quantity__gt=0)
+    elif availability == 'out_of_stock':
+        fishes = fishes.filter(stock_quantity__lte=0)
+
+    if featured == 'yes':
+        fishes = fishes.filter(is_featured=True)
+    elif featured == 'no':
+        fishes = fishes.filter(is_featured=False)
     # If AJAX, return only the rendered table HTML so the client can update it
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         html = render_to_string('store/staff/_fish_table.html', {'fishes': fishes}, request=request)
         # If there are no fishes, still return the empty-state HTML block so the client can replace container
         if not fishes:
-            empty_html = render_to_string('store/staff/fish_list.html', {'fishes': fishes, 'search_query': search_query}, request=request)
+            empty_html = render_to_string('store/staff/_fish_empty.html', request=request)
             return JsonResponse({'html': html + empty_html})
         return JsonResponse({'html': html})
 
+    categories_with_count = Category.objects.filter(category_type='fish').annotate(
+        fish_count=Count('fishes', distinct=True)
+    ).order_by('name')
+    
     return render(request, 'store/staff/fish_list.html', {
         'fishes': fishes,
         'search_query': search_query,
+        'categories': categories_with_count,
+        'breeds': Breed.objects.all().order_by('name'),
+        'category_id': category_id,
+        'breed_id': breed_id,
+        'availability': availability,
+        'featured': featured,
     })
 
 
@@ -4024,6 +4154,7 @@ def staff_plants_view(request):
 
     category_id = request.GET.get('category', '').strip()
     search_query = request.GET.get('search', '').strip()
+    availability = request.GET.get('availability', '').strip()
 
     if category_id and category_id.isdigit():
         plants_qs = plants_qs.filter(category_id=int(category_id))
@@ -4035,6 +4166,17 @@ def staff_plants_view(request):
             Q(name__icontains=search_query) | Q(description__icontains=search_query)
         )
 
+    if availability == 'active':
+        plants_qs = plants_qs.filter(is_active=True)
+    elif availability == 'inactive':
+        plants_qs = plants_qs.filter(is_active=False)
+    elif availability == 'in_stock':
+        plants_qs = plants_qs.filter(stock_quantity__gt=0)
+    elif availability == 'out_of_stock':
+        plants_qs = plants_qs.filter(stock_quantity__lte=0)
+    else:
+        availability = ''
+
     plants = list(plants_qs)
 
     context = {
@@ -4042,8 +4184,14 @@ def staff_plants_view(request):
         'categories': categories,
         'selected_category_id': category_id,
         'search_query': search_query,
+        'availability': availability,
         'total_plants': len(plants),
     }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('store/staff/_plants_results.html', context, request=request)
+        return JsonResponse({'html': html, 'total': len(plants)})
+
     return render(request, 'store/staff/plants.html', context)
 
 
@@ -4608,6 +4756,7 @@ def admin_plants_view(request):
 
     category_id = request.GET.get('category', '').strip()
     search_query = request.GET.get('search', '').strip()
+    availability = request.GET.get('availability', '').strip()
 
     if category_id and category_id.isdigit():
         plants_qs = plants_qs.filter(category_id=int(category_id))
@@ -4617,19 +4766,33 @@ def admin_plants_view(request):
     if search_query:
         plants_qs = plants_qs.filter(Q(name__icontains=search_query) | Q(description__icontains=search_query))
 
+    if availability == 'active':
+        plants_qs = plants_qs.filter(is_active=True)
+    elif availability == 'inactive':
+        plants_qs = plants_qs.filter(is_active=False)
+    elif availability == 'in_stock':
+        plants_qs = plants_qs.filter(stock_quantity__gt=0)
+    elif availability == 'out_of_stock':
+        plants_qs = plants_qs.filter(stock_quantity__lte=0)
+    else:
+        availability = ''
+
     plants = list(plants_qs)
 
-    return render(
-        request,
-        'store/admin/plants.html',
-        {
-            'plants': plants,
-            'categories': categories,
-            'selected_category_id': category_id,
-            'search_query': search_query,
-            'total_plants': len(plants),
-        },
-    )
+    context = {
+        'plants': plants,
+        'categories': categories,
+        'selected_category_id': category_id,
+        'search_query': search_query,
+        'availability': availability,
+        'total_plants': len(plants),
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('store/admin/_plants_results.html', context, request=request)
+        return JsonResponse({'html': html, 'total': len(plants)})
+
+    return render(request, 'store/admin/plants.html', context)
 
 
 @login_required
@@ -4787,8 +4950,53 @@ def admin_delete_breed_view(request, breed_id):
 @login_required
 @user_passes_test(is_admin)
 def admin_fishes_view(request):
-    fishes = Fish.objects.all().order_by('-is_featured', '-created_at')
-    return render(request, 'store/admin/fishes.html', {'fishes': fishes})
+    fishes = Fish.objects.select_related('category', 'breed').all().order_by('-is_featured', '-created_at')
+
+    search_query = (request.GET.get('search') or '').strip()
+    category_id = (request.GET.get('category') or '').strip()
+    breed_id = (request.GET.get('breed') or '').strip()
+    availability = (request.GET.get('availability') or '').strip()
+    featured = (request.GET.get('featured') or '').strip()
+
+    if search_query:
+        fishes = fishes.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+
+    if category_id:
+        fishes = fishes.filter(category_id=category_id)
+
+    if breed_id:
+        fishes = fishes.filter(breed_id=breed_id)
+
+    if availability == 'available':
+        fishes = fishes.filter(is_available=True)
+    elif availability == 'unavailable':
+        fishes = fishes.filter(is_available=False)
+    elif availability == 'in_stock':
+        fishes = fishes.filter(stock_quantity__gt=0)
+    elif availability == 'out_of_stock':
+        fishes = fishes.filter(stock_quantity__lte=0)
+
+    if featured == 'yes':
+        fishes = fishes.filter(is_featured=True)
+    elif featured == 'no':
+        fishes = fishes.filter(is_featured=False)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('store/admin/_fishes_results.html', {'fishes': fishes}, request=request)
+        return JsonResponse({'html': html})
+
+    categories = Category.objects.filter(category_type='fish').order_by('name')
+    return render(request, 'store/admin/fishes.html', {
+        'fishes': fishes,
+        'categories': categories,
+        'search_query': search_query,
+        'category_id': category_id,
+        'availability': availability,
+        'featured': featured,
+    })
 
 
 @login_required
@@ -4865,8 +5073,58 @@ def admin_add_service_view(request):
 @user_passes_test(is_staff)
 def staff_accessories_view(request):
     from .models import Accessory
-    accessories = Accessory.objects.all()
-    return render(request, 'store/staff/accessories.html', {'accessories': accessories})
+    # Base queryset with related category for efficiency
+    accessories = Accessory.objects.select_related('category').all()
+
+    # Parse filters
+    search_query = (request.GET.get('search') or '').strip()
+    category_id = (request.GET.get('category') or '').strip()
+    availability = (request.GET.get('availability') or '').strip()
+
+    # Apply search filter
+    if search_query:
+        accessories = accessories.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+
+    # Apply category filter
+    if category_id:
+        accessories = accessories.filter(category_id=category_id)
+
+    # Apply availability/status filters (reuse fish values for parity)
+    if availability == 'available':
+        # Treat as active
+        accessories = accessories.filter(is_active=True)
+    elif availability == 'unavailable':
+        accessories = accessories.filter(is_active=False)
+    elif availability == 'in_stock':
+        accessories = accessories.filter(stock_quantity__gt=0)
+    elif availability == 'out_of_stock':
+        accessories = accessories.filter(stock_quantity__lte=0)
+
+    # AJAX: return only table HTML for partial update
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('store/staff/_accessories_table.html', {
+            'accessories': accessories,
+        }, request=request)
+        if not accessories:
+            empty_html = render_to_string('store/staff/_accessories_empty.html', request=request)
+            return JsonResponse({'html': html + empty_html})
+        return JsonResponse({'html': html})
+
+    # Categories with counts for filter dropdown
+    categories_with_count = Category.objects.filter(category_type='accessory').annotate(
+        accessory_count=Count('accessories', distinct=True)
+    ).order_by('name')
+
+    return render(request, 'store/staff/accessories.html', {
+        'accessories': accessories,
+        'search_query': search_query,
+        'categories': categories_with_count,
+        'category_id': category_id,
+        'availability': availability,
+    })
 
 
 @login_required
@@ -5139,14 +5397,44 @@ def admin_shipping_charges_view(request):
         key='default',
         defaults={'kerala_rate': Decimal('60.00'), 'default_rate': Decimal('100.00')},
     )
+    locations = ShippingChargeByLocation.objects.order_by('location_name')
+    form = ShippingChargeForm(instance=setting)
+    location_form = ShippingChargeByLocationForm()
 
     if request.method == 'POST':
-        form = ShippingChargeForm(request.POST, instance=setting)
-        if form.is_valid():
-            form.save()
-            _get_shipping_rates.cache_clear()
-            messages.success(request, 'Shipping charges updated successfully.')
-            return redirect('admin_shipping_charges')
+        action = request.POST.get('action')
+        if action == 'add_location':
+            location_form = ShippingChargeByLocationForm(request.POST)
+            if location_form.is_valid():
+                location_form.save()
+                _get_shipping_rates.cache_clear()
+                messages.success(request, 'Location-based shipping charge added.')
+                return redirect('admin_shipping_charges')
+        elif action == 'edit_location':
+            location_id = request.POST.get('location_id')
+            if location_id:
+                location = ShippingChargeByLocation.objects.filter(id=location_id).first()
+                if location:
+                    edit_form = ShippingChargeByLocationForm(request.POST, instance=location)
+                    if edit_form.is_valid():
+                        edit_form.save()
+                        _get_shipping_rates.cache_clear()
+                        messages.success(request, 'Location-based shipping charge updated.')
+                        return redirect('admin_shipping_charges')
+        elif action == 'delete_location':
+            location_id = request.POST.get('location_id')
+            if location_id:
+                ShippingChargeByLocation.objects.filter(id=location_id).delete()
+                _get_shipping_rates.cache_clear()
+                messages.success(request, 'Location-based shipping charge removed.')
+                return redirect('admin_shipping_charges')
+        else:
+            form = ShippingChargeForm(request.POST, instance=setting)
+            if form.is_valid():
+                form.save()
+                _get_shipping_rates.cache_clear()
+                messages.success(request, 'Shipping charges updated successfully.')
+                return redirect('admin_shipping_charges')
     else:
         form = ShippingChargeForm(instance=setting)
 
@@ -5154,6 +5442,8 @@ def admin_shipping_charges_view(request):
         'form': form,
         'setting': setting,
         'last_updated': setting.updated_at,
+        'location_form': location_form,
+        'locations': locations,
     }
     return render(request, 'store/admin/shipping_charges.html', context)
 

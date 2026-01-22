@@ -26,11 +26,33 @@ html {
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
+    /* Site-wide smooth scrolling for anchor/navigation */
+    scroll-behavior: smooth;
+    /* Offset scrolling to account for fixed/sticky headers set via --header-h */
+    scroll-padding-top: var(--header-h, 72px);
 }
 
 body {
     overflow-x: hidden;
     overscroll-behavior-y: none; /* Prevent bounce/rubber-band effect */
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+}
+
+/* Momentum scrolling on iOS for common scrollable containers */
+.table-responsive,
+.manage-table-scroll,
+.scrollable,
+body {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent anchor targets from hiding under fixed headers */
+[id] {
+    scroll-margin-top: var(--header-h, 72px);
 }
 
 /* Generic responsive media defaults */

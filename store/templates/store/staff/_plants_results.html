@@ -1,0 +1,61 @@
+{% if plants %}
+<div class="table-responsive">
+    <table class="table align-middle mb-0">
+        <thead>
+            <tr>
+                <th class="admin-text-black">Image</th>
+                <th class="admin-text-black">Name</th>
+                <th class="admin-text-black">Category</th>
+                <th class="admin-text-black">Price</th>
+                <th class="admin-text-black">Stock</th>
+                <th class="admin-text-black">Status</th>
+                <th class="admin-text-black text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plant in plants %}
+            <tr>
+                <td class="py-3">
+                    {% if plant.image %}
+                        <img src="{{ plant.image.url }}" alt="{{ plant.name }}" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
+                    {% else %}
+                        <div style="width:64px; height:48px; display:inline-block; background: rgba(255,255,255,0.05);"></div>
+                    {% endif %}
+                </td>
+                <td class="admin-text-black">
+                    <strong>{{ plant.name }}</strong>
+                    {% if plant.description %}
+                        <div class="small text-muted">{{ plant.description|truncatechars:80 }}</div>
+                    {% endif %}
+                </td>
+                <td class="admin-text-black">{{ plant.category.name|default:'-' }}</td>
+                <td class="admin-text-black">{% if plant.price %}₹{{ plant.price }}{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
+                <td class="admin-text-black">{{ plant.stock_quantity }}</td>
+                <td>
+                    {% if plant.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a class="btn btn-primary btn-sm" href="{% url 'edit_plant' plant.id %}"><i class="fas fa-edit"></i></a>
+                    <form method="post" action="{% url 'delete_plant' plant.id %}" style="display:inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this plant?">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state text-center py-5">
+    <i class="fas fa-seedling fa-2x mb-2"></i>
+    <h4 class="mb-1">No plants yet</h4>
+    <p class="text-muted">Add your first plant to get started.</p>
+</div>
+{% endif %}

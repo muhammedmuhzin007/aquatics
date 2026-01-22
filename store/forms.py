@@ -20,6 +20,7 @@ from .models import (
     PlantMedia,
     BlogPost,
     ShippingChargeSetting,
+    ShippingChargeByLocation,
 )
 
 
@@ -28,16 +29,16 @@ class BlogPostForm(forms.ModelForm):
 
     class Meta:
         model = BlogPost
-        fields = ['title', 'excerpt', 'content', 'image', 'is_published', 'published_at']
+        fields = ['title', 'sub_title', 'content', 'image', 'is_published', 'published_at']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
-            'excerpt': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'sub_title': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
-            'excerpt': 'Subtitle',
+            'sub_title': 'Subtitle',
         }
 
 
@@ -250,6 +251,14 @@ class ContactGalleryForm(forms.ModelForm):
             raise forms.ValidationError('Only image files are allowed for the gallery.')
         return f
 
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        # Force images for gallery entries
+        obj.media_type = 'image'
+        if commit:
+            obj.save()
+        return obj
+
 
 class ChangePasswordForm(forms.Form):
     old_password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Current password'}))
@@ -350,6 +359,27 @@ class ShippingChargeForm(forms.ModelForm):
             value = cleaned.get(field)
             if value is not None and value <= 0:
                 self.add_error(field, 'Rate must be greater than zero.')
+        return cleaned
+
+
+class ShippingChargeByLocationForm(forms.ModelForm):
+    class Meta:
+        model = ShippingChargeByLocation
+        fields = ['location_name', 'shipping_charge']
+        widgets = {
+            'location_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Kerala, Tamil Nadu, Delhi'}),
+            'shipping_charge': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+        }
+        labels = {
+            'location_name': 'Location/State',
+            'shipping_charge': 'Charge (₹ per kg)',
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        value = cleaned.get('shipping_charge')
+        if value is not None and value <= 0:
+            self.add_error('shipping_charge', 'Rate must be greater than zero.')
         return cleaned
 
 class AccessoryForm(forms.ModelForm):

@@ -25,6 +25,7 @@ from .models import (
     PlantCategory,
     Plant,
     ShippingChargeSetting,
+    ShippingChargeByLocation,
 )
 
 admin.site.register(CustomUser)
@@ -213,14 +214,38 @@ class ShippingChargeSettingAdminForm(forms.ModelForm):
         }
 
 
+@admin.register(ShippingChargeByLocation)
+class ShippingChargeByLocationAdmin(admin.ModelAdmin):
+    list_display = ('location_name', 'shipping_charge', 'is_active', 'updated_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('location_name',)
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Location Details', {
+            'fields': ('location_name', 'shipping_charge', 'is_active')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['location_name'].help_text = 'Enter the location/state/region name (e.g., Kerala, Tamil Nadu, Delhi, etc.)'
+        form.base_fields['shipping_charge'].help_text = 'Enter the shipping charge amount for this location'
+        return form
+
+
 @admin.register(ShippingChargeSetting)
 class ShippingChargeSettingAdmin(admin.ModelAdmin):
     form = ShippingChargeSettingAdminForm
     list_display = ('kerala_rate', 'default_rate', 'updated_at')
     readonly_fields = ('created_at', 'updated_at')
     fieldsets = (
-        ('Shipping Rates', {
-            'fields': ('kerala_rate', 'default_rate')
+        ('Shipping Rates (Legacy)', {
+            'fields': ('kerala_rate', 'default_rate'),
+            'description': 'These rates are used as fallback. Use "Shipping Charges by Location" above for location-specific rates.'
         }),
         ('Unavailable States', {
             'fields': ('unserviceable_states',)
@@ -313,8 +338,7 @@ class CouponAdmin(admin.ModelAdmin):
 class BlogPostAdmin(admin.ModelAdmin):
     list_display = ('title', 'author', 'is_published', 'published_at', 'created_at')
     list_filter = ('is_published', 'published_at')
-    search_fields = ('title', 'excerpt', 'content', 'author__username')
-    prepopulated_fields = {'slug': ('title',)}
+    search_fields = ('title', 'sub_title', 'content', 'author__username')
     readonly_fields = ('created_at', 'updated_at')
 
 

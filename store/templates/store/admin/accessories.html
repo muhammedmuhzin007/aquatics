@@ -51,6 +51,43 @@
         min-height: 34px;
     }
 
+    .admin-accessories .actions-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+    }
+    .admin-accessories td.actions-cell {
+        text-align: right;
+        padding-right: 0.85rem;
+        min-width: 110px;
+    }
+    .admin-accessories th.actions-cell {
+        text-align: right;
+        padding-right: 0.85rem;
+        min-width: 110px;
+    }
+
+    .admin-accessories .table-responsive {
+        overflow-x: auto;
+    }
+    .admin-accessories .table {
+        min-width: 640px;
+    }
+
+    @media (max-width: 768px) {
+        .admin-accessories .card-body { padding: 0.75rem; }
+        .admin-accessory-filters { gap: 0.75rem; }
+        .admin-accessory-filters .form-select,
+        .admin-accessory-filters .form-control { width: 100%; }
+        .admin-accessories .table { font-size: 0.85rem; }
+        .admin-accessories .table th,
+        .admin-accessories .table td { padding: 0.55rem 0.6rem; }
+        .admin-accessories .table img.img-thumbnail { width: 52px; }
+        .admin-accessories .actions-group { gap: 0.25rem; }
+        .admin-accessories .actions-group .btn { padding: 0.2rem 0.4rem; }
+    }
+
 </style>
 {% endblock %}
 

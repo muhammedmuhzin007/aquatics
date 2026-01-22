@@ -37,9 +37,9 @@
             <div class="card-header d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-lg-between">
                 <div>
                     <h5 class="mb-1 text-white">Plant Catalogue</h5>
-                    <small class="text-muted">Total: {{ total_plants }}</small>
+                    <small class="text-muted">Total: <span id="staff-plants-total">{{ total_plants }}</span></small>
                 </div>
-                <form method="get" class="d-flex flex-wrap align-items-center gap-2 plant-filter-form">
+                <form method="get" class="d-flex flex-wrap align-items-center gap-2 plant-filter-form" id="staff-plant-filter-form">
                     <div class="plant-filter-search flex-grow-1">
                         <div class="input-group input-group-sm">
                             <input type="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Search plants">
@@ -54,73 +54,96 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <a href="{% url 'staff_plants' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                    <div class="plant-filter-select">
+                        <select name="availability" class="form-select form-select-sm">
+                            <option value="">All statuses</option>
+                            <option value="active" {% if availability == 'active' %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if availability == 'inactive' %}selected{% endif %}>Inactive</option>
+                            <option value="in_stock" {% if availability == 'in_stock' %}selected{% endif %}>In stock</option>
+                            <option value="out_of_stock" {% if availability == 'out_of_stock' %}selected{% endif %}>Out of stock</option>
+                        </select>
+                    </div>
                 </form>
             </div>
-            <div class="card-body p-0">
-                {% if plants %}
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th class="admin-text-black">Image</th>
-                                <th class="admin-text-black">Name</th>
-                                <th class="admin-text-black">Category</th>
-                                <th class="admin-text-black">Price</th>
-                                <th class="admin-text-black">Stock</th>
-                                <th class="admin-text-black">Status</th>
-                                <th class="admin-text-black text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for plant in plants %}
-                            <tr>
-                                <td class="py-3">
-                                    {% if plant.image %}
-                                        <img src="{{ plant.image.url }}" alt="{{ plant.name }}" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
-                                    {% else %}
-                                        <div style="width:64px; height:48px; display:inline-block; background: rgba(255,255,255,0.05);"></div>
-                                    {% endif %}
-                                </td>
-                                <td class="admin-text-black">
-                                    <strong>{{ plant.name }}</strong>
-                                    {% if plant.description %}
-                                        <div class="small text-muted">{{ plant.description|truncatechars:80 }}</div>
-                                    {% endif %}
-                                </td>
-                                <td class="admin-text-black">{{ plant.category.name|default:'-' }}</td>
-                                <td class="admin-text-black">{% if plant.price %}₹{{ plant.price }}{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
-                                <td class="admin-text-black">{{ plant.stock_quantity }}</td>
-                                <td>
-                                    {% if plant.is_active %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Inactive</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    <a class="btn btn-primary btn-sm" href="{% url 'edit_plant' plant.id %}"><i class="fas fa-edit"></i></a>
-                                    <form method="post" action="{% url 'delete_plant' plant.id %}" style="display:inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this plant?">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="empty-state text-center py-5">
-                    <i class="fas fa-seedling fa-2x mb-2"></i>
-                    <h4 class="mb-1">No plants yet</h4>
-                    <p class="text-muted">Add your first plant to get started.</p>
-                </div>
-                {% endif %}
+            <div class="card-body p-0" id="staff-plant-results">
+                {% include 'store/staff/_plants_results.html' %}
             </div>
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const form = document.getElementById('staff-plant-filter-form');
+    const results = document.getElementById('staff-plant-results');
+    const totalEl = document.getElementById('staff-plants-total');
+    if (!form || !results) return;
+
+    const searchInput = form.querySelector('input[name="search"]');
+    const categorySelect = form.querySelector('select[name="category"]');
+    const availabilitySelect = form.querySelector('select[name="availability"]');
+
+    let debounceTimer = null;
+    const delay = 300;
+
+    function buildParams(){
+        const params = new URLSearchParams();
+        const search = searchInput ? searchInput.value.trim() : '';
+        const category = categorySelect ? categorySelect.value : '';
+        const availability = availabilitySelect ? availabilitySelect.value : '';
+        if (search) params.set('search', search);
+        if (category) params.set('category', category);
+        if (availability) params.set('availability', availability);
+        return params;
+    }
+
+    async function fetchPlants(){
+        const url = new URL(window.location.href);
+        url.search = buildParams().toString();
+        try {
+            const resp = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.html !== undefined) {
+                results.innerHTML = data.html;
+            }
+            if (totalEl && typeof data.total === 'number') {
+                totalEl.textContent = data.total;
+            }
+        } catch (err) {
+            console.error('Staff plant filter failed', err);
+        }
+    }
+
+    form.addEventListener('submit', (evt) => {
+        evt.preventDefault();
+        clearTimeout(debounceTimer);
+        fetchPlants();
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchPlants, delay);
+        });
+        searchInput.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                clearTimeout(debounceTimer);
+                fetchPlants();
+            }
+        });
+    }
+
+    [categorySelect, availabilitySelect].forEach((el) => {
+        if (!el) return;
+        el.addEventListener('change', () => {
+            clearTimeout(debounceTimer);
+            fetchPlants();
+        });
+    });
+})();
+</script>
 {% endblock %}

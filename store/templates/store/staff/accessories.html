@@ -11,6 +11,40 @@
     html[data-theme='dark'] .staff-accessories tbody tr { background: rgba(20,30,45,0.55) !important; }
     html[data-theme='dark'] .staff-accessories tbody tr:nth-child(odd) { background: rgba(25,40,60,0.55) !important; }
     html[data-theme='dark'] .staff-accessories tbody tr:hover { background: rgba(40,80,140,0.55) !important; }
+
+    .staff-accessories .actions-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+    }
+    .staff-accessories td.actions-cell {
+        text-align: right;
+        padding-right: 0.85rem;
+        min-width: 110px;
+    }
+    .staff-accessories th.actions-cell {
+        text-align: right;
+        padding-right: 0.85rem;
+        min-width: 110px;
+    }
+
+    .staff-accessories .table-responsive {
+        overflow-x: auto;
+    }
+    .staff-accessories .table {
+        min-width: 640px;
+    }
+
+    @media (max-width: 768px) {
+        .staff-accessories .card-body { padding: 0.75rem; }
+        .staff-accessories .table { font-size: 0.85rem; }
+        .staff-accessories .table th,
+        .staff-accessories .table td { padding: 0.55rem 0.6rem; }
+        .staff-accessories .table img.img-thumbnail { width: 52px; }
+        .staff-accessories .actions-group { gap: 0.25rem; }
+        .staff-accessories .actions-group .btn { padding: 0.2rem 0.4rem; }
+    }
 </style>
 {% endblock %}
 
@@ -31,66 +65,109 @@
             {% endfor %}
         {% endif %}
 
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-white">Accessories</h5>
-                <small class="text-muted">Total: {{ accessories|length }}</small>
+        <!-- Filters: match staff fish layout -->
+        <style>
+            /* Align filter controls with fish page */
+            .staff-accessories .form-control, .staff-accessories .form-select { border-radius:6px; height: auto; padding: 0.5rem 0.75rem; line-height: 1.5; }
+            html[data-theme='light'] .staff-accessories .form-control, html[data-theme='light'] .staff-accessories .form-select { color: var(--light-text) !important; }
+            html[data-theme='dark'] .staff-accessories .form-control, html[data-theme='dark'] .staff-accessories .form-select { color: #FFFFFF !important; }
+            html[data-theme='light'] .staff-accessories .form-control::placeholder { color: var(--light-text-soft)!important; opacity:.7; }
+            html[data-theme='dark'] .staff-accessories .form-control::placeholder { color: rgba(255,255,255,0.6)!important; }
+            html[data-theme='light'] .staff-accessories select.form-select { color: #111827 !important; }
+            html[data-theme='light'] .staff-accessories select.form-select option { color: #111827 !important; }
+        </style>
+
+        <div class="row g-3 align-items-end mb-4">
+            <div class="col-lg-6 col-md-12">
+                <label class="form-label admin-text-black mb-1">Search</label>
+                <input id="staff-accessory-search" type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Search accessories...">
             </div>
-            <div class="card-body">
-                {% if accessories %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th class="admin-text-black">Image</th>
-                            <th class="admin-text-black">Name</th>
-                            <th class="admin-text-black">Price</th>
-                            <th class="admin-text-black">Stock</th>
-                            <th class="admin-text-black">Status</th>
-                            <th class="admin-text-black">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for accessory in accessories %}
-                        <tr>
-                            <td>
-                                {% if accessory.image %}
-                                    <img src="{{ accessory.image.url }}" alt="{{ accessory.name }}" class="img-fluid img-thumbnail" style="width:64px; height:auto;">
-                                {% else %}
-                                    <div style="width:64px; height:48px; display:inline-block;"></div>
-                                {% endif %}
-                            </td>
-                            <td><strong class="admin-text-black">{{ accessory.name }}</strong></td>
-                            <td class="admin-text-black">₹{{ accessory.price }}</td>
-                            <td class="admin-text-black">{{ accessory.stock_quantity }}</td>
-                            <td>
-                                {% if accessory.is_active %}
-                                    <span class="badge bg-success">Active</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Inactive</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a class="btn btn-primary btn-sm" href="{% url 'edit_accessory' accessory.id %}"><i class="fas fa-edit"></i></a>
-                                <form method="post" action="{% url 'delete_accessory' accessory.id %}" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this accessory?">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+            <div class="col-lg-4 col-md-6">
+                <label class="form-label admin-text-black mb-1">Category</label>
+                <select id="staff-accessory-category" class="form-select" name="category">
+                    <option value="">All</option>
+                    {% if categories %}
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" title="{{ cat.name }} ({{ cat.accessory_count }})" {% if category_id == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }} ({{ cat.accessory_count }})</option>
                         {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state text-center py-4">
-                    <i class="fas fa-boxes fa-2x mb-2"></i>
-                    <h4 class="mb-1">No accessories yet</h4>
-                    <p class="text-muted">Create your first accessory to show up here.</p>
-                </div>
-                {% endif %}
+                    {% endif %}
+                </select>
             </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label admin-text-black mb-1">Availability</label>
+                <select id="staff-accessory-availability" class="form-select" name="availability">
+                    <option value="">All statuses</option>
+                    <option value="available" {% if availability == 'available' %}selected{% endif %}>Active</option>
+                    <option value="unavailable" {% if availability == 'unavailable' %}selected{% endif %}>Inactive</option>
+                    <option value="in_stock" {% if availability == 'in_stock' %}selected{% endif %}>In stock</option>
+                    <option value="out_of_stock" {% if availability == 'out_of_stock' %}selected{% endif %}>Out of stock</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="accessories-table-container">
+            {% include 'store/staff/_accessories_table.html' %}
+            {% if not accessories %}
+                {% include 'store/staff/_accessories_empty.html' %}
+            {% endif %}
         </div>
     </div>
 </section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(() => {
+    const input = document.getElementById('staff-accessory-search');
+    const categorySelect = document.getElementById('staff-accessory-category');
+    const availabilitySelect = document.getElementById('staff-accessory-availability');
+    if (!input) return;
+
+    let t = null;
+    const delay = 300;
+    function buildQuery(){
+        const params = new URLSearchParams();
+        const q = input.value.trim();
+        if (q) params.set('search', q);
+        if (categorySelect && categorySelect.value) params.set('category', categorySelect.value);
+        if (availabilitySelect && availabilitySelect.value) params.set('availability', availabilitySelect.value);
+        return params;
+    }
+
+    async function doSearch(){
+        const url = new URL(window.location.href);
+        const params = buildQuery();
+        url.search = params.toString();
+        try{
+            const resp = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const container = document.getElementById('accessories-table-container');
+            if (container && data.html !== undefined){
+                container.innerHTML = data.html;
+            }
+        }catch(err){ console.error('Accessory search failed', err); }
+    }
+
+    input.addEventListener('input', ()=>{
+        clearTimeout(t);
+        t = setTimeout(()=> doSearch(), delay);
+    });
+
+    input.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter'){
+            e.preventDefault();
+            clearTimeout(t);
+            doSearch();
+        }
+    });
+
+    [categorySelect, availabilitySelect].forEach((el)=>{
+        if (!el) return;
+        el.addEventListener('change', ()=>{
+            clearTimeout(t);
+            doSearch();
+        });
+    });
+})();
+</script>
 {% endblock %}

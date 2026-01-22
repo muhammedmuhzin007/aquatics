@@ -55,20 +55,20 @@
 </section>
 {% endif %}
 
-{% if contact and contact.gallery_media.exists %}
+{% if contact and has_gallery %}
 <section class="section gallery-section">
     <div class="container-fluid">
         <h2 class="section-heading mb-4">Gallery</h2>
         <div class="gallery-slider-container position-relative">
             <button class="gallery-nav gallery-prev" aria-label="Previous">
-                <span class="nav-circle"><i class="fas fa-chevron-left"></i></span>
+                <i class="fas fa-chevron-left"></i>
             </button>
-            <div id="gallerySlider" class="gallery-slider d-flex align-items-stretch">
+            <div id="gallerySlider" class="gallery-slider">
                 {% for item in contact.gallery_media.all %}
                 <div class="gallery-thumb gallery-card" data-index="{{ forloop.counter0 }}" data-type="{{ item.media_type }}" data-src="{{ item.source }}" data-embed="{{ item.embed_url }}">
-                    <div class="gallery-image-wrap">
+                    <div class="gallery-image-wrap" style="overflow:hidden;">
                         {% if item.media_type == 'image' and item.source %}
-                            <img src="{{ item.source }}" alt="{{ item.title|default:'Gallery' }}">
+                            <img src="{{ item.source }}" alt="{{ item.title|default:'Gallery' }}" style="display:block;" onerror="this.style.display='none';">
                         {% elif item.media_type == 'video' and item.source %}
                             {% if item.embed_url and 'youtube.com' in item.embed_url or item.embed_url and 'youtu.be' in item.embed_url %}
                                 <div class="video-placeholder"><i class="fas fa-play"></i></div>
@@ -84,7 +84,7 @@
                 {% endfor %}
             </div>
             <button class="gallery-nav gallery-next" aria-label="Next">
-                <span class="nav-circle"><i class="fas fa-chevron-right"></i></span>
+                <i class="fas fa-chevron-right"></i>
             </button>
         </div>
     </div>
@@ -280,103 +280,107 @@
     </script>
 
 <script>
-// Slider behaviour: infinite loop via clones, autoplay, prev/next controls
+// Gallery carousel: infinite loop like Featured Fishes
 document.addEventListener('DOMContentLoaded', function () {
-    const slider = document.getElementById('gallerySlider');
-    if (!slider) return;
+    const track = document.getElementById('gallerySlider');
+    if (!track) return;
     const prev = document.querySelector('.gallery-prev');
     const next = document.querySelector('.gallery-next');
 
-    let cards = Array.from(slider.querySelectorAll('.gallery-card'));
-    const originalLength = cards.length;
-    if (originalLength === 0) return;
+    const items = Array.from(track.querySelectorAll('.gallery-card'));
+    if (items.length === 0) return;
 
-    // If only one card, keep simple behavior
-    if (originalLength === 1) {
-        // center single card horizontally without affecting page vertical scroll
-        setTimeout(() => {
-            try {
-                const card = cards[0];
-                const left = card.offsetLeft - (slider.clientWidth - card.clientWidth) / 2;
-                slider.scrollTo({ left: left, behavior: 'auto' });
-                card.classList.add('centered');
-            } catch (e) {
-                try { cards[0].classList.add('centered'); } catch (e) {}
-            }
-        }, 50);
-        return;
+    const GAP = 24; // matches CSS gap
+    let itemsPerPage = () => {
+        if(window.innerWidth > 1200) return 3;
+        if(window.innerWidth > 768) return 2;
+        return 1;
+    };
+
+    let realItems = items;
+    let clonesBefore = [];
+    let clonesAfter = [];
+    let index = 0;
+    let isAnimating = false;
+    let autoInterval = null;
+
+    function getItemWidth(){
+        const el = realItems[0];
+        if(!el) return 0;
+        return el.offsetWidth + GAP;
     }
 
-    const CLONES = Math.min(2, originalLength);
-
-    // create clones for seamless looping
-    const prepend = cards.slice(-CLONES).map(n => n.cloneNode(true));
-    const append = cards.slice(0, CLONES).map(n => n.cloneNode(true));
-    prepend.forEach(n => { n.classList.add('clone'); slider.insertBefore(n, slider.firstChild); });
-    append.forEach(n => { n.classList.add('clone'); slider.appendChild(n); });
-
-    // refresh cards list to include clones
-    cards = Array.from(slider.querySelectorAll('.gallery-card'));
-
-    let currentIndex = CLONES; // start at first real slide (after prepended clones)
-    let autoplayId = null;
-
-    function getCard(i) { return cards[(i + cards.length) % cards.length]; }
-
-    function setCenteredByIndex() {
-        const center = slider.scrollLeft + slider.clientWidth / 2;
-        let closest = 0; let closestDist = Infinity;
-        cards.forEach((c, idx) => {
-            const cCenter = c.offsetLeft + c.clientWidth / 2;
-            const dist = Math.abs(cCenter - center);
-            if (dist < closestDist) { closestDist = dist; closest = idx; }
-        });
-        cards.forEach((c, idx) => c.classList.toggle('centered', idx === closest));
-    }
-
-    function scrollToIndex(i, smooth = true) {
-        const card = getCard(i);
-        try {
-            const left = card.offsetLeft - (slider.clientWidth - card.clientWidth) / 2;
-            slider.scrollTo({ left: left, behavior: smooth ? 'smooth' : 'auto' });
-        } catch (e) {
-            try {
-                // fallback to scrollIntoView but prefer not to change vertical scroll
-                card.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', inline: 'center', block: 'nearest' });
-            } catch (e) {}
+    function buildClones(){
+        clonesBefore.forEach(c=>c.remove()); clonesAfter.forEach(c=>c.remove()); clonesBefore=[]; clonesAfter=[];
+        const n = itemsPerPage();
+        for(let i = realItems.length - n; i < realItems.length; i++){
+            const idx = (i + realItems.length) % realItems.length;
+            const clone = realItems[idx].cloneNode(true);
+            clone.classList.add('gallery-clone');
+            track.insertBefore(clone, track.firstChild);
+            clonesBefore.push(clone);
         }
-        setTimeout(setCenteredByIndex, smooth ? 420 : 20);
-    }
-
-    function nextSlide() {
-        currentIndex++;
-        scrollToIndex(currentIndex, true);
-        // If moved past the last real slide, jump back to first real slide without animation
-        if (currentIndex >= CLONES + originalLength) {
-            setTimeout(function () { currentIndex = CLONES; scrollToIndex(currentIndex, false); }, 440);
+        for(let i = 0; i < n; i++){
+            const clone = realItems[i].cloneNode(true);
+            clone.classList.add('gallery-clone');
+            track.appendChild(clone);
+            clonesAfter.push(clone);
         }
     }
 
-    function prevSlide() {
-        currentIndex--;
-        scrollToIndex(currentIndex, true);
-        if (currentIndex < CLONES) {
-            setTimeout(function () { currentIndex = CLONES + originalLength - 1; scrollToIndex(currentIndex, false); }, 440);
+    function updateTransform(animate=true){
+        if(isAnimating) return;
+        const w = getItemWidth();
+        if(w === 0) return;
+        const offset = (index + clonesBefore.length) * w;
+        if(animate){
+            isAnimating = true;
+            track.style.transition = 'transform 0.45s cubic-bezier(0.4,0,0.2,1)';
+        } else {
+            track.style.transition = 'none';
+        }
+        track.style.transform = `translateX(-${offset}px)`;
+        if(animate){
+            setTimeout(()=>{
+                if(index >= realItems.length){
+                    track.style.transition = 'none';
+                    index = 0;
+                    const realOffset = (index + clonesBefore.length) * w;
+                    track.style.transform = `translateX(-${realOffset}px)`;
+                }
+                if(index < 0){
+                    track.style.transition = 'none';
+                    index = realItems.length - 1;
+                    const realOffset = (index + clonesBefore.length) * w;
+                    track.style.transform = `translateX(-${realOffset}px)`;
+                }
+                isAnimating = false;
+            }, 480);
         }
     }
 
-    next.addEventListener('click', function (ev) { ev.preventDefault(); stopAutoplay(); nextSlide(); startAutoplay(); });
-    prev.addEventListener('click', function (ev) { ev.preventDefault(); stopAutoplay(); prevSlide(); startAutoplay(); });
+    if(prev) prev.addEventListener('click', function(){ if(isAnimating) return; index -= 1; updateTransform(true); restartAuto(); });
+    if(next) next.addEventListener('click', function(){ if(isAnimating) return; index += 1; updateTransform(true); restartAuto(); });
 
-    function startAutoplay() { stopAutoplay(); autoplayId = setInterval(nextSlide, 4000); }
-    function stopAutoplay() { if (autoplayId) { clearInterval(autoplayId); autoplayId = null; } }
+    function startAuto(){ stopAuto(); if(realItems.length > 1) autoInterval = setInterval(()=>{ if(!isAnimating) { index += 1; updateTransform(true); } }, 4000); }
+    function stopAuto(){ if(autoInterval){ clearInterval(autoInterval); autoInterval = null; } }
+    function restartAuto(){ stopAuto(); startAuto(); }
 
-    // update center class while user scrolls (throttled)
-    let scrollTimeout = null;
-    slider.addEventListener('scroll', function () { if (scrollTimeout) clearTimeout(scrollTimeout); scrollTimeout = setTimeout(setCenteredByIndex, 120); });
+    const container = document.querySelector('.gallery-slider-container');
+    if(container){ container.addEventListener('mouseenter', stopAuto); container.addEventListener('mouseleave', startAuto); }
 
-    // Initialize position to the first real slide
-    setTimeout(function () { scrollToIndex(currentIndex, false); setCenteredByIndex(); startAutoplay(); }, 120);
+    buildClones();
+    index = 0;
+    setTimeout(()=> updateTransform(false), 50);
+    startAuto();
+
+    let t;
+    window.addEventListener('resize', ()=>{
+        clearTimeout(t); t = setTimeout(()=>{
+            buildClones();
+            updateTransform(false);
+        }, 250);
+    });
 });
 </script>
 
@@ -741,34 +745,41 @@ html[data-theme='light'] .contact-card .text-gray { color: var(--light-text-soft
 html[data-theme='light'] .gallery-thumb { background: var(--light-card); border: 1px solid var(--light-border); }
 
 
-/* Slider specific styles */
-.gallery-slider-container { position: relative; padding: 12px 40px; }
-.gallery-slider { gap: 24px; overflow: hidden; scroll-behavior: smooth; }
-.gallery-slider .gallery-card { min-width: 360px; flex: 0 0 360px; border-radius: 10px; overflow: hidden; background: var(--card-bg); border: 1px solid var(--border-color); display:flex; flex-direction:column; transition: transform 320ms ease, box-shadow 320ms ease; }
+/* Slider specific styles - matches Featured Fishes carousel */
+.gallery-slider-container { position: relative; padding: 10px 60px; overflow: hidden; }
+.gallery-slider { display: flex; gap: 24px; transition: transform 0.45s cubic-bezier(0.4,0,0.2,1); will-change: transform; align-items: stretch; }
+.gallery-card { flex: 0 0 auto; width: calc(33.333% - 16px); border-radius: 10px; overflow: hidden; background: var(--card-bg); border: 1px solid var(--border-color); display:flex; flex-direction:column; transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
 .gallery-image-wrap { height: 420px; display:flex; align-items:center; justify-content:center; background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.05)); }
-.gallery-image-wrap img { width:100%; height:100%; object-fit:cover; transition: transform 400ms ease; }
+.gallery-image-wrap img { width:100%; height:100%; object-fit:cover; }
 .gallery-image-wrap video { width:100%; height:100%; object-fit:cover; }
 .video-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#000; color:#fff; font-size:28px; }
-.gallery-card:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
-.gallery-card.centered { transform: scale(1.06); box-shadow: 0 18px 40px rgba(0,0,0,0.35); }
-.gallery-card { cursor: pointer; }
-.gallery-card.centered .gallery-image-wrap img { transform: scale(1.03); }
-.gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); width:44px; height:44px; border-radius:50%; background: transparent; border: none; display:flex; align-items:center; justify-content:center; z-index:10; }
-.gallery-prev { left:8px; }
-.gallery-next { right:8px; }
-.nav-circle { width:40px; height:40px; border-radius:50%; background: rgba(8,24,40,0.6); display:flex; align-items:center; justify-content:center; color:#fff; border:2px solid rgba(100,150,255,0.25); }
+.gallery-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(30,136,229,0.3); }
+.gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(30, 136, 229, 0.15); border: 2px solid var(--accent-blue); color: var(--accent-blue); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; z-index: 10; font-size: 1.2rem; backdrop-filter: blur(8px); }
+.gallery-nav:hover { background: var(--accent-blue); color: white; transform: translateY(-50%) scale(1.1); box-shadow: 0 5px 15px rgba(30, 136, 229, 0.3); }
+.gallery-prev { left:10px; }
+.gallery-next { right:10px; }
+
+@media (max-width: 1200px) {
+    .gallery-card { width: calc(50% - 12px); }
+}
+@media (max-width: 768px) {
+    .gallery-slider-container { padding: 10px 60px; }
+    .gallery-card { width: 100%; }
+    .gallery-image-wrap { height: 60vw; max-height: 420px; }
+    .gallery-nav { width: 40px; height: 40px; font-size: 1rem; }
+    .gallery-prev { left: 5px; }
+    .gallery-next { right: 5px; }
+}
 @media (max-width: 768px) {
     /* On small screens show a single full-width card at a time */
-    .gallery-slider { gap: 0; padding: 12px; overflow: hidden; scroll-snap-type: x mandatory; }
-    .gallery-slider .gallery-card { min-width: 100%; flex: 0 0 100%; border-radius: 8px; margin: 0 auto; scroll-snap-align: center; }
+    .gallery-slider-container { padding: 10px 60px; }
+    .gallery-card { width: 100%; }
     /* Use viewport-based height so images are large but responsive */
     .gallery-image-wrap { height: 60vw; max-height: 420px; }
-    .gallery-thumb img, .gallery-thumb video { height:60vw; max-height:420px; }
     /* Slightly smaller nav buttons on mobile */
-    .gallery-nav { width:40px; height:40px; }
+    .gallery-nav { width: 40px; height: 40px; font-size: 1rem; }
+    .gallery-prev { left: 5px; }
+    .gallery-next { right: 5px; }
 }
-
-/* Make gallery image cards larger on desktop, but keep them compact on small screens */
-.gallery-thumb img, .gallery-thumb video { width:100%; height:420px; object-fit:cover; border-radius:6px; }
 </style>
 {% endblock %}

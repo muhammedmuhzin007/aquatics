@@ -51,9 +51,14 @@
             html[data-theme='light'] .manage-fish-minimal a.btn.btn-danger.btn-sm:hover { background:#c62828 !important; color:#fff !important; }
 
             /* Themed form controls rely on global styles; only adjust border radius */
-            .manage-fish-minimal .form-control, .manage-fish-minimal .form-select { border-radius:6px; }
+            .manage-fish-minimal .form-control, .manage-fish-minimal .form-select { border-radius:6px; height: auto; padding: 0.5rem 0.75rem; line-height: 1.5; }
+            html[data-theme='light'] .manage-fish-minimal .form-control, html[data-theme='light'] .manage-fish-minimal .form-select { color: var(--light-text) !important; }
+            html[data-theme='dark'] .manage-fish-minimal .form-control, html[data-theme='dark'] .manage-fish-minimal .form-select { color: #FFFFFF !important; }
             html[data-theme='light'] .manage-fish-minimal .form-control::placeholder { color: var(--light-text-soft)!important; opacity:.7; }
             html[data-theme='dark'] .manage-fish-minimal .form-control::placeholder { color: rgba(255,255,255,0.6)!important; }
+            /* Ensure select option text is clearly visible in light mode */
+            html[data-theme='light'] .manage-fish-minimal select.form-select { color: #111827 !important; }
+            html[data-theme='light'] .manage-fish-minimal select.form-select option { color: #111827 !important; }
 
             /* Keep table layout on small screens: allow horizontal scroll instead of card conversion */
             .manage-table-scroll { width: 100%; overflow-x: auto; }
@@ -82,24 +87,36 @@
             </div>
         </div>
 
-        <div class="search-container mb-4">
-            <div class="row g-3">
-                <div class="col-md-12">
-                    <input id="staff-fish-search" type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Search fishes...">
-                </div>
+        <div class="row g-3 align-items-end mb-4">
+            <div class="col-lg-6 col-md-12">
+                <label class="form-label admin-text-black mb-1">Search</label>
+                <input id="staff-fish-search" type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Search fishes...">
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <label class="form-label admin-text-black mb-1">Category</label>
+                <select id="staff-fish-category" class="form-select" name="category">
+                    <option value="">All</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" title="{{ cat.name }} ({{ cat.fish_count }})" {% if category_id == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }} ({{ cat.fish_count }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label admin-text-black mb-1">Availability</label>
+                <select id="staff-fish-availability" class="form-select" name="availability">
+                    <option value="">All statuses</option>
+                    <option value="available" {% if availability == 'available' %}selected{% endif %}>Active</option>
+                    <option value="unavailable" {% if availability == 'unavailable' %}selected{% endif %}>Inactive</option>
+                    <option value="in_stock" {% if availability == 'in_stock' %}selected{% endif %}>In stock</option>
+                    <option value="out_of_stock" {% if availability == 'out_of_stock' %}selected{% endif %}>Out of stock</option>
+                </select>
             </div>
         </div>
 
         <div id="fish-table-container">
             {% include 'store/staff/_fish_table.html' %}
             {% if not fishes %}
-            <div class="empty-state">
-                <i class="fas fa-fish"></i>
-                <h3>No fishes found</h3>
-                <a href="{% url 'add_fish' %}" class="btn btn-primary mt-3">
-                    <i class="fas fa-plus"></i> Add First Fish
-                </a>
-            </div>
+            {% include 'store/staff/_fish_empty.html' %}
             {% endif %}
         </div>
     </div>
@@ -109,13 +126,25 @@
 <script>
 (() => {
     const input = document.getElementById('staff-fish-search');
+    const categorySelect = document.getElementById('staff-fish-category');
+    const availabilitySelect = document.getElementById('staff-fish-availability');
     if (!input) return;
 
     let t = null;
     const delay = 300;
-    async function doSearch(q){
+    function buildQuery(){
+        const params = new URLSearchParams();
+        const q = input.value.trim();
+        if (q) params.set('search', q);
+        if (categorySelect && categorySelect.value) params.set('category', categorySelect.value);
+        if (availabilitySelect && availabilitySelect.value) params.set('availability', availabilitySelect.value);
+        return params;
+    }
+
+    async function doSearch(){
         const url = new URL(window.location.href);
-        url.searchParams.set('search', q || '');
+        const params = buildQuery();
+        url.search = params.toString();
         try{
             const resp = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
             if (!resp.ok) return;
@@ -129,15 +158,23 @@
 
     input.addEventListener('input', (e)=>{
         clearTimeout(t);
-        t = setTimeout(()=> doSearch(e.target.value.trim()), delay);
+        t = setTimeout(()=> doSearch(), delay);
     });
 
     input.addEventListener('keydown', (e)=>{
         if (e.key === 'Enter'){
             e.preventDefault();
             clearTimeout(t);
-            doSearch(input.value.trim());
+            doSearch();
         }
+    });
+
+    [categorySelect, availabilitySelect].forEach((el)=>{
+        if (!el) return;
+        el.addEventListener('change', ()=>{
+            clearTimeout(t);
+            doSearch();
+        });
     });
 })();
 </script>

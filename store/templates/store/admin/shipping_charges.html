@@ -1,23 +1,80 @@
 {% extends 'store/base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+  .shipping-admin .card { border-radius: 14px; border: 1px solid rgba(100,150,255,0.18); }
+  .shipping-admin .card-header {
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(135deg, rgba(30,136,229,0.25), rgba(21,101,192,0.12));
+    border-bottom: 1px solid rgba(30,136,229,0.2);
+  }
+  .shipping-admin .section-title { font-weight: 700; letter-spacing: 0.02em; }
+  .shipping-admin .muted { color: rgba(210,220,235,0.85); }
+  html[data-theme='light'] .shipping-admin .muted { color: rgba(30,40,55,0.7); }
+  .shipping-admin .form-label { font-weight: 600; }
+  .shipping-admin .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    background: rgba(25,118,210,0.16);
+    color: #cfe6ff;
+    border: 1px solid rgba(25,118,210,0.35);
+  }
+  html[data-theme='light'] .shipping-admin .chip {
+    color: #0b2540;
+    background: rgba(25,118,210,0.12);
+  }
+  .shipping-admin .table thead th { border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .shipping-admin .table td { vertical-align: middle; }
+  .shipping-admin .sticky-note {
+    background: linear-gradient(145deg, rgba(14,24,38,0.9), rgba(10,18,30,0.9));
+    border: 1px solid rgba(80,120,180,0.2);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  html[data-theme='light'] .shipping-admin .sticky-note {
+    background: linear-gradient(145deg, #ffffff, #f3f8ff);
+    border: 1px solid rgba(25,118,210,0.16);
+  }
+  .shipping-admin .table-dark { --bs-table-bg: transparent; }
+  html.modal-open,
+  body.modal-open {
+    overflow: hidden !important;
+    height: 100% !important;
+    padding-right: 0 !important;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="section">
-  <div class="container-fluid">
+  <div class="container-fluid shipping-admin">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="section-heading mb-0">Shipping Charges</h2>
+      <div>
+        <h2 class="section-heading mb-1">Shipping Charges</h2>
+        <div class="muted">Manage base rates and location-specific delivery charges.</div>
+      </div>
       <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary">
         <i class="fas fa-arrow-left"></i> Back to Dashboard
       </a>
     </div>
 
     <div class="row g-4">
-      <div class="col-lg-7">
-        <div class="card admin-card-light h-100">
+      <div class="col-lg-6">
+        <div class="card admin-card-light">
+          <div class="card-header">
+            <h5 class="text-white mb-0 section-title">Base Shipping Rates</h5>
+          </div>
           <div class="card-body">
-            <h5 class="text-white mb-3">Update Per-Kilogram Rates</h5>
             <form method="post" class="admin-form-stable">
               {% csrf_token %}
+              <input type="hidden" name="action" value="update_rates">
 
               {% if form.non_field_errors %}
               <div class="alert alert-danger">
@@ -29,21 +86,21 @@
                 <label class="form-label admin-text-black">{{ form.kerala_rate.label }}</label>
                 {{ form.kerala_rate }}
                 {% if form.kerala_rate.errors %}<div class="text-danger small mt-1">{{ form.kerala_rate.errors|join:', ' }}</div>{% endif %}
-                <small class="text-muted d-block mt-1">Applies when destination is detected as Kerala.</small>
+                <small class="muted d-block mt-1">Applies when destination is detected as Kerala.</small>
               </div>
 
               <div class="mb-4">
                 <label class="form-label admin-text-black">{{ form.default_rate.label }}</label>
                 {{ form.default_rate }}
                 {% if form.default_rate.errors %}<div class="text-danger small mt-1">{{ form.default_rate.errors|join:', ' }}</div>{% endif %}
-                <small class="text-muted d-block mt-1">Fallback for all other Indian states.</small>
+                <small class="muted d-block mt-1">Fallback for all other Indian states.</small>
               </div>
 
               <div class="mb-4">
                 <label class="form-label admin-text-black">{{ form.unserviceable_states.label }}</label>
                 {{ form.unserviceable_states }}
                 {% if form.unserviceable_states.errors %}<div class="text-danger small mt-1">{{ form.unserviceable_states.errors|join:', ' }}</div>{% endif %}
-                <small class="text-muted d-block mt-1">List state names separated by commas or line breaks. Customers in these states will be informed delivery is unavailable.</small>
+                <small class="muted d-block mt-1">List state names separated by commas or line breaks. Customers in these states will be informed delivery is unavailable.</small>
               </div>
 
               <div class="d-flex justify-content-end">
@@ -52,22 +109,118 @@
             </form>
           </div>
         </div>
+
+        <div class="card admin-card-light mt-4">
+          <div class="card-header">
+            <h5 class="text-white mb-0 section-title">Location-Based Charges</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" class="admin-form-stable">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_location">
+
+              <div class="mb-3">
+                <label class="form-label admin-text-black">{{ location_form.location_name.label }}</label>
+                {{ location_form.location_name }}
+                {% if location_form.location_name.errors %}<div class="text-danger small mt-1">{{ location_form.location_name.errors|join:', ' }}</div>{% endif %}
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label admin-text-black">{{ location_form.shipping_charge.label }}</label>
+                {{ location_form.shipping_charge }}
+                {% if location_form.shipping_charge.errors %}<div class="text-danger small mt-1">{{ location_form.shipping_charge.errors|join:', ' }}</div>{% endif %}
+              </div>
+
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i> Add Location</button>
+              </div>
+            </form>
+
+            <hr>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="text-white mb-0">Location Charges</h6>
+              <span class="chip"><i class="fas fa-map-marker-alt"></i> Auto-applied at checkout</span>
+            </div>
+            {% if locations %}
+              <div class="table-responsive">
+                <table class="table table-dark table-borderless align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Location</th>
+                      <th>Charge (₹/kg)</th>
+                      <th class="text-end">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for loc in locations %}
+                      <tr>
+                        <td>{{ loc.location_name }}</td>
+                        <td>₹{{ loc.shipping_charge }}</td>
+                        <td class="text-end">
+                          <button type="button"
+                                  class="btn btn-sm btn-outline-warning me-2 js-edit-location"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#editLocationModal"
+                                  data-location-id="{{ loc.id }}"
+                                  data-location-name="{{ loc.location_name|escapejs }}"
+                                  data-location-charge="{{ loc.shipping_charge }}"
+                                  title="Edit">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <form method="post" class="d-inline" data-confirm="Remove this location?">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_location">
+                            <input type="hidden" name="location_id" value="{{ loc.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <p class="text-muted small mb-0">No location-specific charges yet.</p>
+            {% endif %}
+          </div>
+        </div>
       </div>
 
-      <div class="col-lg-5">
+      <div class="col-lg-6">
         <div class="card h-100">
+          <div class="card-header">
+            <h5 class="text-white mb-0 section-title">Summary & Notes</h5>
+          </div>
           <div class="card-body">
-            <h5 class="text-white">Current Settings</h5>
-            <ul class="list-unstyled text-gray mb-4">
-              <li class="mb-2"><strong class="text-white">Kerala:</strong> ₹{{ setting.kerala_rate }} per kg</li>
-              <li><strong class="text-white">Other States:</strong> ₹{{ setting.default_rate }} per kg</li>
-            </ul>
+            <div class="sticky-note mb-4">
+              <h6 class="text-white mb-2">Current Base Rates</h6>
+              <ul class="list-unstyled text-gray mb-3">
+                <li class="mb-2"><strong class="text-white">Kerala:</strong> ₹{{ setting.kerala_rate }} per kg</li>
+                <li><strong class="text-white">Other States:</strong> ₹{{ setting.default_rate }} per kg</li>
+              </ul>
+              <div class="muted small">Base rates are used when no location-specific rate is found.</div>
+            </div>
             <div class="mb-4">
               <h6 class="text-white mb-2">Delivery Not Available (States)</h6>
               {% if setting.unserviceable_states %}
                 <p class="text-gray small" style="white-space: pre-wrap;">{{ setting.unserviceable_states }}</p>
               {% else %}
                 <p class="text-muted small mb-0">No states excluded.</p>
+              {% endif %}
+            </div>
+            <div class="mb-4">
+              <h6 class="text-white mb-2">Location Charges</h6>
+              {% if locations %}
+                <ul class="list-unstyled text-gray small mb-0">
+                  {% for loc in locations %}
+                    <li class="mb-1">
+                      {{ loc.location_name }}: ₹{{ loc.shipping_charge }} per kg
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted small mb-0">No location-specific charges configured.</p>
               {% endif %}
             </div>
             <p class="text-muted small mb-0">
@@ -86,4 +239,99 @@
     </div>
   </div>
 </section>
+
+<!-- Edit Location Modal -->
+<div class="modal fade" id="editLocationModal" tabindex="-1" aria-labelledby="editLocationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editLocationModalLabel">Edit Location Charge</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" class="admin-form-stable" id="editLocationForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_location">
+        <input type="hidden" name="location_id" id="edit-location-id">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label admin-text-black" for="edit-location-name">Location/State</label>
+            <input type="text" class="form-control" name="location_name" id="edit-location-name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label admin-text-black" for="edit-location-charge">Charge (₹ per kg)</label>
+            <input type="number" class="form-control" name="shipping_charge" id="edit-location-charge" step="0.01" min="0" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const _wheelHandler = function(e) { e.preventDefault(); };
+    const _keyHandler = function(e) {
+      const keys = ['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Space',' '];
+      if (keys.includes(e.key)) { e.preventDefault(); }
+    };
+    function disablePageScroll() {
+      try {
+        document.documentElement.classList.add('modal-open');
+        document.body.classList.add('modal-open');
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('wheel', _wheelHandler, { passive: false });
+        window.addEventListener('touchmove', _wheelHandler, { passive: false });
+        window.addEventListener('keydown', _keyHandler, { passive: false });
+      } catch (e) {}
+    }
+    function enablePageScroll() {
+      try {
+        document.documentElement.classList.remove('modal-open');
+        document.body.classList.remove('modal-open');
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+        window.removeEventListener('wheel', _wheelHandler);
+        window.removeEventListener('touchmove', _wheelHandler);
+        window.removeEventListener('keydown', _keyHandler);
+      } catch (e) {}
+    }
+
+    document.querySelectorAll('.js-edit-location').forEach(function(button) {
+      button.addEventListener('click', function() {
+        const id = this.getAttribute('data-location-id') || '';
+        const name = this.getAttribute('data-location-name') || '';
+        const charge = this.getAttribute('data-location-charge') || '';
+        const idInput = document.getElementById('edit-location-id');
+        const nameInput = document.getElementById('edit-location-name');
+        const chargeInput = document.getElementById('edit-location-charge');
+        if (idInput) idInput.value = id;
+        if (nameInput) nameInput.value = name;
+        if (chargeInput) chargeInput.value = charge;
+        disablePageScroll();
+      });
+    });
+
+    const editModal = document.getElementById('editLocationModal');
+    if (editModal) {
+      editModal.addEventListener('show.bs.modal', function() {
+        disablePageScroll();
+      });
+      editModal.addEventListener('hidden.bs.modal', function() {
+        enablePageScroll();
+      });
+      editModal.addEventListener('click', function(e) {
+        if (e.target && e.target.getAttribute && e.target.getAttribute('data-bs-dismiss') === 'modal') {
+          enablePageScroll();
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

@@ -9,6 +9,7 @@ import random
 import string
 from urllib.parse import urlparse, parse_qs
 from decimal import Decimal
+from django.utils.text import slugify
 
 
 class CustomUserManager(UserManager):
@@ -510,6 +511,32 @@ class ShippingChargeSetting(models.Model):
         return f"Shipping Charges (Kerala: ₹{self.kerala_rate}, Other: ₹{self.default_rate})"
 
 
+class ShippingChargeByLocation(models.Model):
+    """Model to store shipping charges for different locations/regions."""
+    location_name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text='e.g., Kerala, Tamil Nadu, Delhi, Maharashtra, etc.'
+    )
+    shipping_charge = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        help_text='Shipping charge for this location'
+    )
+    is_active = models.BooleanField(default=True, help_text='Enable/disable shipping to this location')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Shipping Charge by Location'
+        verbose_name_plural = 'Shipping Charges by Location'
+        ordering = ['location_name']
+
+    def __str__(self):
+        status = "✓" if self.is_active else "✗"
+        return f"{status} {self.location_name} - ₹{self.shipping_charge}"
+
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     fish = models.ForeignKey(Fish, on_delete=models.CASCADE)
@@ -763,9 +790,9 @@ class ContactInfo(models.Model):
 
 class BlogPost(models.Model):
     title = models.CharField(max_length=250)
-    slug = models.SlugField(max_length=260, unique=True)
+    slug = models.SlugField(max_length=260, unique=True, null=True, blank=True)
     author = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='blog_posts')
-    excerpt = models.TextField(blank=True)
+    sub_title = models.TextField(blank=True)
     content = models.TextField()
     image = models.ImageField(upload_to='blog/', blank=True, null=True)
     is_published = models.BooleanField(default=False)
@@ -783,13 +810,17 @@ class BlogPost(models.Model):
         from django.urls import reverse
         return reverse('blog_detail', args=[self.slug])
 
-    class Meta:
-        verbose_name = 'Contact Information'
-        verbose_name_plural = 'Contact Information'
-
-    def __str__(self):
-        base = self.address_line1 or 'Contact Info'
-        return f"{base} ({self.city or ''})".strip()
+    def save(self, *args, **kwargs):
+        # Auto-generate unique slug from title if missing
+        if not self.slug and self.title:
+            base = slugify(self.title)
+            slug = base
+            counter = 2
+            while BlogPost.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
 
 class ContactGalleryMedia(models.Model):
@@ -798,7 +829,7 @@ class ContactGalleryMedia(models.Model):
         ("video", "Video"),
     ]
     contact = models.ForeignKey(ContactInfo, on_delete=models.CASCADE, related_name='gallery_media')
-    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES, default='image')
     file = models.FileField(upload_to='contact_gallery/', blank=True, null=True)
     external_url = models.URLField(blank=True, null=True, help_text='Optional external video URL (YouTube/Vimeo)')
     title = models.CharField(max_length=150, blank=True)
@@ -930,6 +961,50 @@ class Coupon(models.Model):
         if self.coupon_type == 'normal' and is_fav:
             return False
         return True
+
+
+class ShippingChargeSetting(models.Model):
+    key = models.CharField(max_length=32, unique=True, default='default', editable=False)
+    kerala_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('60.00'))
+    default_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('100.00'))
+    unserviceable_states = models.TextField(
+        blank=True,
+        default='',
+        help_text='List Indian states where delivery is currently unavailable.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Shipping Charge Setting'
+        verbose_name_plural = 'Shipping Charge Settings'
+
+    def __str__(self):
+        return f"Shipping Rates ({self.key})"
+
+
+class ShippingChargeByLocation(models.Model):
+    location_name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text='e.g., Kerala, Tamil Nadu, Delhi, Maharashtra, etc.',
+    )
+    shipping_charge = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        help_text='Shipping charge for this location',
+    )
+    is_active = models.BooleanField(default=True, help_text='Enable/disable shipping to this location')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Shipping Charge by Location'
+        verbose_name_plural = 'Shipping Charges by Location'
+        ordering = ['location_name']
+
+    def __str__(self):
+        return f"{self.location_name} ({self.shipping_charge})"
 
 class LimitedOffer(models.Model):
     """Time-bound marketing offer displayed on landing page with countdown."""

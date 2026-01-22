@@ -7,10 +7,12 @@
   .gallery-management .card { background: var(--card-bg) !important; border: 1px solid var(--border-color) !important; }
   .gallery-management .card-header { background: linear-gradient(135deg, rgba(30,136,229,0.2), rgba(21,101,192,0.2)) !important; }
   .gallery-management .card-header h5 { color: #FFFFFF !important; }
-  .gallery-management .form-label { color: #FFFFFF !important; font-weight: 500; }
+  .gallery-management .form-label { color: var(--text-color, #f5f7ff) !important; font-weight: 500; }
+  html[data-theme='light'] .gallery-management .form-label { color: var(--light-text, #0f1c2e) !important; }
   html[data-theme='dark'] .gallery-management input.form-control, html[data-theme='dark'] .gallery-management select.form-select, html[data-theme='dark'] .gallery-management input[type="file"], html[data-theme='dark'] .gallery-management textarea.form-control { background-color: rgba(15,25,40,0.95) !important; color:#FFF !important; border:1px solid rgba(100,150,255,0.25) !important; border-radius:8px; }
   html[data-theme='light'] .gallery-management input.form-control, html[data-theme='light'] .gallery-management select.form-select, html[data-theme='light'] .gallery-management input[type="file"], html[data-theme='light'] .gallery-management textarea.form-control { background-color: var(--light-surface) !important; color:var(--light-text) !important; border:1px solid var(--light-border) !important; border-radius:8px; }
   .gallery-management .media-item-card { background: rgba(20,30,45,0.6) !important; border:1px solid rgba(100,150,255,0.12) !important; border-radius:8px; }
+  html[data-theme='light'] .gallery-management .media-item-card { background: rgba(240,244,255,0.9) !important; color: #0f1c2e !important; }
   .gallery-management .no-preview-area { background: rgba(15,25,40,0.6) !important; border:1px solid rgba(100,150,255,0.12) !important; padding:18px; text-align:center; }
   /* Scrollable area for existing media (increased height) */
   .gallery-management .media-scroll-area { max-height: 640px; overflow: auto; padding-right: 8px; }
@@ -65,33 +67,19 @@
               <div class="col-md-6">
                 <div class="card media-item-card h-100">
                   <div class="card-body p-2 d-flex flex-column">
-                    {% if m.media_type == 'image' and m.source %}
+                    {% if m.source %}
                       <img src="{{ m.source }}" alt="{{ m.title|default:'Gallery Item' }}" style="width:100%; height:170px; object-fit:cover; border-radius:4px;">
-                    {% elif m.media_type == 'video' and m.source %}
-                      {% if m.embed_url and 'youtube.com' in m.embed_url %}
-                        <div class="ratio ratio-16x9">
-                          <iframe src="{{ m.embed_url }}" title="video" allowfullscreen style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                        </div>
-                      {% elif m.embed_url and 'youtu.be' in m.embed_url %}
-                        <div class="ratio ratio-16x9">
-                          <iframe src="{{ m.embed_url }}" title="video" allowfullscreen style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                        </div>
-                      {% elif m.file %}
-                        <video controls style="width:100%; height:170px; object-fit:cover; border-radius:4px;">
-                          <source src="{{ m.embed_url }}" type="video/mp4">
-                          Your browser does not support the video tag.
-                        </video>
-                      {% else %}
-                        <a href="{{ m.embed_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">Open Video</a>
-                      {% endif %}
                     {% else %}
                       <div class="no-preview-area">
                         <span class="text-muted">No preview</span>
                       </div>
                     {% endif %}
                     <div class="mt-2" style="flex:1;">
-                      <strong style="font-size:0.9rem;">{{ m.title|default:'(Untitled)' }}</strong><br>
-                      <small class="text-muted">Type: {{ m.media_type }} | Order: {{ m.display_order }}</small>
+                      {% if m.file %}
+                      <strong style="font-size:0.9rem;">{{ m.file.name|cut:"contact_gallery/" }}</strong>
+                      {% else %}
+                      <strong style="font-size:0.9rem;">{{ m.title|default:'(Untitled)' }}</strong>
+                      {% endif %}
                     </div>
                     <div class="mt-2 d-flex justify-content-between">
                       <form method="POST" action="{% url 'admin_delete_gallery_media' m.id %}" data-confirm="Delete this media?">

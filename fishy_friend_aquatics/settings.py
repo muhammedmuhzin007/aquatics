@@ -135,10 +135,17 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_ROOT = '/home/fishyfr2/public_html/static/'
-MEDIA_ROOT = '/home/fishyfr2/public_html/media/'
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
+
+# Default production paths (override in DEBUG for local dev)
+STATIC_ROOT = '/home/fishyfr2/public_html/static/'
+MEDIA_ROOT = '/home/fishyfr2/public_html/media/'
+
+# Use local folders for static/media when developing locally
+if DEBUG:
+    STATIC_ROOT = str(BASE_DIR / 'staticfiles')
+    MEDIA_ROOT = str(BASE_DIR / 'media')
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),

@@ -17,7 +17,8 @@
         <div class="table-wrapper">
         <table class="table table-striped mb-0">
       <thead>
-        <tr data-has-banner="{% if combo.banner_image %}1{% else %}0{% endif %}">
+        {# Data attribute indicates if any combo has a banner; use first combo if available #}
+        <tr data-has-banner="{% if combos and combos.0.banner_image %}1{% else %}0{% endif %}">
           <th class="admin-text-muted" style="width:40px;"></th>
           <th class="admin-text-muted">Title</th>
           <th class="admin-text-muted">Items</th>

@@ -1082,6 +1082,56 @@
                         root.style.setProperty('--header-h', (topNavHeight + mainH) + 'px');
                     })();
                 </script>
+                <script>
+                    // Smooth anchor navigation fallback (for browsers without CSS smooth support)
+                    (function(){
+                        function supportsSmooth(){
+                            var ok = true;
+                            try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+                            catch(e){ ok = false; }
+                            return ok;
+                        }
+                        function prefersReduced(){
+                            return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                        }
+                        function getScrollOffset(){
+                            try {
+                                var v = getComputedStyle(document.documentElement).getPropertyValue('--header-h').trim();
+                                if (v && v.endsWith('px')) return parseFloat(v) || 0;
+                            } catch(e) {}
+                            return 0;
+                        }
+                        function animateScroll(start, end, duration){
+                            var startTime = null;
+                            function step(ts){
+                                if (!startTime) startTime = ts;
+                                var t = ts - startTime;
+                                var p = Math.min(t / duration, 1);
+                                // easeInOutQuad
+                                var e = p < 0.5 ? 2*p*p : -1 + (4 - 2*p)*p;
+                                window.scrollTo(0, start + (end - start) * e);
+                                if (p < 1) requestAnimationFrame(step);
+                            }
+                            requestAnimationFrame(step);
+                        }
+                        document.addEventListener('click', function(e){
+                            var link = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+                            if (!link) return;
+                            var href = link.getAttribute('href');
+                            if (!href || href === '#') return;
+                            var id = href.slice(1);
+                            var target = document.getElementById(id);
+                            if (!target) return;
+                            // Same-page anchor: perform smooth scroll
+                            e.preventDefault();
+                            if (prefersReduced()) { target.scrollIntoView(); return; }
+                            if (supportsSmooth()) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+                            var startY = window.pageYOffset || document.documentElement.scrollTop || 0;
+                            var endY = target.getBoundingClientRect().top + startY - getScrollOffset();
+                            animateScroll(startY, endY, 400);
+                        }, { passive: false });
+                    })();
+                </script>
                 {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -472,6 +472,7 @@
 </section>
 
 {{ unserviceable_state_names|json_script:"unserviceable-states-data" }}
+{{ location_delivery_rates|json_script:"location-rates-data" }}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -525,15 +526,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const shippingBlockedMessage = document.getElementById('shipping-blocked-message');
     const shippingBlockedTemplate = shippingBlockedBanner ? (shippingBlockedBanner.dataset.template || '') : '';
     const blockedStatesElement = document.getElementById('unserviceable-states-data');
+    const locationRatesElement = document.getElementById('location-rates-data');
     let blockedStates = [];
+    let locationRates = {};
     try {
         blockedStates = blockedStatesElement ? JSON.parse(blockedStatesElement.textContent || '[]') : [];
     } catch (err) {
         blockedStates = [];
     }
+    try {
+        locationRates = locationRatesElement ? JSON.parse(locationRatesElement.textContent || '{}') : {};
+    } catch (err) {
+        locationRates = {};
+    }
     blockedStates = blockedStates
         .map(state => (typeof state === 'string' ? state.trim().toLowerCase() : ''))
         .filter(Boolean);
+    Object.keys(locationRates || {}).forEach(key => {
+        const normalized = key.toString().trim().toLowerCase();
+        if (!normalized) return;
+        locationRates[normalized] = safeNumber(locationRates[key], locationRates[normalized]);
+        if (normalized !== key) {
+            delete locationRates[key];
+        }
+    });
 
     function normalizeState(value) {
         if (!value) return '';
@@ -632,20 +648,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const keralaRate = safeNumber(totalsState.keralaRate, baseKeralaRate);
         const defaultRate = safeNumber(totalsState.defaultRate, baseDefaultRate);
         const stateValue = (state || '').toString().trim().toLowerCase();
+        if (stateValue && locationRates && locationRates[stateValue] !== undefined) {
+            return safeNumber(locationRates[stateValue], defaultRate);
+        }
         const digits = (pincode || '').toString().replace(/\D/g, '');
-        const stateMatches = stateValue === 'kerala';
         const pinMatches = digits.length >= 2 && (digits.startsWith('67') || digits.startsWith('68') || digits.startsWith('69'));
 
-        if (stateValue && digits) {
-            return stateMatches && pinMatches ? keralaRate : defaultRate;
-        }
-
-        if (stateMatches || pinMatches) return keralaRate;
-
-        const addressValue = (address || '').toString().toLowerCase();
-        if (addressValue.includes('kerala')) return keralaRate;
-
-        return defaultRate;
+        return pinMatches ? keralaRate : defaultRate;
     }
 
     function updateTotalsDisplay() {

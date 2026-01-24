@@ -19,7 +19,12 @@
             </div>
             <h5 class="card-title">{{ combo.title }}</h5>
             {% if combo.bundle_price %}
-              <p class="price-badge">Price: {{ combo.bundle_price|rupees }}</p>
+              <span class="combo-price">
+                {% if combo.original_total and combo.original_total > combo.bundle_price %}
+                  <span class="combo-price-old">{{ combo.original_total|rupees }}</span>
+                {% endif %}
+                <span class="combo-price-new">{{ combo.bundle_price|rupees }}</span>
+              </span>
             {% endif %}
             <ul class="list-unstyled">
               {% for item in combo.items.all %}
@@ -27,7 +32,6 @@
                   <div>
                     <span class="combo-fish-name">{{ item.fish.name }}</span>
                     <span class="mx-1">x{{ item.quantity }}</span>
-                    <small class="text-muted">({{ item.fish.price|rupees }})</small>
                   </div>
                   <div>
                     <a href="{% url 'fish_detail' item.fish.id %}?hide_add_to_cart=1" class="btn btn-sm btn-outline-primary">View details</a>

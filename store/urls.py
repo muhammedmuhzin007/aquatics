@@ -190,6 +190,7 @@ urlpatterns = [
     path('change-password/', views.change_password_view, name='change_password'),
     # Notifications
     path('notifications/', views.notifications_center_view, name='notifications'),
+    path('notifications/dropdown/', views.notifications_dropdown_view, name='notifications_dropdown'),
     path('notifications/mark-read/', views.mark_notifications_read_view, name='mark_notifications_read'),
 ]
 

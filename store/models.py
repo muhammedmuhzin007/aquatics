@@ -226,7 +226,11 @@ def fish_pre_save(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Fish)
 def fish_post_save(sender, instance, created, **kwargs):
-    # Only care about updates
+    # Automatically set is_available to False when stock is 0
+    if instance.stock_quantity == 0 and instance.is_available:
+        Fish.objects.filter(pk=instance.pk).update(is_available=False)
+    
+    # Only care about updates for notifications
     if created:
         return
 
@@ -634,6 +638,46 @@ class Accessory(models.Model):
         return self.name
 
 
+# Signal for Accessory stock management
+@receiver(pre_save, sender=Accessory)
+def accessory_pre_save(sender, instance, **kwargs):
+    if not instance.pk:
+        instance._previous_stock = None
+        return
+    try:
+        prev = sender.objects.get(pk=instance.pk)
+        instance._previous_stock = prev.stock_quantity
+    except sender.DoesNotExist:
+        instance._previous_stock = None
+
+
+@receiver(post_save, sender=Accessory)
+def accessory_post_save(sender, instance, created, **kwargs):
+    # Automatically set is_active to False when stock is 0
+    if instance.stock_quantity == 0 and instance.is_active:
+        Accessory.objects.filter(pk=instance.pk).update(is_active=False)
+    
+    if created:
+        return
+
+    prev = getattr(instance, '_previous_stock', None)
+    curr = instance.stock_quantity or 0
+
+    if curr > 0 or (prev is not None and prev <= 0):
+        return
+
+    notification_title = f"{instance.name} accessory is out of stock"
+    exists = Notification.objects.filter(title=notification_title, is_read=False).exists()
+    if exists:
+        return
+
+    Notification.objects.create(
+        title=notification_title,
+        message=f"{instance.name} accessory stock has reached zero. Please restock promptly.",
+        level='critical',
+    )
+
+
 class Plant(models.Model):
     """Aquatic plants grouped by plant categories."""
     name = models.CharField(max_length=200)
@@ -696,6 +740,10 @@ def plant_pre_save(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Plant)
 def plant_post_save(sender, instance, created, **kwargs):
+    # Automatically set is_active to False when stock is 0
+    if instance.stock_quantity == 0 and instance.is_active:
+        Plant.objects.filter(pk=instance.pk).update(is_active=False)
+    
     if created:
         return
 

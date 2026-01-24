@@ -1,0 +1,17 @@
+{% if notifications %}
+    {% for n in notifications %}
+        <li class="d-flex align-items-start notif-item" data-notif-id="{{ n.id }}">
+            <div class="dropdown-item flex-fill">
+                <div class="fw-medium notif-title">{{ n.title }}</div>
+                <div class="small text-muted">{{ n.created_at|date:"M d, H:i" }}</div>
+            </div>
+            <button class="btn btn-sm btn-link text-muted notif-dismiss" data-id="{{ n.id }}" title="Mark read" aria-label="Dismiss notification">
+                <i class="fas fa-times"></i>
+            </button>
+        </li>
+    {% endfor %}
+{% else %}
+    <li class="notif-empty">
+        <div class="dropdown-item small text-muted">No new notifications</div>
+    </li>
+{% endif %}

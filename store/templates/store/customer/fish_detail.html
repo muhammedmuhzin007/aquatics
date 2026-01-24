@@ -83,15 +83,17 @@
                             {% endif %}
                         {% endif %}
                         
-                        <div class="mt-4">
+                        <div class="mt-4 d-flex align-items-center">
+                            {% if not request.GET.hide_add_to_cart %}
                             <a href="{% url 'fish_list' %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
-                                                        {% if fish.image or media %}
-                                                        <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#mediaModal{{ fish.id }}">
-                                                                <i class="fas fa-images"></i> View Gallery
-                                                        </button>
-                                                        {% endif %}
+                            {% endif %}
+                            {% if fish.image or media %}
+                            <button class="btn btn-primary {% if not request.GET.hide_add_to_cart %}ms-2{% endif %}" data-bs-toggle="modal" data-bs-target="#mediaModal{{ fish.id }}">
+                                <i class="fas fa-images"></i> View Gallery
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -111,29 +113,7 @@
                 videos.forEach(function(v){ try { v.pause(); v.currentTime = 0; } catch(e) {} });
             });
         }
-        // Disable page scroll (wheel/touch) while media modal is open
-        var modalEl = document.getElementById('mediaModal{{ fish.id }}');
-        if (modalEl) {
-            const _wheelHandler = function (e) { e.preventDefault(); };
-            function disablePageScroll() {
-                try {
-                    document.body.style.overflow = 'hidden';
-                    window.addEventListener('wheel', _wheelHandler, { passive: false });
-                    window.addEventListener('touchmove', _wheelHandler, { passive: false });
-                } catch (e) {}
-            }
-            function enablePageScroll() {
-                try {
-                    document.body.style.overflow = '';
-                    window.removeEventListener('wheel', _wheelHandler);
-                    window.removeEventListener('touchmove', _wheelHandler);
-                } catch (e) {}
-            }
-
-            // When modal opens, disable page scroll; restore when it closes
-            modalEl.addEventListener('show.bs.modal', function () { try { disablePageScroll(); } catch (e) {} });
-            modalEl.addEventListener('hidden.bs.modal', function () { try { enablePageScroll(); } catch (e) {} });
-        }
+        // Removed page scroll locking for the media modal
     });
     </script>
     {% endblock %}

@@ -184,22 +184,7 @@
         let manualInterval = null;
         function clearManualInterval(){ if (manualInterval){ clearInterval(manualInterval); manualInterval = null; } }
 
-        // Prevent page scroll (wheel/touch) while modal is open
-        const _wheelHandler = function (e) { e.preventDefault(); };
-        function disablePageScroll() {
-            try {
-                document.body.style.overflow = 'hidden';
-                window.addEventListener('wheel', _wheelHandler, { passive: false });
-                window.addEventListener('touchmove', _wheelHandler, { passive: false });
-            } catch (e) {}
-        }
-        function enablePageScroll() {
-            try {
-                document.body.style.overflow = '';
-                window.removeEventListener('wheel', _wheelHandler);
-                window.removeEventListener('touchmove', _wheelHandler);
-            } catch (e) {}
-        }
+        // Removed page scroll disabling while modal is open
 
         function initGalleryCarousel(startIndex){
             const carouselEl = document.getElementById('galleryCarousel');
@@ -237,8 +222,6 @@
                 clearManualInterval();
                 carouselEl.querySelectorAll('video').forEach(v => { v.pause(); v.currentTime = 0; });
                 carouselEl.querySelectorAll('iframe').forEach(iframe => { iframe.src = iframe.src; });
-                // restore page scroll
-                enablePageScroll();
             }, { once: true });
         }
 
@@ -250,19 +233,13 @@
                 if (window.bootstrap && typeof bootstrap.Modal === 'function') {
                     const m = new bootstrap.Modal(modalEl);
                     m.show();
-                    // disable page scroll while modal is open
-                    disablePageScroll();
-                    // Always ensure page scroll is restored when the modal closes
-                    modalEl.addEventListener('hidden.bs.modal', function () { try { enablePageScroll(); } catch (e) {} }, { once: true });
                 } else {
-                    // fallback display and disable scroll
+                    // fallback display
                     modalEl.style.display = 'block';
-                    disablePageScroll();
-                    // allow backdrop click to close the fallback modal and restore scroll
+                    // allow backdrop click to close the fallback modal
                     const onFallbackClick = function (ev) {
                         if (ev.target === modalEl) {
                             modalEl.style.display = 'none';
-                            enablePageScroll();
                             try { clearManualInterval(); } catch (e) {}
                             try {
                                 const carouselEl = document.getElementById('galleryCarousel');

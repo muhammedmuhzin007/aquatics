@@ -250,6 +250,42 @@
             color: var(--text-white);
             border: 1px solid var(--border-color);
         }
+        .nav-notifications .notif-dropdown {
+            min-width: 320px;
+            max-width: 380px;
+            padding: 0.25rem 0;
+        }
+        .nav-notifications .notif-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 0.6rem 0.85rem;
+            font-weight: 700;
+        }
+        .nav-notifications .notif-actions {
+            display: inline-flex;
+            gap: 6px;
+        }
+        .nav-notifications .notif-actions .btn {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+        }
+        .nav-notifications .notif-list {
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 0.25rem 0;
+        }
+        .nav-notifications .notif-item {
+            padding: 0 0.4rem;
+        }
+        .nav-notifications .notif-title {
+            font-size: 0.9rem;
+            line-height: 1.2;
+        }
+        .nav-notifications .notif-empty .dropdown-item {
+            padding: 0.7rem 0.85rem;
+        }
           /* Ensure dropdown item text follows theme: dark uses white, light uses light-text
               and remove any default white background so items remain readable */
           .nav-notifications .dropdown-item { background: transparent !important; padding: .5rem 0.85rem; }
@@ -325,23 +361,20 @@
                                     <span id="notif-badge" class="notif-badge">{{ unread_notifications_count }}</span>
                                 {% endif %}
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notifDropdown" style="min-width: 280px;">
-                                <li class="dropdown-header">Notifications</li>
-                                {% if recent_notifications %}
-                                    {% for n in recent_notifications %}
-                                        <li class="d-flex align-items-start" data-notif-id="{{ n.id }}">
-                                            <div class="dropdown-item flex-fill">
-                                                <div class="fw-medium">{{ n.title }}</div>
-                                                <div class="small text-muted">{{ n.created_at|date:"M d, H:i" }}</div>
-                                            </div>
-                                            <button class="btn btn-sm btn-link text-muted notif-dismiss" data-id="{{ n.id }}" title="Mark read" aria-label="Dismiss notification">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </li>
-                                    {% endfor %}
-                                {% else %}
-                                    <li><div class="dropdown-item small text-muted">No new notifications</div></li>
-                                {% endif %}
+                            <ul class="dropdown-menu dropdown-menu-end notif-dropdown" aria-labelledby="notifDropdown">
+                                <li class="dropdown-header notif-header">
+                                    <span>Notifications</span>
+                                    <span class="notif-actions">
+                                        <button type="button" class="btn btn-sm btn-link notif-mark-all">Mark all</button>
+                                        <a href="{% url 'notifications' %}" class="btn btn-sm btn-link">View all</a>
+                                    </span>
+                                </li>
+                                <li><hr class="dropdown-divider" style="margin: 0.25rem 0;"></li>
+                                <li class="p-0">
+                                    <ul class="list-unstyled mb-0 notif-list" id="notif-list">
+                                        {% include 'store/partials/_notifications_dropdown_items.html' with notifications=recent_notifications %}
+                                    </ul>
+                                </li>
                             </ul>
                         </div>
                         {% endif %}
@@ -521,7 +554,7 @@
                         <li class="list-inline-item"><a class="footer-link" href="{% url 'terms_of_use' %}">Terms of Use</a></li>
                         <li class="list-inline-item"><a class="footer-link" href="{% url 'help_center' %}">Help Center</a></li>
                     </ul>
-                    <p class="mb-0 text-gray">&copy; 2024 {{ SITE_NAME }}. Dive into the aquatic world!</p>
+                    <p class="mb-0 text-gray">&copy; 2026 {{ SITE_NAME }}. Dive into the aquatic world!</p>
                 </div>
             </div>
         </div>
@@ -889,9 +922,7 @@
                         if (!active) return;
                         if (!active.classList || !active.classList.contains('card')) return;
                         if (!active.hasAttribute('data-href')) return;
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            // prevent scrolling on space
-                            e.preventDefault();
+                        if (e.key === 'Enter') {
                             const href = active.getAttribute('data-href');
                             if (href) window.location.href = href;
                         }
@@ -901,67 +932,44 @@
                 // (Removed category-select replacement behavior) 
             });
         </script>
-        <script>
-            // Robust scroll lock: fix body and restore previous scroll on close
-            (function(){
-                document.addEventListener('DOMContentLoaded', function(){
-                    var coll = document.querySelector('.navbar-collapse');
-                    if (!coll) return;
-                    var lockedScrollY = 0;
-
-                    function updateHeaderHeights(){
-                        try {
-                            var topNav = document.querySelector('.top-nav');
-                            var mainNav = document.querySelector('.aquatic-nav');
-                            if (!mainNav) return;
-                            var topH = topNav ? topNav.offsetHeight : 0;
-                            var mainH = mainNav.offsetHeight || 0;
-                            var root = document.documentElement;
-                            root.style.setProperty('--top-nav-h', topH + 'px');
-                            root.style.setProperty('--main-nav-h', mainH + 'px');
-                            root.style.setProperty('--header-h', (topH + mainH) + 'px');
-                        } catch(e) {}
-                    }
-
-                    updateHeaderHeights();
-                    window.addEventListener('resize', updateHeaderHeights);
-                    window.addEventListener('load', updateHeaderHeights);
-
-                    function lockScroll(){
-                        try {
-                            lockedScrollY = window.scrollY || window.pageYOffset || 0;
-                            document.body.classList.add('nav-open');
-                            document.body.style.position = 'fixed';
-                            document.body.style.top = '-' + lockedScrollY + 'px';
-                            document.body.style.left = '0';
-                            document.body.style.right = '0';
-                            document.body.style.width = '100%';
-                        } catch(e) {}
-                    }
-
-                    function unlockScroll(){
-                        try {
-                            document.body.classList.remove('nav-open');
-                            document.body.style.position = '';
-                            document.body.style.top = '';
-                            document.body.style.left = '';
-                            document.body.style.right = '';
-                            document.body.style.width = '';
-                            window.scrollTo(0, lockedScrollY || 0);
-                        } catch(e) {}
-                    }
-
-                    coll.addEventListener('show.bs.collapse', lockScroll);
-                    coll.addEventListener('hidden.bs.collapse', unlockScroll);
-                });
-            })();
-        </script>
                 <script>
                     (function(){
                         function getCookie(name) {
                             const value = `; ${document.cookie}`;
                             const parts = value.split(`; ${name}=`);
                             if (parts.length === 2) return parts.pop().split(';').shift();
+                        }
+
+                        const refreshUrl = '{% url "notifications_dropdown" %}';
+                        const markUrl = '{% url "mark_notifications_read" %}';
+                        const dropdownBtn = document.getElementById('notifDropdown');
+                        const listEl = document.getElementById('notif-list');
+                        const badge = document.getElementById('notif-badge');
+
+                        function updateBadge(count){
+                            if (!badge) return;
+                            const safe = Math.max(0, parseInt(count || 0, 10) || 0);
+                            if (safe <= 0) {
+                                badge.style.opacity = '0';
+                                setTimeout(()=>{ badge.style.display = 'none'; badge.textContent = '0'; }, 180);
+                            } else {
+                                badge.style.display = 'inline-flex';
+                                badge.style.opacity = '1';
+                                badge.textContent = String(safe);
+                            }
+                        }
+
+                        function refreshNotifications(){
+                            if (!listEl) return;
+                            fetch(refreshUrl, {
+                                method: 'GET',
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                                credentials: 'same-origin'
+                            }).then(resp => resp.json()).then(data => {
+                                if (!data || !data.success) return;
+                                listEl.innerHTML = data.html || '';
+                                updateBadge(data.count || 0);
+                            }).catch(() => {});
                         }
 
                         // Delegated handler for dismissing individual notifications
@@ -971,9 +979,8 @@
                             e.preventDefault();
                             const id = btn.getAttribute('data-id');
                             if (!id) return;
-                            const url = '{% url "mark_notifications_read" %}';
                             const csrftoken = getCookie('csrftoken') || '';
-                            fetch(url, {
+                            fetch(markUrl, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -991,147 +998,45 @@
                                         li.classList.add('notif-fade');
                                         setTimeout(()=>{ try{ li.remove(); }catch(e){} }, 240);
                                     }
-                                    // update badge count
-                                    const badge = document.getElementById('notif-badge');
-                                    if (badge){
-                                        let count = parseInt(badge.textContent || '0') || 0;
-                                        count = Math.max(0, count - 1);
-                                        if (count <= 0) { badge.style.opacity = '0'; setTimeout(()=>{ badge.style.display = 'none'; badge.textContent = '0'; }, 180); }
-                                        else { badge.textContent = count; }
-                                    }
+                                    const current = badge ? parseInt(badge.textContent || '0', 10) || 0 : 0;
+                                    updateBadge(current - 1);
                                 } else {
                                     btn.classList.add('text-danger');
                                 }
                             }).catch(function(){ btn.classList.add('text-danger'); });
                         });
-                    })();
-                </script>
-                <script>
-                    // Smooth scroll-hide with perfectly synchronized navbar movement
-                    (function(){
-                        let lastScrollTop = 0;
-                        const topNav = document.querySelector('.top-nav');
-                        const mainNav = document.querySelector('.aquatic-nav');
-                        // Detect mobile device
-                        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                        // Higher threshold on mobile for better UX
-                        const scrollThreshold = isMobile ? 80 : 50;
-                        const root = document.documentElement;
-                        let isHidden = false;
-                        
-                        // Store the top-nav height once on load
-                        const topNavHeight = topNav.offsetHeight;
-                        root.style.setProperty('--top-nav-h', topNavHeight + 'px');
-                        
-                        function updateNavPosition(hide){
-                            if (hide && !isHidden) {
-                                isHidden = true;
-                                topNav.classList.add('scroll-hidden');
-                                mainNav.classList.add('nav-shifted-up');
-                                
-                                // Update header height
-                                const mainH = mainNav ? mainNav.offsetHeight : 0;
-                                root.style.setProperty('--header-h', mainH + 'px');
-                            } else if (!hide && isHidden) {
-                                isHidden = false;
-                                topNav.classList.remove('scroll-hidden');
-                                mainNav.classList.remove('nav-shifted-up');
-                                
-                                // Update header height
-                                const mainH = mainNav ? mainNav.offsetHeight : 0;
-                                root.style.setProperty('--header-h', (topNavHeight + mainH) + 'px');
-                            }
-                        }
-                        
-                        // Throttle scroll handler with requestAnimationFrame
-                        let scrollTicking = false;
-                        
-                        window.addEventListener('scroll', function(){
-                            if (!scrollTicking) {
-                                window.requestAnimationFrame(function() {
-                                    const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-                                    
-                                    // Prevent negative scroll (bounce effect on mobile)
-                                    if (currentScroll < 0) {
-                                        scrollTicking = false;
-                                        return;
-                                    }
-                                    
-                                    if (currentScroll > scrollThreshold) {
-                                        if (currentScroll > lastScrollTop) {
-                                            // Scrolling down - hide
-                                            updateNavPosition(true);
-                                        } else {
-                                            // Scrolling up - show
-                                            updateNavPosition(false);
-                                        }
-                                    } else {
-                                        // At top - show
-                                        updateNavPosition(false);
-                                    }
-                                    
-                                    lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
-                                    scrollTicking = false;
-                                });
-                                scrollTicking = true;
-                            }
-                        }, { passive: true });
-                        
-                        // Initialize header height
-                        const mainH = mainNav ? mainNav.offsetHeight : 0;
-                        root.style.setProperty('--header-h', (topNavHeight + mainH) + 'px');
-                    })();
-                </script>
-                <script>
-                    // Smooth anchor navigation fallback (for browsers without CSS smooth support)
-                    (function(){
-                        function supportsSmooth(){
-                            var ok = true;
-                            try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
-                            catch(e){ ok = false; }
-                            return ok;
-                        }
-                        function prefersReduced(){
-                            return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                        }
-                        function getScrollOffset(){
-                            try {
-                                var v = getComputedStyle(document.documentElement).getPropertyValue('--header-h').trim();
-                                if (v && v.endsWith('px')) return parseFloat(v) || 0;
-                            } catch(e) {}
-                            return 0;
-                        }
-                        function animateScroll(start, end, duration){
-                            var startTime = null;
-                            function step(ts){
-                                if (!startTime) startTime = ts;
-                                var t = ts - startTime;
-                                var p = Math.min(t / duration, 1);
-                                // easeInOutQuad
-                                var e = p < 0.5 ? 2*p*p : -1 + (4 - 2*p)*p;
-                                window.scrollTo(0, start + (end - start) * e);
-                                if (p < 1) requestAnimationFrame(step);
-                            }
-                            requestAnimationFrame(step);
-                        }
+
+                        // Mark all as read
                         document.addEventListener('click', function(e){
-                            var link = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
-                            if (!link) return;
-                            var href = link.getAttribute('href');
-                            if (!href || href === '#') return;
-                            var id = href.slice(1);
-                            var target = document.getElementById(id);
-                            if (!target) return;
-                            // Same-page anchor: perform smooth scroll
+                            const btn = e.target.closest && e.target.closest('.notif-mark-all');
+                            if (!btn) return;
                             e.preventDefault();
-                            if (prefersReduced()) { target.scrollIntoView(); return; }
-                            if (supportsSmooth()) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-                            var startY = window.pageYOffset || document.documentElement.scrollTop || 0;
-                            var endY = target.getBoundingClientRect().top + startY - getScrollOffset();
-                            animateScroll(startY, endY, 400);
-                        }, { passive: false });
+                            const csrftoken = getCookie('csrftoken') || '';
+                            fetch(markUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'X-CSRFToken': csrftoken,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: 'all=1',
+                                credentials: 'same-origin'
+                            }).then(resp => resp.json()).then(data => {
+                                if (data && data.success){
+                                    refreshNotifications();
+                                }
+                            }).catch(() => {});
+                        });
+
+                        // Refresh on dropdown open and periodically
+                        if (dropdownBtn) {
+                            dropdownBtn.addEventListener('show.bs.dropdown', refreshNotifications);
+                        }
+                        setInterval(refreshNotifications, 30000);
                     })();
                 </script>
+        
+        
                 {% block extra_js %}{% endblock %}
 </body>
 </html>

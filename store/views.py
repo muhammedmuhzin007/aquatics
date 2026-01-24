@@ -719,6 +719,14 @@ def combos_view(request):
                 ok = False
                 break
         if ok:
+            original_total = 0
+            for item in combo.items.all():
+                fish = item.fish
+                if not fish:
+                    continue
+                qty = int(item.quantity or 1)
+                original_total += (fish.price or 0) * qty
+            combo.original_total = original_total
             # prepare up-to-4 preview items for collage (pad with None for placeholders)
             items_list = list(combo.items.all()[:4])
             if len(items_list) < 4:
@@ -788,6 +796,26 @@ def notifications_center_view(request):
     from .models import Notification
     qs = Notification.objects.all().order_by('-created_at')
     return render(request, 'store/notifications.html', {'notifications': qs})
+
+
+@login_required
+@user_passes_test(is_staff)
+def notifications_dropdown_view(request):
+    """Return unread notifications for the navbar dropdown (AJAX)."""
+    from .models import Notification
+    from django.template.loader import render_to_string
+
+    unread_qs = Notification.objects.filter(is_read=False).order_by('-created_at')
+    unread_count = unread_qs.count()
+    notifications = list(unread_qs[:10])
+    html = render_to_string('store/partials/_notifications_dropdown_items.html', {
+        'notifications': notifications,
+    }, request=request)
+    return JsonResponse({
+        'success': True,
+        'count': int(unread_count),
+        'html': html,
+    })
 
 
 @login_required

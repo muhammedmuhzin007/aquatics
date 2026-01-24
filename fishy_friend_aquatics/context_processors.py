@@ -48,7 +48,7 @@ def global_flags(request):
             # only surface unread notifications in the dropdown/context so that
             # marked notifications do not reappear after a refresh
             unread_count = Notification.objects.filter(is_read=False).count()
-            recent_notifications = list(Notification.objects.filter(is_read=False).order_by('-created_at')[:5])
+            recent_notifications = list(Notification.objects.filter(is_read=False).order_by('-created_at')[:10])
     except Exception:
         unread_count = 0
         recent_notifications = []

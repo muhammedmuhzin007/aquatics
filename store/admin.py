@@ -24,6 +24,7 @@ from .models import (
     AccessoryCategory,
     PlantCategory,
     Plant,
+    Accessory,
     ShippingChargeSetting,
     ShippingChargeByLocation,
 )
@@ -136,6 +137,7 @@ class FishAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description', 'category__name', 'breed__name')
     list_editable = ('is_available', 'is_featured')
     readonly_fields = ('created_at', 'updated_at')
+    actions = ['update_zero_stock_status']
     fieldsets = (
         ('Fish Details', {
             'fields': ('name', 'category', 'breed', 'description', 'image')
@@ -148,6 +150,18 @@ class FishAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
     )
+
+    def update_zero_stock_status(self, request, queryset):
+        """Update all fish with 0 stock to unavailable"""
+        updated = queryset.filter(stock_quantity=0).update(is_available=False)
+        self.message_user(request, f'{updated} fish with 0 stock marked as unavailable.')
+    update_zero_stock_status.short_description = "Mark 0-stock items as Unavailable"
+
+    def save_model(self, request, obj, form, change):
+        """Automatically set is_available to False when stock is 0"""
+        if obj.stock_quantity == 0:
+            obj.is_available = False
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(FishCategory)
@@ -181,6 +195,7 @@ class PlantAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     list_editable = ('is_active', 'display_order')
     readonly_fields = ('created_at', 'updated_at')
+    actions = ['update_zero_stock_status']
     fieldsets = (
         ('Plant Details', {
             'fields': ('name', 'category', 'description', 'image')
@@ -194,7 +209,68 @@ class PlantAdmin(admin.ModelAdmin):
         }),
     )
 
+    def update_zero_stock_status(self, request, queryset):
+        """Update all plants with 0 stock to inactive"""
+        updated = queryset.filter(stock_quantity=0).update(is_active=False)
+        self.message_user(request, f'{updated} plants with 0 stock marked as inactive.')
+    update_zero_stock_status.short_description = "Mark 0-stock items as Inactive"
+
     def save_model(self, request, obj, form, change):
+        """Automatically set is_active to False when stock is 0"""
+        if obj.stock_quantity == 0:
+            obj.is_active = False
+        if not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(Accessory)
+class AccessoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'status_display', 'stock_quantity', 'display_order', 'created_at')
+    list_filter = ('is_active', 'category')
+    search_fields = ('name', 'description')
+    list_editable = ('display_order',)
+    readonly_fields = ('created_at', 'updated_at')
+    actions = ['update_zero_stock_status']
+    fieldsets = (
+        ('Accessory Details', {
+            'fields': ('name', 'category', 'description', 'image')
+        }),
+        ('Inventory & Pricing', {
+            'fields': ('price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'is_active', 'display_order')
+        }),
+        ('Meta', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def status_display(self, obj):
+        """Display status as Available or Not Available"""
+        if obj.is_active:
+            return format_html(
+                '<span style="background-color: #28a745; color: white; padding: 5px 10px; '
+                'border-radius: 12px; font-size: 11px; font-weight: bold; display: inline-block;">'
+                '✓ Available</span>'
+            )
+        else:
+            return format_html(
+                '<span style="background-color: #dc3545; color: white; padding: 5px 10px; '
+                'border-radius: 12px; font-size: 11px; font-weight: bold; display: inline-block;">'
+                '✗ Not Available</span>'
+            )
+    status_display.short_description = 'Status'
+
+    def update_zero_stock_status(self, request, queryset):
+        """Update all accessories with 0 stock to inactive"""
+        updated = queryset.filter(stock_quantity=0).update(is_active=False)
+        self.message_user(request, f'{updated} accessories with 0 stock marked as inactive.')
+    update_zero_stock_status.short_description = "Mark 0-stock items as Inactive"
+
+    def save_model(self, request, obj, form, change):
+        """Automatically set is_active to False when stock is 0"""
+        if obj.stock_quantity == 0:
+            obj.is_active = False
         if not obj.created_by:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)

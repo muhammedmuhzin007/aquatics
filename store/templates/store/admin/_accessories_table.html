@@ -8,6 +8,7 @@
             <th class="admin-text-black">Name</th>
             <th class="admin-text-black">Price</th>
             <th class="admin-text-black">Stock</th>
+            <th class="admin-text-black">Status</th>
             <th class="admin-text-black actions-cell">Actions</th>
         </tr>
     </thead>
@@ -24,6 +25,13 @@
             <td><strong class="admin-text-black">{{ accessory.name }}</strong></td>
             <td class="admin-text-black">₹{{ accessory.price }}</td>
             <td class="admin-text-black">{{ accessory.stock_quantity }}</td>
+            <td>
+                {% if accessory.is_active %}
+                    <span class="badge bg-success">Available</span>
+                {% else %}
+                    <span class="badge bg-danger">Not Available</span>
+                {% endif %}
+            </td>
             <td class="actions-cell">
                 <div class="actions-group">
                     <a class="btn btn-primary btn-sm" href="{% url 'admin_edit_accessory' accessory.id %}"><i class="fas fa-edit"></i></a>

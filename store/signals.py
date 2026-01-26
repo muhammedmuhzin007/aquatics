@@ -72,6 +72,9 @@ def _order_pre_save(sender, instance, **kwargs):
 def _order_post_save(sender, instance, created, **kwargs):
     """When an Order's payment_status transitions to 'paid', send the invoice email."""
     try:
+        # If caller set this attribute, it means they will handle sending the invoice
+        if getattr(instance, '_skip_invoice_signal', False):
+            return
         prev = getattr(instance, '_previous_payment_status', None)
         new = getattr(instance, 'payment_status', None)
         # If newly paid (including created as paid), and previous wasn't 'paid'

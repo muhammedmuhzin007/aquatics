@@ -369,7 +369,7 @@
                                 <i class="fas fa-exclamation-triangle me-2"></i>
                                 <strong>Payment Pending!</strong> Please complete your payment to process this order.
                             </div>
-                            <a href="{% url 'upi_payment' order.id %}" class="btn btn-warning" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; color: #000; font-weight: 600;">
+                            <a href="{% url 'checkout' %}?resume_order={{ order.id }}" class="btn btn-warning" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; color: #000; font-weight: 600;">
                                 <i class="fas fa-credit-card me-2"></i>Complete Payment Now
                             </a>
                             {% endif %}

@@ -137,67 +137,7 @@
         background: rgba(102, 126, 234, 0.1);
     }
 
-    .upi-qr-inline {
-        display: none;
-        border: 1px dashed var(--accent-blue);
-        border-radius: 12px;
-        padding: 1rem;
-        margin-top: 1rem;
-        background: rgba(30,136,229,0.08);
-    }
-    html[data-theme='light'] .upi-qr-inline {
-        background: rgba(30,136,229,0.06);
-    }
-    .upi-qr-inline h6 {
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        color: var(--text-white);
-    }
-    html[data-theme='light'] .upi-qr-inline h6 {
-        color: var(--light-text);
-    }
-    .upi-qr-body {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: center;
-    }
-    .upi-qr-body img {
-        width: 150px;
-        height: 150px;
-        border-radius: 8px;
-        background: #fff;
-        padding: 0.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .upi-qr-meta {
-        flex: 1 1 200px;
-        min-width: 200px;
-    }
-    .upi-qr-id {
-        font-family: 'Courier New', monospace;
-        font-size: 0.95rem;
-        word-break: break-all;
-        color: var(--text-white);
-    }
-    html[data-theme='light'] .upi-qr-id {
-        color: var(--light-text);
-    }
-    .upi-qr-links a {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        margin-right: 0.5rem;
-        margin-top: 0.5rem;
-    }
-    .upi-qr-note {
-        margin-top: 0.75rem;
-        font-size: 0.85rem;
-        color: rgba(255,255,255,0.8);
-    }
-    html[data-theme='light'] .upi-qr-note {
-        color: rgba(0,0,0,0.6);
-    }
+    /* UPI QR backup styles removed */
 </style>
 {% endblock %}
 
@@ -434,24 +374,7 @@
                                     </label>
                                 </div>
                             </div>
-                            <div class="upi-qr-inline" id="upi-qr-section">
-                                <h6><i class="fas fa-qrcode me-2"></i>UPI QR (Backup)</h6>
-                                <div class="upi-qr-body">
-                                    <img id="upi-qr-image" alt="UPI QR Code" src="" loading="lazy" />
-                                    <div class="upi-qr-meta">
-                                        <div class="small text-muted">Pay to UPI ID</div>
-                                        <div class="upi-qr-id" id="upi-qr-upi-id"></div>
-                                        <div class="upi-qr-links mt-2">
-                                            <a href="#" id="upi-phonepe-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-mobile-alt"></i> PhonePe</a>
-                                            <a href="#" id="upi-gpay-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fab fa-google"></i> Google Pay</a>
-                                            <a href="#" id="upi-paytm-link" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-wallet"></i> Paytm</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="upi-qr-note">
-                                    Razorpay will open next for secure payment confirmation. Use this QR only if the popup does not display your UPI options.
-                                </div>
-                            </div>
+                            <!-- UPI QR backup removed: server no longer generates QR image -->
                         </div>
                     </div>
 
@@ -1225,12 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    const upiQrSection = document.getElementById('upi-qr-section');
-    const upiQrImage = document.getElementById('upi-qr-image');
-    const upiQrUpiId = document.getElementById('upi-qr-upi-id');
-    const upiPhonepeLink = document.getElementById('upi-phonepe-link');
-    const upiGpayLink = document.getElementById('upi-gpay-link');
-    const upiPaytmLink = document.getElementById('upi-paytm-link');
+    // UPI QR backup removed; no element references required
 
     function resolveCreatePaymentUrl(orderId) {
         return createPaymentTemplate.replace('0/', `${orderId}/`);
@@ -1270,43 +1188,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = url;
     }
 
-    function hideUpiDetails() {
-        if (upiQrSection) {
-            upiQrSection.style.display = 'none';
-        }
-        if (upiQrImage) {
-            upiQrImage.src = '';
-        }
-        if (upiQrUpiId) {
-            upiQrUpiId.textContent = '';
-        }
-        if (upiPhonepeLink) upiPhonepeLink.href = '#';
-        if (upiGpayLink) upiGpayLink.href = '#';
-        if (upiPaytmLink) upiPaytmLink.href = '#';
-    }
-
-    function showUpiDetails(draftData) {
-        if (!upiQrSection || !draftData) {
-            return;
-        }
-        if (draftData.upi_qr && upiQrImage) {
-            upiQrImage.src = `data:image/png;base64,${draftData.upi_qr}`;
-        }
-        if (upiQrUpiId) {
-            upiQrUpiId.textContent = draftData.upi_id || '';
-        }
-        const apps = draftData.upi_apps || {};
-        if (upiPhonepeLink) {
-            upiPhonepeLink.href = apps.phonepe || '#';
-        }
-        if (upiGpayLink) {
-            upiGpayLink.href = apps.googlepay || '#';
-        }
-        if (upiPaytmLink) {
-            upiPaytmLink.href = apps.paytm || '#';
-        }
-        upiQrSection.style.display = 'block';
-    }
+    // UPI QR backup removed; client will use razorpay popup/deeplinks
 
     let razorpayLoaderPromise = null;
     function loadRazorpayScript() {
@@ -1369,9 +1251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const paymentRadios = checkoutForm.querySelectorAll('input[name="payment_method"]');
         paymentRadios.forEach((input) => {
             input.addEventListener('change', (event) => {
-                if (event.target.value !== 'upi') {
-                    hideUpiDetails();
-                }
+                // no-op: UPI QR backup removed
             });
         });
     }
@@ -1385,7 +1265,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         setButtonState(true);
         showCheckoutMessage('');
-        hideUpiDetails();
 
         const formData = new FormData(checkoutForm);
         const paymentMethod = formData.get('payment_method');
@@ -1410,9 +1289,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(draftJson.error || 'Failed to create order.');
             }
 
-            if (paymentMethod === 'upi') {
-                showUpiDetails(draftJson);
-            }
+            // UPI QR backup removed; continue to payment gateway flow
 
             const paymentResp = await fetch(resolveCreatePaymentUrl(draftJson.order_id), {
                 method: 'POST',

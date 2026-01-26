@@ -91,7 +91,7 @@
                             <!-- Actions -->
                             <div class="col-md-2 text-md-end">
                                 {% if order.payment_status == 'pending' %}
-                                <a href="{% url 'resume_payment' order.id %}" class="btn btn-warning w-100 mb-2" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; color: #000; font-weight: 600;">
+                                <a href="{% url 'checkout' %}?resume_order={{ order.id }}" class="btn btn-warning w-100 mb-2" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border: none; color: #000; font-weight: 600;">
                                     <i class="fas fa-credit-card"></i> Pay Now
                                 </a>
                                 {% endif %}
@@ -229,6 +229,7 @@
             }
         }
         </style>
+        
         {% else %}
         <div class="empty-state">
             <i class="fas fa-shopping-bag"></i>

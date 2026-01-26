@@ -1976,13 +1976,25 @@ html[data-theme='light'] input[type="file"]:focus {
     color: var(--text-white);
 }
 
-/* Footer */
+/* Footer - sticky layout support */
+html, body { height: 100%; }
+body.aquatic-bg {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* ensure full viewport height */
+}
+
+/* Make main content grow so footer is pushed to bottom */
+body.aquatic-bg > .container-fluid {
+    flex: 1 0 auto;
+}
+
 .aquatic-footer {
     background: var(--darker-bg);
     color: var(--text-gray);
     border-top: 1px solid var(--border-color);
     padding: 40px 0;
-    margin-top: 80px;
+    margin-top: auto; /* push footer to bottom */
 }
 
 .aquatic-footer .footer-link {

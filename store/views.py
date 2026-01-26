@@ -439,6 +439,96 @@ def checkout_view(request):
     accessory_items = AccessoryCart.objects.filter(user=request.user).select_related('accessory')
     plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
 
+    # Support resuming payment for an existing order using ?resume_order=<id>
+    resume_order_id = request.GET.get('resume_order')
+    if resume_order_id:
+        try:
+            resume_order = Order.objects.get(id=resume_order_id, user=request.user)
+        except Order.DoesNotExist:
+            messages.error(request, 'Order not found to resume payment.')
+            return redirect('orders')
+
+        if resume_order.payment_status == 'paid':
+            messages.info(request, 'This order is already paid. Showing your latest confirmation.')
+            return redirect('order_confirmation', order_id=resume_order.id)
+
+        if resume_order.status == 'cancelled':
+            messages.error(request, 'Cannot process payment for a cancelled order.')
+            return redirect('order_detail', order_id=resume_order.id)
+
+        # Build checkout-like context from the existing order
+        cart_items = resume_order.items.select_related('fish')
+        accessory_items = resume_order.accessory_items.select_related('accessory')
+        plant_items = resume_order.plant_items.select_related('plant')
+
+        bundle_groups = []
+        standalone_items = list(cart_items)
+
+        total = resume_order.total_amount
+        applied_coupon = resume_order.coupon
+        discount = resume_order.discount_amount or Decimal('0')
+        final_total = resume_order.final_amount or total
+
+        total_weight = resume_order.total_weight or Decimal('0')
+        delivery_charge = resume_order.delivery_charge or Decimal('0')
+
+        shipping_address_prefill = resume_order.shipping_address or ''
+        shipping_state_prefill = resume_order.shipping_state or ''
+        shipping_pincode_prefill = resume_order.shipping_pincode or ''
+
+        shipping_blocked_state = None
+        kerala_delivery_rate, default_delivery_rate, _, location_delivery_rates = _get_shipping_rates()
+        location_delivery_rates = {key: float(rate) for key, rate in (location_delivery_rates or {}).items()}
+
+        now = timezone.now()
+        coupon_types_allowed = ['all']
+        if getattr(request.user, 'is_favorite', False):
+            coupon_types_allowed.append('favorites')
+        else:
+            coupon_types_allowed.append('normal')
+
+        available_coupons = Coupon.objects.filter(
+            is_active=True,
+            show_in_suggestions=True,
+            valid_from__lte=now,
+            valid_until__gte=now,
+            coupon_type__in=coupon_types_allowed,
+        ).exclude(
+            usage_limit__isnull=False,
+            times_used__gte=models.F('usage_limit')
+        ).filter(
+            Q(min_order_amount__isnull=True) | Q(min_order_amount__lte=total)
+        ).order_by('-discount_percentage')[:5]
+
+        unserviceable_state_list = _parse_unserviceable_states(
+            getattr(ShippingChargeSetting.objects.filter(key='default').first(), 'unserviceable_states', '')
+        )
+
+        return render(request, 'store/customer/checkout.html', {
+            'cart_items': cart_items,
+            'bundle_groups': bundle_groups,
+            'standalone_items': standalone_items,
+            'accessory_items': accessory_items,
+            'plant_items': plant_items,
+            'total': total,
+            'applied_coupon': applied_coupon,
+            'discount': discount,
+            'final_total': final_total,
+            'available_coupons': available_coupons,
+            'total_weight': total_weight,
+            'delivery_charge': delivery_charge,
+            'delivery_rate': None,
+            'kerala_delivery_rate': kerala_delivery_rate,
+            'default_delivery_rate': default_delivery_rate,
+            'location_delivery_rates': location_delivery_rates,
+            'shipping_address_prefill': shipping_address_prefill,
+            'shipping_state_prefill': shipping_state_prefill,
+            'shipping_pincode_prefill': shipping_pincode_prefill,
+            'unserviceable_state_names': unserviceable_state_list,
+            'shipping_blocked_state': shipping_blocked_state,
+            'resume_order': resume_order,
+        })
+
     if not cart_items and not accessory_items and not plant_items:
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
@@ -672,9 +762,7 @@ from urllib.parse import quote_plus
 from datetime import timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
-import qrcode
-from io import BytesIO
-import base64
+# QR generation removed; keep imports out to avoid unused deps
 import uuid
 import smtplib
 import socket
@@ -1226,8 +1314,11 @@ def finalize_order_payment(order, payment_id=None, request=None):
             processed = True
 
         if dirty_fields:
+            # Prevent post_save signal from auto-sending invoice — we'll dispatch once explicitly
+            setattr(locked_order, '_skip_invoice_signal', True)
             locked_order.save(update_fields=list(dict.fromkeys(dirty_fields)))
         elif processed:
+            setattr(locked_order, '_skip_invoice_signal', True)
             locked_order.save()
 
         order = locked_order
@@ -3170,7 +3261,7 @@ def apply_coupon_view(request):
                 'success': False,
                 'message': f'Delivery is not available in {exc.state}. Please update your shipping state.'
             }, status=400)
-        kerala_rate_value, default_rate_value, _ = _get_shipping_rates()
+        kerala_rate_value, default_rate_value, _, _ = _get_shipping_rates()
 
         # Check minimum order amount unless force_apply
         if not getattr(coupon, 'force_apply', False):
@@ -3260,7 +3351,7 @@ def remove_coupon_view(request):
             'success': False,
             'message': f'Delivery is not available in {exc.state}. Please update your shipping state.'
         }, status=400)
-    kerala_rate_value, default_rate_value, _ = _get_shipping_rates()
+    kerala_rate_value, default_rate_value, _, _ = _get_shipping_rates()
 
     final_total = max(Decimal('0'), Decimal(total)) + delivery_charge
     # When removed, discount is zero and final_total equals total
@@ -3288,20 +3379,9 @@ def _build_upi_metadata(order):
     transaction_note = f"Order {order.order_number}"
 
     upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR"
-
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(upi_string)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffer = BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
-    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+    # Do not generate or return a QR code image here — remove server-side
+    # backup QR generation to reduce payload and dependency on image libs.
+    qr_code_base64 = ''
 
     upi_apps = {
         'phonepe': f"phonepe://pay?pa={upi_id}&pn={merchant_name}&am={amount}&tn={transaction_note}&cu=INR",
@@ -3312,7 +3392,6 @@ def _build_upi_metadata(order):
     return {
         'upi_id': upi_id,
         'upi_string': upi_string,
-        'qr_code': qr_code_base64,
         'upi_apps': upi_apps,
     }
 
@@ -3376,7 +3455,7 @@ def create_draft_order(request):
                 'error': f'Delivery is not available in {exc.state}. Please choose a different state.',
                 'shipping_blocked': True
             }, status=400)
-        kerala_rate_value, default_rate_value, _ = _get_shipping_rates()
+        kerala_rate_value, default_rate_value, _, _ = _get_shipping_rates()
         final_total = max(Decimal('0'), final_total) + delivery_charge
 
         # Try to reuse a recent draft
@@ -3488,10 +3567,9 @@ def create_draft_order(request):
             try:
                 upi_meta = _build_upi_metadata(draft_order)
                 response_data.update({
-                    'upi_qr': upi_meta['qr_code'],
-                    'upi_id': upi_meta['upi_id'],
-                    'upi_string': upi_meta['upi_string'],
-                    'upi_apps': upi_meta['upi_apps'],
+                    'upi_id': upi_meta.get('upi_id'),
+                    'upi_string': upi_meta.get('upi_string'),
+                    'upi_apps': upi_meta.get('upi_apps'),
                 })
             except Exception:
                 logging.getLogger(__name__).exception('Failed generating UPI metadata for order %s', draft_order.order_number)
@@ -3505,7 +3583,8 @@ def create_draft_order(request):
 @login_required
 @user_passes_test(is_customer)
 def customer_orders_view(request):
-    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    # Show only paid orders in the customer's "My Orders" section
+    orders = Order.objects.filter(user=request.user, payment_status='paid').order_by('-created_at')
     return render(request, 'store/customer/orders.html', {'orders': orders})
 
 
@@ -3553,12 +3632,13 @@ def resume_payment_view(request, order_id):
         messages.error(request, 'Cannot process payment for a cancelled order.')
         return redirect('order_detail', order_id=order.id)
 
-    if order.payment_method == 'upi':
-        return redirect('upi_payment', order_id=order.id)
+    # Redirect to the main checkout page to resume payment there
+    try:
+        checkout_url = reverse('checkout')
+    except Exception:
+        checkout_url = '/checkout/'
 
-    return render(request, 'store/customer/resume_payment.html', {
-        'order': order,
-    })
+    return redirect(f"{checkout_url}?resume_order={order.id}")
 
 
 @login_required
@@ -3668,10 +3748,10 @@ def upi_payment_view(request, order_id):
 
     context = {
         'order': order,
-        'upi_id': upi_meta['upi_id'],
-        'upi_string': upi_meta['upi_string'],
-        'qr_code': upi_meta['qr_code'],
-        'upi_apps': upi_meta['upi_apps'],
+        'upi_id': upi_meta.get('upi_id'),
+        'upi_string': upi_meta.get('upi_string'),
+        'qr_code': '',
+        'upi_apps': upi_meta.get('upi_apps'),
     }
     
     return render(request, 'store/customer/upi_payment.html', context)

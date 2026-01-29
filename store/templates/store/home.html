@@ -596,13 +596,13 @@
 /* Limited Offers carousel layout: stack slides and fade active */
 .limited-offers-banner {
     background: transparent;
-    padding: 20px 0;
+    padding: 8px 0; /* reduced vertical gap to bring banner closer to heading */
 }
 
 .offer-banner-carousel { 
     position: relative; 
     overflow: hidden; 
-    min-height: 380px;
+    min-height: 340px; /* slightly reduced height so vertical spacing feels tighter */
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 1px 2px rgba(255,255,255,0.1);
 }
@@ -1022,23 +1022,23 @@ html[data-theme='light'] .category-carousel-nav:hover {
     <div class="hero-slide active">
         <img src="{% static 'images/image1.png' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Welcome to Aquatic Paradise</h1>
-            <p class="hero-subtitle">Discover pristine aquatic life handpicked for beauty and health. Your underwater journey starts here.</p>
+            <h1 class="hero-title">WELCOME TO FISHY FRIEND AQUA</h1>
+            <p class="hero-subtitle">Discover your favorite fishy friends from our healthy and handpicked collections.</p>
         </div>
     </div>
 
     <div class="hero-slide">
         <img src="{% static 'images/image2.jpg' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Expert Knowledge, Your Success</h1>
-            <p class="hero-subtitle">Master aquascaping with our comprehensive guides and proven care protocols for thriving ecosystems.</p>
+            <h1 class="hero-title">EXPERT KNOWLEDGE, YOUR SUCCESS</h1>
+            <p class="hero-subtitle">Master fishkeeping with our comprehensive blogs and expert tips for a thriving ecosystem.</p>
         </div>
     </div>
 
     <div class="hero-slide">
         <img src="{% static 'images/image4.png' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Create Underwater Masterpieces</h1>
+            <h1 class="hero-title">CREATE UNDERWATER MASTERPICES</h1>
             <p class="hero-subtitle">Transform your tank into a living aquascape with stunning plants, hardscape, and vibrant fish.</p>
         </div>
     </div>
@@ -1046,32 +1046,32 @@ html[data-theme='light'] .category-carousel-nav:hover {
     <div class="hero-slide">
         <img src="{% static 'images/image5.jpg' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Perfect Water, Perfect Life</h1>
-            <p class="hero-subtitle">Advanced filtration and nutrient systems keep your aquatic ecosystem in peak condition.</p>
+            <h1 class="hero-title">DIRECT FROM FARM, STRAIGHT TO YOUR HOME</h1>
+            <p class="hero-subtitle">Raised at our own farm or sourced directly from trusted breeders for superior health, better quality, and reasonable prices.</p>
         </div>
     </div>
 
     <div class="hero-slide">
         <img src="{% static 'images/image6.JPG' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Rare Finds Weekly</h1>
-            <p class="hero-subtitle">Seasonal imports and specialty breeds arrive fresh—don’t miss the latest drops.</p>
+            <h1 class="hero-title">EXOTIC COLLECTIONS YOU WON’T FIND ANYWHERE ELSE.</h1>
+            <p class="hero-subtitle">From rare color morphs to selectively bred exotics, our collection is raised at our own farm for unmatched quality and reliability.</p>
         </div>
     </div>
 
     <div class="hero-slide">
         <img src="{% static 'images/image7.JPG' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Illuminate Your Vision</h1>
-            <p class="hero-subtitle">Premium lighting systems that showcase vibrant colors and fuel lush plant growth.</p>
+            <h1 class="hero-title">STARTING A BREEDING PROJECT? WE’VE GOT YOU.</h1>
+            <p class="hero-subtitle">New to breeding? We provide the right fish, guidance, and support to help you succeed from the start.</p>
         </div>
     </div>
 
     <div class="hero-slide">
         <img src="{% static 'images/image8.jpg' %}" alt="Aquatic scape" class="hero-image">
         <div class="hero-content">
-            <h1 class="hero-title">Flora For Every Vision</h1>
-            <p class="hero-subtitle">Hand-selected aquatic plants from carpets to towering stems—ready to transform your scape.</p>
+            <h1 class="hero-title">BATTLING ALGAE? OUR CLEANUP CREW HAS YOUR BACK.</h1>
+            <p class="hero-subtitle">From algae-eating fish to snails and shrimp, our cleanup crew works round the clock to keep algae under control.</p>
         </div>
     </div>
 
@@ -1085,94 +1085,139 @@ html[data-theme='light'] .category-carousel-nav:hover {
 </div>
 
 <!-- About Section -->
+{# Limited Offers section (only limited_offers) #}
 {% if limited_offers %}
-<!-- Limited Offers Heading + Banner -->
 <section class="section">
     <div class="container-fluid">
-        <h2 class="section-heading">Limited Offers</h2>
+        <h2 class="section-heading" style="margin-top:6px; margin-bottom:8px;">Limited Offers</h2>
     </div>
 </section>
-        <section class="limited-offers-banner">
-            <div class="container-fluid">
-                <div class="offer-banner-carousel">
-                    {% for offer in limited_offers %}
-                          <a href="{% if offer.is_combo and offer.combo_id %}{% url 'combo_detail' offer.combo_id %}{% elif offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}"
-                              class="offer-banner-item {% if forloop.first %}active{% endif %}"
-                              {% if offer.start_time %}data-start-time="{{ offer.start_time|date:'c' }}"{% endif %}
-                              {% if offer.end_time %}data-end-time="{{ offer.end_time|date:'c' }}"{% endif %}>
-                        {% if offer.is_combo %}
+<section class="limited-offers-banner">
+    <div class="container-fluid">
+        <div class="offer-banner-carousel">
+            {% for offer in limited_offers %}
+                <a href="{% if offer.is_combo and offer.combo_id %}{% url 'combo_detail' offer.combo_id %}{% elif offer.fish %}{% url 'fish_detail' offer.fish.id %}{% else %}{% url 'fish_list' %}{% endif %}"
+                   class="offer-banner-item {% if forloop.first %}active{% endif %}"
+                   {% if offer.start_time %}data-start-time="{{ offer.start_time|date:'c' }}"{% endif %}
+                   {% if offer.end_time %}data-end-time="{{ offer.end_time|date:'c' }}"{% endif %}>
+                    {% if offer.is_combo %}
                         <div class="offer-banner-bg combo-banner-bg">
                             <div class="combo-collage {% if offer.images %}split-layout{% endif %}" {% if offer.images %}style="--cols: {{ offer.images|length }};"{% endif %} aria-hidden="true">
                                 {% for img in offer.images %}
-                                <div class="collage-cell" style="background-image: url('{{ img }}')"></div>
+                                    <div class="collage-cell" style="background-image: url('{{ img }}')"></div>
                                 {% endfor %}
                                 {% if not offer.images %}
                                     {% if offer.fish and offer.fish.image %}
-                                    <div class="collage-cell" style="background-image: url('{{ offer.fish.image.url }}')"></div>
+                                        <div class="collage-cell" style="background-image: url('{{ offer.fish.image.url }}')"></div>
                                     {% else %}
-                                    <div class="collage-cell collage-empty"></div>
+                                        <div class="collage-cell collage-empty"></div>
                                     {% endif %}
                                 {% endif %}
                             </div>
                         </div>
                         <div class="offer-banner-overlay"></div>
-                        {% elif offer.fish and offer.fish.image %}
+                    {% elif offer.fish and offer.fish.image %}
                         <div class="offer-banner-bg" style="background-image: url('{{ offer.fish.image.url }}');"></div>
                         <div class="offer-banner-overlay"></div>
-                        {% elif offer.image %}
+                    {% elif offer.image %}
                         <div class="offer-banner-bg" style="background-image: url('{{ offer.image }}');"></div>
                         <div class="offer-banner-overlay"></div>
-                        {% elif offer.bg_color %}
+                    {% elif offer.bg_color %}
                         <div class="offer-banner-bg" style="background: {{ offer.bg_color }};"></div>
                         <div class="offer-banner-overlay"></div>
-                        {% else %}
+                    {% else %}
                         <div class="offer-banner-bg offer-banner-solid"></div>
                         <div class="offer-banner-overlay"></div>
-                        {% endif %}
-                        
-                        <div class="offer-banner-content{% if offer.is_combo %} combo-content{% endif %}">
-                            <div class="offer-banner-top">
-                                <div>
-                                    <div class="d-flex align-items-center mb-3">
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2 text-warning" aria-hidden="true" focusable="false"><path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/></svg>
-                                        <span style="font-size: 1rem; font-weight: 600; opacity: 0.9;">LIMITED TIME OFFER</span>
-                                    </div>
-                                    <h2 class="offer-banner-title">{{ offer.title }}</h2>
-                                    <div class="offer-banner-discount">{{ offer.discount_text }}</div>
-                                    {% if offer.description %}
-                                    <p class="offer-banner-description">{{ offer.description }}</p>
-                                    {% endif %}
-                                    {% if offer.fish %}
+                    {% endif %}
+
+                    <div class="offer-banner-content{% if offer.is_combo %} combo-content{% endif %}">
+                        <div class="offer-banner-top">
+                            <div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2 text-warning" aria-hidden="true" focusable="false"><path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/></svg>
+                                    <span style="font-size: 1rem; font-weight: 600; opacity: 0.9;">LIMITED TIME OFFER</span>
+                                </div>
+                                <h2 class="offer-banner-title">{{ offer.title }}</h2>
+                                <div class="offer-banner-discount">{{ offer.discount_text }}</div>
+                                {# Description intentionally hidden for accessory banners #}
+                                {% if offer.fish %}
                                     <p class="offer-banner-fish-info" style="font-size: 1rem; margin-top: 12px; opacity: 0.9;">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" aria-hidden="true" focusable="false"><path d="M22 12c0 0-2-2-6-2s-6 2-8 2-4-1-6-3c2-2 5-4 9-4s7 2 11 6z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 6c.5 1 2 2 3 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ offer.fish.name }} - {{ offer.fish.breed.name }}
                                     </p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <div class="offer-banner-footer">
-                                <div class="countdown-banner" aria-live="polite" aria-atomic="true"></div>
-                            </div>
-                            
-                            <div class="offer-progress-container">
-                                <div class="offer-progress-bar" style="width: 0%"></div>
+                                {% endif %}
                             </div>
                         </div>
-                    </a>
-                    {% endfor %}
-                    
-                    <!-- Navigation Arrows (always rendered so client-side can control visibility) -->
-                    <button class="offer-carousel-nav offer-carousel-prev" id="offerCarouselPrev" aria-label="Previous offer" title="Previous offer" tabindex="0" aria-controls="offerCarousel">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                    <button class="offer-carousel-nav offer-carousel-next" id="offerCarouselNext" aria-label="Next offer" title="Next offer" tabindex="0" aria-controls="offerCarousel">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
 
-                    <!-- Indicator Dots removed: UI simplified by hiding the small dots -->
-                </div>
-            </div>
-        </section>
+                        <div class="offer-banner-footer">
+                            <!-- countdown removed -->
+                        </div>
+
+                        <div class="offer-progress-container">
+                            <div class="offer-progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+
+            <button class="offer-carousel-nav offer-carousel-prev" id="offerCarouselPrev" aria-label="Previous offer" title="Previous offer" tabindex="0" aria-controls="offerCarousel">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="offer-carousel-nav offer-carousel-next" id="offerCarouselNext" aria-label="Next offer" title="Next offer" tabindex="0" aria-controls="offerCarousel">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# Accessories section (separate from limited offers) #}
+{% if accessory_banners %}
+<section class="section">
+    <div class="container-fluid">
+        <h2 class="section-heading" style="margin-top:6px; margin-bottom:4px;">Featured accessory</h2>
+    </div>
+</section>
+<section class="limited-offers-banner" style="margin-top:6px;">
+    <div class="container-fluid">
+        <div class="offer-banner-carousel">
+            {% for offer in accessory_banners %}
+                <a href="{% url 'accessory_detail' offer.id %}" class="offer-banner-item {% if forloop.first %}active{% endif %}">
+                    {% if offer.image %}
+                        <div class="offer-banner-bg" style="background-image: url('{{ offer.image }}');"></div>
+                        <div class="offer-banner-overlay"></div>
+                    {% else %}
+                        <div class="offer-banner-bg offer-banner-solid"></div>
+                        <div class="offer-banner-overlay"></div>
+                    {% endif %}
+
+                    <div class="offer-banner-content">
+                        <div class="offer-banner-top">
+                            <div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2 text-warning" aria-hidden="true" focusable="false"><path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/></svg>
+                                    <span style="font-size: 1rem; font-weight: 600; opacity: 0.9;">FEATURED ACCESSORY</span>
+                                </div>
+                                <h2 class="offer-banner-title">{{ offer.title }}</h2>
+                                {# Description intentionally hidden for accessory banners #}
+                            </div>
+                        </div>
+
+                        <div class="offer-banner-footer">
+                            <!-- accessory banners are static — no countdown or progress -->
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+
+            <button class="offer-carousel-nav offer-carousel-prev" id="accessoryCarouselPrev" aria-label="Previous accessory" title="Previous accessory" tabindex="0" aria-controls="accessoryCarousel">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="offer-carousel-nav offer-carousel-next" id="accessoryCarouselNext" aria-label="Next accessory" title="Next accessory" tabindex="0" aria-controls="accessoryCarousel">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </div>
+</section>
 {% endif %}
 
 {# Combo Banners: render wide banners for combos marked as banners, using limited-offer banner layout #}
@@ -1849,57 +1894,45 @@ document.addEventListener('DOMContentLoaded', function(){
     function fmt(n){ return n.toString().padStart(2,'0'); }
     function updateOfferBanners(){
         const banners = document.querySelectorAll('.offer-banner-item');
-        const now = Date.now();
-        banners.forEach(banner => {
-            const startStr = banner.getAttribute('data-start-time');
-            const endStr = banner.getAttribute('data-end-time');
-            const countdown = banner.querySelector('.countdown-banner');
-            const progressBar = banner.querySelector('.offer-progress-bar');
-            
-            // If countdown/progress elements are missing, nothing to update
-            if (!countdown || !progressBar) return;
+            const now = Date.now();
+            banners.forEach(banner => {
+                const startStr = banner.getAttribute('data-start-time');
+                const endStr = banner.getAttribute('data-end-time');
+                const progressBar = banner.querySelector('.offer-progress-bar');
 
-            const hasStart = !!startStr;
-            const hasEnd = !!endStr;
-            const start = hasStart ? new Date(startStr).getTime() : null;
-            const end = hasEnd ? new Date(endStr).getTime() : null;
+                // If progress element is missing, nothing to update
+                if (!progressBar) return;
 
-            // Visibility rules
-            let hide = false;
-            if (hasStart && isFinite(start) && now < start) {
-                // Not started yet: show with "Starts in" countdown
-                let untilStart = Math.max(0, Math.floor((start - now)/1000));
-                let d = Math.floor(untilStart/86400); untilStart%=86400;
-                let h = Math.floor(untilStart/3600); untilStart%=3600;
-                let m = Math.floor(untilStart/60);
-                countdown.textContent = d>0 ? `Starts in ${d}d ${fmt(h)}h ${fmt(m)}m` : `Starts in ${fmt(h)}h ${fmt(m)}m`;
-                progressBar.style.width = '0%';
-            } else if (hasEnd && isFinite(end)) {
-                if (now > end) {
-                    // expired
-                    countdown.textContent = 'Expired';
-                    progressBar.style.width = '100%';
-                    hide = true;
+                const hasStart = !!startStr;
+                const hasEnd = !!endStr;
+                const start = hasStart ? new Date(startStr).getTime() : null;
+                const end = hasEnd ? new Date(endStr).getTime() : null;
+
+                // Visibility rules
+                let hide = false;
+                if (hasStart && isFinite(start) && now < start) {
+                    // Not started yet: set progress to 0
+                    progressBar.style.width = '0%';
+                } else if (hasEnd && isFinite(end)) {
+                    if (now > end) {
+                        // expired
+                        progressBar.style.width = '100%';
+                        hide = true;
+                    } else {
+                        // time remaining to end — do not show textual countdown
+                        // leave progress update to the progress block below
+                    }
                 } else {
-                    // time remaining to end
-                    let diff = Math.max(0, Math.floor((end - now)/1000));
-                    let d = Math.floor(diff/86400); diff%=86400;
-                    let h = Math.floor(diff/3600); diff%=3600;
-                    let m = Math.floor(diff/60);
-                    countdown.textContent = d>0 ? `${d}d ${fmt(h)}h ${fmt(m)}m` : `${fmt(h)}h ${fmt(m)}m`;
+                    // No start/end: static banner
+                    progressBar.style.width = '0%';
                 }
-            } else {
-                // No start/end: static banner, clear countdown text
-                countdown.textContent = '';
-                progressBar.style.width = '0%';
-            }
 
-            // Progress bar only meaningful when both bounds exist
-            if (hasStart && hasEnd && isFinite(start) && isFinite(end) && now >= start && now <= end) {
-                const total = Math.max(1, end - start);
-                const elapsed = Math.min(Math.max(0, now - start), total);
-                const pct = Math.round((elapsed/total)*100);
-                progressBar.style.width = `${pct}%`;
+                // Progress bar only meaningful when both bounds exist
+                if (hasStart && hasEnd && isFinite(start) && isFinite(end) && now >= start && now <= end) {
+                    const total = Math.max(1, end - start);
+                    const elapsed = Math.min(Math.max(0, now - start), total);
+                    const pct = Math.round((elapsed/total)*100);
+                    progressBar.style.width = `${pct}%`;
             }
 
             // Apply hidden class rather than style.display so carousel can skip it

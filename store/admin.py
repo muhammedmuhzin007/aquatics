@@ -226,8 +226,8 @@ class PlantAdmin(admin.ModelAdmin):
 
 @admin.register(Accessory)
 class AccessoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'status_display', 'stock_quantity', 'display_order', 'created_at')
-    list_filter = ('is_active', 'category')
+    list_display = ('name', 'category', 'status_display', 'stock_quantity', 'display_order', 'show_as_banner', 'created_at')
+    list_filter = ('is_active', 'category', 'show_as_banner')
     search_fields = ('name', 'description')
     list_editable = ('display_order',)
     readonly_fields = ('created_at', 'updated_at')
@@ -237,7 +237,7 @@ class AccessoryAdmin(admin.ModelAdmin):
             'fields': ('name', 'category', 'description', 'image')
         }),
         ('Inventory & Pricing', {
-            'fields': ('price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'is_active', 'display_order')
+            'fields': ('price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'is_active', 'show_as_banner', 'display_order')
         }),
         ('Meta', {
             'fields': ('created_by', 'created_at', 'updated_at'),

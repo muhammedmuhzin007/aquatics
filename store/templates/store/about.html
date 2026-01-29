@@ -5,13 +5,11 @@
 <!-- Hero Section -->
 <div class="about-hero">
     <div class="container-fluid">
-        <div class="row align-items-center" style="min-height: 400px;">
+        <div class="row align-items-center" style="min-height: 320px;">
             <div class="col-lg-6">
                 <h1 class="hero-title mb-4">About FISHY FRIEND AQUA</h1>
                 <p class="text-gray" style="font-size: 1.1rem; line-height: 1.8;">
-                    Welcome to FISHY FRIEND AQUA, your premier destination for premium aquatic fishes. 
-                    We specialize in providing the finest selection of exotic and rare fish species, 
-                    carefully curated from trusted breeders worldwide.
+                     Our mission is to empower aquarists with healthy livestock, resilient plants, and dependable aquarium products supported by expert guidance. Through careful packing and responsive service, we ensure a safe and satisfying experience. At FISHY FRIEND AQUA, we are driven by quality, reliability, and a true passion for aquatics.
                 </p>
             </div>
             <div class="col-lg-6">
@@ -565,10 +563,16 @@ document.addEventListener('DOMContentLoaded', function () {
     /* Background image (no overlay) */
     background-image: url("{% static 'images/image.png' %}");
     background-repeat: no-repeat;
-    background-position: center center;
+    /* show more of the image while keeping headline visible */
+    background-position: center 65%;
     background-size: cover;
-    padding: 80px 0;
-    margin-bottom: 60px;
+    /* increased top padding to ensure hero content clears navbar */
+    padding: 100px 0 40px !important;
+    /* nudge background down a bit so top of image doesn't touch navbar */
+    background-position: center 70% !important;
+    /* ensure a visible gap between the fixed navbar and the hero background */
+    margin-top: 10px !important;
+    margin-bottom: 40px;
 }
 
 .about-image-container {
@@ -576,6 +580,9 @@ document.addEventListener('DOMContentLoaded', function () {
     align-items: center;
     justify-content: center;
     height: 100%;
+    min-height: 280px;
+    /* add stronger downward nudge so the image area appears lower on the page */
+    margin-top: 60px !important;
 }
 
 .services-section {
@@ -660,6 +667,7 @@ html[data-theme='light'] .social-icon-btn:hover {
 html[data-theme='light'] .about-hero {
     /* Light theme: use the same image without overlay */
     background-image: url("{% static 'images/underwater.jpg' %}");
+    background-position: center 55%;
 }
 
 html[data-theme='light'] .services-section {
@@ -680,7 +688,13 @@ html[data-theme='light'] .service-image-placeholder {
 
 @media (max-width: 768px) {
     .about-hero {
-        padding: 40px 0;
+        /* keep the hero image as a covering background so text overlays it */
+        padding: 56px 0 24px !important;
+        background-position: center 50% !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: scroll !important;
+        min-height: 260px !important;
     }
     
     .services-section {
@@ -690,6 +704,9 @@ html[data-theme='light'] .service-image-placeholder {
     .service-image-placeholder {
         min-height: 200px;
     }
+
+    /* Slightly smaller nudge on narrow screens; hide separate image container so text overlays background */
+    .about-image-container { display: none !important; }
 }
 
 /* Ensure Read more button is visible in light theme */
@@ -757,6 +774,66 @@ html[data-theme='light'] .gallery-thumb { background: var(--light-card); border:
     .gallery-nav { width: 40px; height: 40px; font-size: 1rem; }
     .gallery-prev { left: 5px; }
     .gallery-next { right: 5px; }
+}
+</style>
+<style>
+/* Ensure hero text and controls are white with readable contrast in all themes */
+.about-hero h1,
+.about-hero .hero-title,
+.about-hero a,
+.about-hero .text-white,
+.about-hero .col-lg-6 h1 {
+    color: #ffffff !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.65), 0 2px 6px rgba(0,0,0,0.45) !important;
+}
+/* Paragraphs inside the hero (explicit) */
+.about-hero p,
+.about-hero .text-gray,
+.about-hero .col-lg-6 p {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55) !important;
+}
+/* Make icons and buttons that appear inside the hero also appear white */
+.about-hero i,
+.about-hero .btn,
+.about-hero .social-icon-btn {
+    color: #ffffff !important;
+    border-color: rgba(255,255,255,0.18) !important;
+    background: transparent !important;
+}
+</style>
+<style>
+/* Fix: ensure gallery modal appears above fixed navbar and is not clipped */
+/* Ensure modal overlays any navbar or header by using a very high z-index */
+#galleryModal {
+    z-index: 9999999 !important;
+}
+.modal-backdrop {
+    z-index: 9999988 !important;
+}
+/* Make sure modal dialog is vertically centered and can overflow if needed */
+#galleryModal .modal-dialog {
+    max-width: 95%;
+    margin: 0 auto;
+    /* fix to viewport so z-index stacking is reliable and center the dialog */
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: auto;
+    padding: 0 12px;
+    transform: translate(-50%, -50%) !important;
+    box-sizing: border-box;
+}
+#galleryModal .modal-content {
+    overflow: visible;
+}
+/* Responsive top offsets for smaller viewports */
+@media (max-width: 992px) {
+    /* On narrower viewports keep the dialog centered but reduce max-width */
+    #galleryModal .modal-dialog { max-width: 98%; }
+}
+@media (max-width: 576px) {
+    #galleryModal .modal-dialog { max-width: 100%; padding: 0 8px; }
 }
 </style>
 {% endblock %}

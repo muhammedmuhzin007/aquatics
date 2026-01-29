@@ -1877,7 +1877,8 @@ def reset_password_view(request, user_id):
 # Home/Customer Views
 def home_view(request):
     categories = Category.objects.all()[:6]
-    fishes = Fish.objects.filter(is_available=True, stock_quantity__gt=0, is_featured=True)[:8]
+    # Show all featured fishes on homepage (previously limited to 8)
+    fishes = Fish.objects.filter(is_available=True, stock_quantity__gt=0, is_featured=True).order_by('-is_featured', '-created_at')
     # Limited offers currently active and marked to show on homepage
     now = timezone.now()
     limited_offers_qs = LimitedOffer.objects.filter(
@@ -1935,6 +1936,28 @@ def home_view(request):
                     entry['discount_text'] = f"Save ₹{int(savings)}"
 
         limited_offers.append(entry)
+
+    # Build accessory banners separately so they render in their own section
+    accessory_banners_qs = Accessory.objects.filter(is_active=True, show_as_banner=True).order_by('-created_at')
+    accessory_banners = []
+    for acc in accessory_banners_qs:
+        try:
+            img = acc.image.url if getattr(acc, 'image', None) else None
+        except Exception:
+            img = None
+        accessory_banners.append({
+            'title': acc.name,
+            'description': acc.description or '',
+            'id': acc.id,
+            'image': img,
+            'is_accessory': True,
+            # accessories are static featured banners — do not set countdown times
+            'is_combo': False,
+            'combo_id': None,
+            'images': [],
+        })
+
+    has_accessory_banners = bool(accessory_banners)
 
     # Build a list of all active combos (used elsewhere) and a separate
     # `combo_deals` list containing only combos marked for homepage display.
@@ -2084,10 +2107,12 @@ def home_view(request):
         'first_category': first_category,
         'reviews': reviews,
         'limited_offers': limited_offers,
+        'accessory_banners': accessory_banners,
         'combo_offers': combo_offers,
         'combo_deals': combo_deals,
         'combo_banners': combo_banners,
         'hero_items': hero_items,
+        'has_accessory_banners': has_accessory_banners,
     })
 
 @login_required

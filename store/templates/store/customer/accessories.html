@@ -3,7 +3,15 @@
 {% block title %}Accessories{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<style>
+  /* Ensure accessories listing clears fixed navbar and has breathing room */
+  /* Further reduced spacing for tighter mobile layout */
+  .accessories-offset { padding-top: 48px !important; }
+  @media (max-width: 992px) { .accessories-offset { padding-top: 40px !important; } }
+  @media (max-width: 768px) { .accessories-offset { padding-top: 24px !important; } }
+  @media (max-width: 576px) { .accessories-offset { padding-top: 8px !important; } }
+</style>
+<div class="container accessories-offset py-4">
   {% if accessories and accessories|length > 0 %}
     <div class="mb-4">
       <h2 class="mb-2">Accessories</h2>

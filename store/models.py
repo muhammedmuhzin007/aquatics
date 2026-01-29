@@ -626,6 +626,8 @@ class Accessory(models.Model):
     minimum_order_quantity = models.IntegerField(default=1, help_text='Minimum quantity required per order')
     image = models.ImageField(upload_to='accessories/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    # When true, show this accessory as a wide homepage banner (reuses LimitedOffer banner layout)
+    show_as_banner = models.BooleanField(default=False, help_text='Show this accessory as a homepage banner')
     display_order = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_accessories')
     created_at = models.DateTimeField(auto_now_add=True)

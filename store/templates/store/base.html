@@ -303,6 +303,11 @@
             color: var(--light-text);
             border-color: var(--light-border);
         }
+        /* Ensure main page content sits below the fixed navbar */
+        .page-content { padding-top: 84px; }
+        @media (max-width: 576px) {
+            .page-content { padding-top: 64px; }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -515,7 +520,7 @@
         </div>
     </nav>
 
-    <div class="container-fluid">
+    <main class="page-content container-fluid">
         {# Do not show standard flash alerts to staff/admin pages (they have their own UI messaging) #}
         {% if messages %}
             {% if not user.is_authenticated %}
@@ -540,7 +545,7 @@
         {% endif %}
 
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <footer class="aquatic-footer mt-5">
         <div class="container text-center py-4">

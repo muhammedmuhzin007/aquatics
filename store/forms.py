@@ -383,13 +383,13 @@ class ShippingChargeByLocationForm(forms.ModelForm):
         return cleaned
 
 class AccessoryForm(forms.ModelForm):
-    field_order = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+    field_order = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active', 'show_as_banner']
 
     class Meta:
         model = Accessory
         # Put minimum_order_quantity (Min order) right after stock_quantity as requested
         # Removed 'display_order' so the 'Order' input is not shown in add/edit accessory forms
-        fields = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active']
+        fields = ['name', 'category', 'description', 'price', 'weight', 'stock_quantity', 'minimum_order_quantity', 'image', 'is_active', 'show_as_banner']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Accessory name'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
@@ -400,12 +400,14 @@ class AccessoryForm(forms.ModelForm):
             'minimum_order_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'e.g., 1'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_as_banner': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
             'category': 'Category',
             'weight': 'Weight (kg)',
             'minimum_order_quantity': 'Minimum Order Quantity',
             'is_active': 'Active',
+            'show_as_banner': 'Show as homepage banner',
         }
 
     def __init__(self, *args, **kwargs):

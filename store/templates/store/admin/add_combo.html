@@ -163,12 +163,12 @@
     {% if combos and combos|length > 0 %}
       <div class="list-group mb-4">
         {% for c in combos %}
-          <div class="list-group-item d-flex justify-content-between align-items-center combo-list-item{% if not c.is_active %} combo-inactive{% endif %}">
+          <div class="list-group-item d-flex justify-content-between align-items-start combo-list-item{% if not c.is_active %} combo-inactive{% endif %}">
             <div>
               <strong>{{ c.title }}</strong>
               {% if c.bundle_price %}<div class="text-muted">{{ c.bundle_price|rupees }}</div>{% endif %}
                 {% if c.items.all %}
-                <div class="small combo-items-list">
+                <div class="small combo-items-list" style="max-width:60vw; word-break:break-word;">
                   {% for it in c.items.all %}
                     <span class="combo-fish-name small">{{ it.fish.name }}</span>{% if not forloop.last %}, {% endif %}
                   {% endfor %}
@@ -176,9 +176,9 @@
               {% endif %}
               <div class="small text-muted">{{ c.items.count }} items{% if not c.is_active %} — inactive{% endif %}</div>
             </div>
-            <div>
+            <div class="d-flex gap-2 align-items-start">
               <a href="{% url 'admin_edit_combo' c.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-              <form method="post" action="{% url 'admin_delete_combo' c.id %}" style="display:inline; margin-left:8px;" class="combo-delete-form" data-combo-name="{{ c.title }}">
+              <form method="post" action="{% url 'admin_delete_combo' c.id %}" class="combo-delete-form m-0" data-combo-name="{{ c.title }}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
               </form>

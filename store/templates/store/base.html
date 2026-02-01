@@ -305,6 +305,12 @@
         }
         /* Ensure main page content sits below the fixed navbar */
         .page-content { padding-top: 84px; }
+        /* Ensure flash alerts are visible above the fixed nav (e.g. during registration) */
+        .page-content .alert {
+            position: relative;
+            z-index: 3100; /* above .aquatic-nav (z-index:3000) */
+            margin-top: 8px;
+        }
         @media (max-width: 576px) {
             .page-content { padding-top: 64px; }
         }
@@ -1042,6 +1048,64 @@
                 </script>
         
         
+                <script>
+                    // Position flash alerts directly below the fixed navigation
+                    // and auto-dismiss them after 5 seconds.
+                    document.addEventListener('DOMContentLoaded', function(){
+                        const nav = document.querySelector('.aquatic-nav');
+                        const container = document.querySelector('main.page-content');
+                        if (!nav || !container) return;
+                        const alerts = Array.from(container.querySelectorAll('.alert'));
+                        if (!alerts.length) return;
+
+                        function positionAlerts(){
+                            const navRect = nav.getBoundingClientRect();
+                            const navBottom = navRect.bottom + window.scrollY;
+                            let offset = 8; // gap below nav
+                            alerts.forEach((a)=>{
+                                if (!document.body.contains(a)) return;
+                                // ensure the alert floats above the nav
+                                a.style.position = 'fixed';
+                                a.style.left = '50%';
+                                a.style.transform = 'translateX(-50%)';
+                                a.style.zIndex = '4000';
+                                a.style.minWidth = '520px';
+                                a.style.maxWidth = 'min(1100px, calc(100% - 48px))';
+                                a.style.width = 'auto';
+                                a.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                                // place stacked alerts
+                                a.style.top = (navBottom + offset) + 'px';
+                                offset += (a.offsetHeight || 56) + 8;
+                            });
+                        }
+
+                        // initial position
+                        positionAlerts();
+
+                        // reposition on resize/scroll (debounced for performance)
+                        let tmr = null;
+                        function debouncedReposition(){
+                            if (tmr) clearTimeout(tmr);
+                            tmr = setTimeout(positionAlerts, 120);
+                        }
+                        window.addEventListener('resize', debouncedReposition);
+                        window.addEventListener('scroll', debouncedReposition);
+
+                        // Auto-dismiss after 5s with a small fade
+                        alerts.forEach(function(a){
+                            // Only auto-hide non-warning alerts (keep warnings visible if desired)
+                            if ((a.className||'').indexOf('alert-warning') !== -1) return;
+                            setTimeout(function(){
+                                try{
+                                    a.classList.remove('show');
+                                    a.style.opacity = '0';
+                                    a.style.transform = 'translateX(-50%) translateY(-6px)';
+                                    setTimeout(function(){ if (a.parentNode) a.remove(); }, 500);
+                                }catch(e){}
+                            }, 5000);
+                        });
+                    });
+                </script>
                 {% block extra_js %}{% endblock %}
 </body>
 </html>

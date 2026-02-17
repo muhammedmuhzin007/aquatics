@@ -228,6 +228,13 @@ def _build_guest_cart_items(request):
         if not fish_id or fish_id not in fish_map:
             fish_entries.pop(key, None)
             continue
+        fish = fish_map[fish_id]
+        if fish.stock_quantity is not None and fish.stock_quantity <= 0:
+            fish_entries.pop(key, None)
+            continue
+        if not getattr(fish, 'is_available', True):
+            fish_entries.pop(key, None)
+            continue
         quantity = max(int(data.get('quantity', 0) or 0), 0)
         if quantity <= 0:
             fish_entries.pop(key, None)
@@ -242,6 +249,13 @@ def _build_guest_cart_items(request):
         if not accessory_id or accessory_id not in accessory_map:
             accessory_entries.pop(key, None)
             continue
+        accessory = accessory_map[accessory_id]
+        if accessory.stock_quantity is not None and accessory.stock_quantity <= 0:
+            accessory_entries.pop(key, None)
+            continue
+        if not getattr(accessory, 'is_active', True):
+            accessory_entries.pop(key, None)
+            continue
         quantity = max(int(data.get('quantity', 0) or 0), 0)
         if quantity <= 0:
             accessory_entries.pop(key, None)
@@ -254,8 +268,18 @@ def _build_guest_cart_items(request):
         if not plant_id or plant_id not in plant_map:
             plant_entries.pop(key, None)
             continue
+        plant = plant_map[plant_id]
+        if plant.stock_quantity is not None and plant.stock_quantity <= 0:
+            plant_entries.pop(key, None)
+            continue
+        if not getattr(plant, 'is_active', True):
+            plant_entries.pop(key, None)
+            continue
         quantity = max(int(data.get('quantity', 0) or 0), 0)
         if quantity <= 0:
+            plant_entries.pop(key, None)
+            continue
+        if plant.price is None:
             plant_entries.pop(key, None)
             continue
         guest_plants.append(GuestPlantCartItem(plant_map[plant_id], quantity))
@@ -2989,6 +3013,21 @@ def cart_view(request):
     guest_mode = not (request.user.is_authenticated and getattr(request.user, 'role', None) == 'customer')
 
     if not guest_mode:
+        Cart.objects.filter(
+            user=request.user
+        ).filter(
+            Q(fish__stock_quantity__lte=0) | Q(fish__is_available=False)
+        ).delete()
+        AccessoryCart.objects.filter(
+            user=request.user
+        ).filter(
+            Q(accessory__stock_quantity__lte=0) | Q(accessory__is_active=False)
+        ).delete()
+        PlantCart.objects.filter(
+            user=request.user
+        ).filter(
+            Q(plant__stock_quantity__lte=0) | Q(plant__is_active=False) | Q(plant__price__isnull=True)
+        ).delete()
         cart_items = Cart.objects.filter(user=request.user).select_related('fish', 'combo')
         accessory_items = AccessoryCart.objects.filter(user=request.user)
         plant_items = PlantCart.objects.filter(user=request.user).select_related('plant')
@@ -4061,7 +4100,8 @@ def staff_dashboard_view(request):
     total_fishes = Fish.objects.count()
     total_categories = Category.objects.count()
     total_breeds = Breed.objects.count()
-    total_orders = Order.objects.count()
+    # Exclude orders where payment is still pending from dashboard counts
+    total_orders = Order.objects.exclude(payment_status='pending').count()
     
     return render(request, 'store/staff/dashboard.html', {
         'total_fishes': total_fishes,
@@ -4582,10 +4622,12 @@ def staff_edit_fish_media_view(request, media_id):
 def admin_dashboard_view(request):
     total_users = CustomUser.objects.filter(role='customer').count()
     total_staff = CustomUser.objects.filter(role='staff').count()
-    total_orders = Order.objects.count()
+    # Do not count payment-pending orders on admin dashboard
+    total_orders = Order.objects.exclude(payment_status='pending').count()
     total_revenue = Order.objects.filter(status='delivered').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
-    recent_orders = Order.objects.all().order_by('-created_at')[:5]
+    # Recent orders shown on dashboard should exclude payment-pending entries
+    recent_orders = Order.objects.exclude(payment_status='pending').order_by('-created_at')[:5]
     
     # Get data for charts
     # Last 6 months of data
@@ -4595,6 +4637,7 @@ def admin_dashboard_view(request):
     # Monthly orders data
     monthly_orders = (Order.objects
         .filter(created_at__gte=six_months_ago)
+        .exclude(payment_status='pending')
         .values('created_at__year', 'created_at__month')
         .annotate(count=Count('id'))
         .order_by('created_at__year', 'created_at__month'))
@@ -5695,7 +5738,8 @@ def admin_reject_review(request, review_id):
 @login_required
 @user_passes_test(is_admin)
 def admin_orders_view(request):
-    orders = Order.objects.all().order_by('-created_at')
+    # Exclude payment-pending orders from admin order management list
+    orders = Order.objects.exclude(payment_status='pending').order_by('-created_at')
     
     # Filter
     form = OrderFilterForm(request.GET)
@@ -5724,7 +5768,8 @@ def admin_orders_view(request):
 @user_passes_test(is_admin)
 @require_GET
 def admin_orders_ajax_view(request):
-    orders = Order.objects.all().order_by('-created_at')
+    # Exclude payment-pending orders from AJAX results
+    orders = Order.objects.exclude(payment_status='pending').order_by('-created_at')
     form = OrderFilterForm(request.GET)
     if form.is_valid():
         status = form.cleaned_data.get('status')
@@ -5852,7 +5897,8 @@ def unblock_user_view(request, user_id):
 @login_required
 @user_passes_test(is_admin)
 def export_orders_excel_view(request):
-    orders = Order.objects.all().order_by('-created_at')
+    # When exporting, omit payment-pending orders unless specifically requested
+    orders = Order.objects.exclude(payment_status='pending').order_by('-created_at')
     
     # Filter
     status = request.GET.get('status')

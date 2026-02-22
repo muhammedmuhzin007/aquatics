@@ -6,7 +6,7 @@
 <section class="section">
     <div class="container-fluid">
         <!-- Header with Back Button -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <a href="{% url 'customer_orders' %}" class="btn btn-outline-light btn-sm mb-2">
                     <i class="fas fa-arrow-left"></i> Back to Orders
@@ -15,7 +15,7 @@
             </div>
             <div class="text-end">
                 <small class="text-gray d-block">Order Number</small>
-                <h4 class="text-white mb-0">{{ order.order_number }}</h4>
+                <h4 class="text-body mb-0">{{ order.order_number }}</h4>
             </div>
         </div>
 
@@ -26,7 +26,7 @@
                 <div class="card mb-4" style="border-left: 4px solid {% if order.status == 'delivered' %}#28a745{% elif order.status == 'pending' %}#ffc107{% elif order.status == 'cancelled' %}#dc3545{% elif order.status == 'shipped' %}#17a2b8{% else %}#1E88E5{% endif %};">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="text-white mb-0">
+                            <h5 class="text-body mb-0">
                                 <i class="fas fa-info-circle me-2"></i>Order Status
                             </h5>
                             <span class="badge badge-lg bg-{% if order.status == 'delivered' %}success{% elif order.status == 'pending' %}warning{% elif order.status == 'cancelled' %}danger{% elif order.status == 'shipped' %}info{% else %}primary{% endif %}" 
@@ -44,7 +44,7 @@
                                         <i class="fas fa-check"></i>
                                     </div>
                                     <small class="text-white d-block mt-2 fw-bold">Ordered</small>
-                                    <small class="text-gray" style="font-size: 0.75rem;">{{ order.created_at|date:"M d, h:i A" }}</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ order.created_at|date:"M d, h:i A" }}</small>
                                 </div>
                                 <div class="timeline-line {% if order.status == 'processing' or order.status == 'shipped' or order.status == 'delivered' %}active{% endif %}"></div>
                                 <div class="timeline-step text-center" style="flex: 1;">
@@ -64,6 +64,58 @@
                                 <div class="timeline-step text-center" style="flex: 1;">
                                     <div class="timeline-icon {% if order.status == 'shipped' or order.status == 'delivered' %}active{% endif %}">
                                         <i class="fas fa-truck"></i>
+                {% with accessory_items=order.accessory_items.all %}
+                {% if accessory_items %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                                    <h5 class="text-body mb-0">
+                            <i class="fas fa-box-open me-2"></i>Accessory Items ({{ accessory_items|length }})
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0" style="background: transparent;">
+                                <thead style="background: rgba(108,117,125,0.08); border-bottom: 2px solid var(--border-color);">
+                                    <tr>
+                                        <th style="padding: 12px 20px; background: transparent;">Accessory</th>
+                                        <th style="padding: 12px 20px; text-align: center; background: transparent;">Quantity</th>
+                                        <th style="padding: 12px 20px; text-align: right; background: transparent;">Price</th>
+                                        <th style="padding: 12px 20px; text-align: right; background: transparent;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in accessory_items %}
+                                    <tr style="border-bottom: 1px solid var(--border-color); background: transparent;">
+                                        <td style="padding: 15px 20px; background: transparent;">
+                                            <div class="d-flex align-items-center">
+                                                {% if item.accessory.image %}
+                                                <img src="{{ item.accessory.image.url }}" alt="{{ item.accessory.name }}"
+                                                     style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 1px solid var(--border-color);">
+                                                {% endif %}
+                                                <div>
+                                                    <strong class="text-white">{{ item.accessory.name }}</strong><br>
+                                                    <small class="text-muted">Accessory</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style="padding: 15px 20px; text-align: center; background: transparent;">
+                                            <span class="badge bg-secondary" style="padding: 6px 12px;">x{{ item.quantity }}</span>
+                                        </td>
+                                        <td style="padding: 15px 20px; text-align: right; background: transparent;">
+                                            <span class="text-white">{{ item.price|rupees }}</span>
+                                        </td>
+                                        <td style="padding: 15px 20px; text-align: right; background: transparent;">
+                                            <strong class="text-white">{{ item.get_total|rupees }}</strong>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
                                     </div>
                                     <small class="text-white d-block mt-2 fw-bold">Shipped</small>
                                     <small class="text-gray" style="font-size: 0.75rem;">
@@ -130,8 +182,8 @@
                                                      style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; margin-right: 15px; border: 2px solid var(--border-color);">
                                                 {% endif %}
                                                 <div>
-                                                    <strong class="text-white d-block" style="font-size: 1rem;">{{ item.fish.name }}</strong>
-                                                    <small class="text-gray">{{ item.fish.breed.name }}</small>
+                                                    <strong class="text-body d-block" style="font-size: 1rem;">{{ item.fish.name }}</strong>
+                                                        <small class="text-muted">{{ item.fish.breed.name }}</small>
                                                 </div>
                                             </div>
                                         </td>
@@ -141,7 +193,7 @@
                                             </span>
                                         </td>
                                         <td style="padding: 15px 20px; background: transparent;">
-                                            <span class="text-white">{{ item.fish.size }}</span>
+                                            <span class="text-body">{{ item.fish.size }}</span>
                                         </td>
                                         <td style="padding: 15px 20px; text-align: center; background: transparent;">
                                             <span class="badge bg-primary" style="padding: 6px 12px; font-size: 0.9rem;">
@@ -149,17 +201,17 @@
                                             </span>
                                         </td>
                                         <td style="padding: 15px 20px; text-align: right; background: transparent;">
-                                            <span class="text-white">{{ item.price|rupees }}</span>
+                                            <span class="text-body">{{ item.price|rupees }}</span>
                                         </td>
                                         <td style="padding: 15px 20px; text-align: right; background: transparent;">
-                                            <strong class="text-white" style="font-size: 1.05rem;">{{ item.get_total|rupees }}</strong>
+                                            <strong class="text-body" style="font-size: 1.05rem;">{{ item.get_total|rupees }}</strong>
                                         </td>
                                     </tr>
                                     <!-- Fish Description Row -->
                                     {% if item.fish.description %}
                                     <tr style="background: rgba(30, 136, 229, 0.05); border-bottom: 1px solid var(--border-color);">
                                         <td colspan="6" style="padding: 12px 20px; background: transparent;">
-                                            <small class="text-gray">
+                                            <small class="text-muted">
                                                 <i class="fas fa-info-circle me-1"></i>
                                                 <strong>About this fish:</strong> {{ item.fish.description|truncatewords:30 }}
                                             </small>
@@ -210,8 +262,8 @@
                                                      style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 1px solid var(--border-color);">
                                                 {% endif %}
                                                 <div>
-                                                    <strong class="text-white">{{ item.plant.name }}</strong><br>
-                                                    <small class="text-muted">Plant</small>
+                                                        <strong class="text-body">{{ item.plant.name }}</strong><br>
+                                                            <small class="text-muted">Plant</small>
                                                 </div>
                                             </div>
                                         </td>
@@ -219,10 +271,10 @@
                                             <span class="badge bg-success" style="padding: 6px 12px;">x{{ item.quantity }}</span>
                                         </td>
                                         <td style="padding: 15px 20px; text-align: right; background: transparent;">
-                                            <span class="text-white">{{ item.price|rupees }}</span>
+                                            <span class="text-body">{{ item.price|rupees }}</span>
                                         </td>
                                         <td style="padding: 15px 20px; text-align: right; background: transparent;">
-                                            <strong class="text-white">{{ item.get_total|rupees }}</strong>
+                                            <strong class="text-body">{{ item.get_total|rupees }}</strong>
                                         </td>
                                     </tr>
                                     {% endfor %}

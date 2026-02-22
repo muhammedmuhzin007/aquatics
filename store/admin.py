@@ -1,6 +1,7 @@
 import re
 
 from django import forms
+from django.utils.html import format_html
 from django.contrib import admin
 from .models import (
     CustomUser,
@@ -10,6 +11,8 @@ from .models import (
     Cart,
     Order,
     OrderItem,
+    OrderAccessoryItem,
+    OrderPlantItem,
     OTP,
     Review,
     Service,
@@ -32,8 +35,6 @@ from .models import (
 admin.site.register(CustomUser)
 admin.site.register(Breed)
 admin.site.register(Cart)
-admin.site.register(Order)
-admin.site.register(OrderItem)
 admin.site.register(OTP)
 
 
@@ -448,5 +449,38 @@ class ComboOfferAdmin(admin.ModelAdmin):
         if db_field.name == 'category':
             kwargs['queryset'] = Category.objects.filter(category_type='combo').order_by('name')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    readonly_fields = ('fish', 'quantity', 'price')
+    extra = 0
+
+
+class OrderAccessoryItemInline(admin.TabularInline):
+    model = OrderAccessoryItem
+    readonly_fields = ('accessory', 'quantity', 'price')
+    extra = 0
+
+
+class OrderPlantItemInline(admin.TabularInline):
+    model = OrderPlantItem
+    readonly_fields = ('plant', 'quantity', 'price')
+    extra = 0
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ('order_number', 'user', 'total_amount', 'status', 'payment_status', 'created_at')
+    list_filter = ('status', 'payment_status', 'created_at')
+    search_fields = ('order_number', 'user__username', 'user__email')
+    readonly_fields = ('order_number', 'total_amount', 'final_amount', 'created_at', 'updated_at')
+    inlines = (OrderItemInline, OrderAccessoryItemInline, OrderPlantItemInline)
+    fieldsets = (
+        (None, {'fields': ('user', 'order_number')}),
+        ('Amounts', {'fields': ('total_amount', 'discount_amount', 'final_amount', 'delivery_charge')}),
+        ('Status', {'fields': ('status', 'payment_status', 'payment_method', 'transaction_id')}),
+        ('Timestamps', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
 
 

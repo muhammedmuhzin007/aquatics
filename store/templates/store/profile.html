@@ -13,7 +13,7 @@
     } catch(e) {}
 })();
 </script>
-<style>
+    <style>
         /* Theme-aware static profile text colors */
         .profile-label { color: var(--text-white); font-weight:600; font-size:0.9rem; }
         .profile-value { color: var(--text-gray); font-size:0.9rem; }
@@ -23,6 +23,19 @@
         html[data-theme='light'] .profile-name { color: var(--light-text); }
         .profile-row i { margin-right:4px; color: var(--accent-blue); }
         html[data-theme='light'] .profile-row i { color: var(--light-accent); }
+
+        /* Responsive alignment: align labels to the right on medium+ screens
+           and vertically center label/value pairs for a cleaner layout. */
+        .profile-value { display: block; word-break: break-word; }
+
+        @media (min-width: 768px) {
+            .profile-row .col-md-4 { display:flex; align-items:center; justify-content:flex-end; padding-right: 1rem; }
+            .profile-row .col-md-4 .profile-label { text-align:right; margin:0; }
+            .profile-row .col-md-8 { display:flex; align-items:center; }
+        }
+
+        /* Small-screen tweak: keep comfortable spacing between icon and text */
+        .profile-row i { margin-right: 6px; }
     </style>
 {% endblock %}
 
@@ -125,7 +138,7 @@
                         <a href="{% url 'staff_fish_list' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-fish"></i> Manage Fishes
                         </a>
-                        {% elif user.role == 'admin' %}
+                        {% elif user.role == 'admin' or user.is_superuser %}
                         <a href="{% url 'admin_gallery' %}" class="btn btn-outline-primary w-100 mb-2" style="border-color: var(--accent-blue); color: var(--accent-light-blue);">
                             <i class="fas fa-photo-video"></i> Gallery
                         </a>

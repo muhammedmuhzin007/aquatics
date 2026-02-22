@@ -14,7 +14,7 @@ def is_staff(user):
     return user.is_authenticated and (user.role == 'staff' or user.role == 'admin')
 
 def is_admin(user):
-    return user.is_authenticated and user.role == 'admin'
+    return user.is_authenticated and (getattr(user, 'role', None) == 'admin' or getattr(user, 'is_superuser', False))
 
 
 GUEST_CART_SESSION_KEY = 'guest_cart'
@@ -808,7 +808,7 @@ def is_staff(user):
 
 
 def is_admin(user):
-    return user.is_authenticated and user.role == 'admin'
+    return user.is_authenticated and (getattr(user, 'role', None) == 'admin' or getattr(user, 'is_superuser', False))
 
 
 def combos_view(request):
@@ -3505,6 +3505,55 @@ def create_draft_order(request):
         phone_number = (request.POST.get('phone_number')
                         or getattr(request.user, 'phone_number', '')
                         or '')
+
+        # Reject placeholder-only shipping details (user left the template labels)
+        placeholder_labels = [
+            'Name :-', 'House Name :-', 'Area & city Name :-',
+            'Pin code :-', 'District :-', 'State :-', 'Mobile :-'
+        ]
+
+        def _looks_like_placeholder(addr: str) -> bool:
+            if not addr:
+                return False
+            lines = [l.strip() for l in addr.splitlines() if l.strip()]
+            if not lines:
+                return False
+            for line in lines:
+                matched = False
+                for lab in placeholder_labels:
+                    if line.startswith(lab):
+                        matched = True
+                        # if there's any non-label content after the label, it's real
+                        if line[len(lab):].strip():
+                            return False
+                        break
+                if not matched:
+                    return False
+            return True
+
+        # Also treat the exact untouched template block as invalid
+        default_template = """Name :-
+House Name :-
+Area & city Name :-
+Pin code :-
+District :-
+State :-
+Mobile :-"""
+
+        def _normalize_block(txt: str) -> str:
+            if not txt:
+                return ''
+            return '\n'.join([l.strip() for l in str(txt).splitlines() if l.strip()])
+
+        addr_norm = _normalize_block(shipping_address)
+        default_norm = _normalize_block(default_template)
+
+        if (addr_norm == default_norm
+                or (_looks_like_placeholder(shipping_address)
+                    and (not shipping_state or shipping_state.strip() in ('', 'State :-'))
+                    and (not shipping_pincode or shipping_pincode.strip() in ('', 'Pin code :-'))
+                    and (_looks_like_placeholder(phone_number) or phone_number.strip() in ('', 'Mobile :-')))):
+            return JsonResponse({'error': 'Please provide proper shipping details'}, status=400)
         payment_method = request.POST.get('payment_method') or 'card'
 
         try:

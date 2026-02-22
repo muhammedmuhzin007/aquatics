@@ -167,56 +167,98 @@
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Fish</th>
+                                    <th style="width:80px;">Image</th>
+                                    <th>Product</th>
+                                    <th>Type</th>
                                     <th>Category</th>
                                     <th>Size</th>
-                                    <th>Stock</th>
                                     <th>Quantity</th>
                                     <th>Price</th>
                                     <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for item in order.items.all %}
+                                {% with fish_items=order.items.all accessory_items=order.accessory_items.all plant_items=order.plant_items.all %}
+                                {% for item in fish_items %}
                                 <tr>
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            {% if item.fish.image %}
-                                            <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" 
-                                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 15px; border: 1px solid var(--border-color);">
-                                            {% endif %}
-                                            <div>
-                                                <strong class="info-value">{{ item.fish.name }}</strong><br>
-                                                <small class="info-label">Breed: {{ item.fish.breed.name }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="info-value">{{ item.fish.category.name }}</td>
-                                    <td class="info-value">{{ item.fish.size|default:"-" }} {% if item.fish.size %}inches{% endif %}</td>
-                                    <td class="info-value">
-                                        {{ item.fish.stock_quantity }}
-                                        {% if item.fish.is_available %}
-                                            <span class="badge bg-success badge-sm">Available</span>
+                                        {% if item.fish.image %}
+                                        <img src="{{ item.fish.image.url }}" alt="{{ item.fish.name }}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);">
                                         {% else %}
-                                            <span class="badge bg-danger badge-sm">Unavailable</span>
+                                        <div style="width:60px; height:60px; background:rgba(0,0,0,0.06); border-radius:6px;"></div>
                                         {% endif %}
                                     </td>
+                                    <td>
+                                        <strong class="info-value">{{ item.fish.name }}</strong><br>
+                                        <small class="info-label">Breed: {{ item.fish.breed.name }}</small>
+                                    </td>
+                                    <td class="info-value">Fish</td>
+                                    <td class="info-value">{{ item.fish.category.name }}</td>
+                                    <td class="info-value">{{ item.fish.size|default:"-" }} {% if item.fish.size %}inches{% endif %}</td>
                                     <td class="info-value">{{ item.quantity }}</td>
                                     <td class="info-value">{{ item.price|rupees }}</td>
                                     <td class="info-value"><strong>{{ item.get_total|rupees }}</strong></td>
                                 </tr>
                                 {% endfor %}
+
+                                {% for a in accessory_items %}
+                                <tr>
+                                    <td>
+                                        {% if a.accessory.image %}
+                                        <img src="{{ a.accessory.image.url }}" alt="{{ a.accessory.name }}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);">
+                                        {% else %}
+                                        <div style="width:60px; height:60px; background:rgba(0,0,0,0.06); border-radius:6px;"></div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong class="info-value">{{ a.accessory.name }}</strong><br>
+                                        <small class="info-label">Accessory</small>
+                                    </td>
+                                    <td class="info-value">Accessory</td>
+                                    <td class="info-value">{{ a.accessory.category.name|default:"-" }}</td>
+                                    <td class="info-value">-</td>
+                                    <td class="info-value">{{ a.quantity }}</td>
+                                    <td class="info-value">{{ a.price|rupees }}</td>
+                                    <td class="info-value"><strong>{{ a.get_total|rupees }}</strong></td>
+                                </tr>
+                                {% endfor %}
+
+                                {% for p in plant_items %}
+                                <tr>
+                                    <td>
+                                        {% if p.plant.image %}
+                                        <img src="{{ p.plant.image.url }}" alt="{{ p.plant.name }}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);">
+                                        {% else %}
+                                        <div style="width:60px; height:60px; background:rgba(0,0,0,0.06); border-radius:6px;"></div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong class="info-value">{{ p.plant.name }}</strong><br>
+                                        <small class="info-label">Plant</small>
+                                    </td>
+                                    <td class="info-value">Plant</td>
+                                    <td class="info-value">{{ p.plant.category.name|default:"-" }}</td>
+                                    <td class="info-value">-</td>
+                                    <td class="info-value">{{ p.quantity }}</td>
+                                    <td class="info-value">{{ p.price|rupees }}</td>
+                                    <td class="info-value"><strong>{{ p.get_total|rupees }}</strong></td>
+                                </tr>
+                                {% endfor %}
+                                {% endwith %}
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <th colspan="6" class="text-end info-value">Total Amount:</th>
-                                    <th class="info-value"><strong>{{ order.total_amount|rupees }}</strong></th>
+                                    <th colspan="7" class="text-end info-value">Total Amount:</th>
+                                    <th class="text-end info-value"><strong>{{ order.total_amount|rupees }}</strong></th>
                                 </tr>
                             </tfoot>
                         </table>
                         </div>
                     </div>
                 </div>
+                <!-- Contact Customer moved down below items -->
+                <!-- accessory and plant sections combined into main Items table above -->
+                <!-- Contact Customer: moved here so it appears after accessory/plant lists -->
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5>Contact Customer</h5>

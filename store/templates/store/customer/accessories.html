@@ -13,16 +13,20 @@
 </style>
 <div class="container accessories-offset py-4">
   {% if accessories and accessories|length > 0 %}
-    <div class="mb-4">
-      <h2 class="mb-2">Accessories</h2>
+    <div class="my-4 accessories-header position-relative">
+      <h2 class="my-3 text-center">Accessories</h2>
+
       <form id="accessory-filter-form" class="mb-3">
-        <div class="row g-3 align-items-end">
+        <div class="row g-3 align-items-center">
           <div class="col-12 col-md-8 col-lg-9">
-            <label for="accessory-search" class="form-label text-muted mb-1">Search accessories</label>
-            <input id="accessory-search" type="text" class="form-control form-control-lg search-large" name="q" value="{{ search_query }}" placeholder="Search accessories" autocomplete="off">
+                        <label for="accessory-search" class="visually-hidden">Search accessories</label>
+            <div class="input-group input-group-lg">
+              <input id="accessory-search" type="text" class="form-control form-control-lg search-large" name="q" value="{{ search_query }}" placeholder="Search accessories" autocomplete="off">
+              <button type="submit" class="btn btn-primary btn-search" aria-label="Search"><i class="fas fa-search"></i></button>
+            </div>
           </div>
           <div class="col-12 col-md-4 col-lg-3">
-            <label for="accessory-category" class="form-label text-muted mb-1">Category</label>
+            <label for="accessory-category" class="visually-hidden">Category</label>
             <select id="accessory-category" name="category" class="form-select form-select-lg">
               <option value=""{% if not selected_category %} selected{% endif %}>All</option>
               {% for category in categories %}

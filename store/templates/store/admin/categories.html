@@ -26,7 +26,7 @@
                             </div>
                             <div class="category-filter-search">
                                 <div class="input-group input-group-sm input-group-flat">
-                                    <input type="search" name="search" class="form-control form-control-sm" placeholder="Search categories" value="{{ search_query }}" aria-label="Search categories">
+                                    <input type="search" name="search" class="form-control form-control-sm" placeholder="Search categories" value="{{ search_query }}" aria-label="Search categories" data-no-inject>
                                 </div>
                             </div>
                             <a href="{% url 'admin_categories' %}" class="btn btn-outline-light btn-sm category-reset-btn" {% if not search_query and not selected_type %}hidden{% endif %}>
@@ -254,6 +254,42 @@
     .category-delete-btn span {
         display: inline !important;
     }
+}
+
+/* Keep the category search input and button inline and prevent wrap */
+.category-filter-search { white-space: nowrap; }
+.category-filter-search .input-group { display: inline-flex; width: auto; align-items: center; }
+.category-filter-search .input-group .form-control { min-width: 280px; max-width: 560px; flex: 1 1 auto; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.category-filter-search .input-group .btn-search { margin-left: 0; flex: 0 0 auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+/* Force btn and input to share the same height and align perfectly */
+.category-filter-form .input-group-sm .form-control,
+.category-filter-search .input-group-sm .form-control {
+    height: 34px;
+    padding: 0.375rem 0.55rem;
+}
+.category-filter-form .input-group-sm .btn-search,
+.category-filter-search .input-group-sm .btn-search {
+    height: 34px;
+    padding: 0 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: -1px; /* remove visual seam */
+}
+.category-filter-search .input-group .form-control:focus {
+    z-index: 1;
+}
+
+/* Keep type select, search and reset inline on medium+ screens */
+@media (min-width: 768px) {
+    .category-filter-form { flex-wrap: nowrap; }
+    .category-filter-select { flex: 0 0 auto; }
+    .category-filter-search { flex: 1 1 auto; min-width: 360px; }
+    .category-filter-search .input-group { width: 100%; }
+    .category-filter-form .category-reset-btn { flex: 0 0 auto; }
 }
 </style>
 {% endblock %}

@@ -7,14 +7,14 @@
         <h2 class="section-heading">Fish Collection</h2>
         
         <form id="fish-filter-form" method="get" class="mb-4">
-            <div class="row g-3 align-items-end">
+            <div class="row g-3 align-items-center">
                 <div class="col-12 col-md-8 col-lg-9">
-                    <label for="live-search" class="form-label text-muted mb-1">Search</label>
+                    <label for="live-search" class="visually-hidden">Search</label>
                     <input id="live-search" type="text" class="form-control form-control-lg search-large" name="search" value="{{ search_query }}"
                            placeholder="Search by name, description, breed..." autocomplete="off">
                 </div>
                 <div class="col-12 col-md-4 col-lg-3 col-xl-3">
-                    <label for="category-filter" class="form-label text-muted mb-1">Category</label>
+                    <label for="category-filter" class="visually-hidden">Category</label>
                     <select id="category-filter" name="category" class="form-select form-select-lg">
                         <option value=""{% if not category_filter %} selected{% endif %}>All categories</option>
                         {% for category in categories %}

@@ -77,13 +77,13 @@
             html[data-theme='light'] .staff-accessories select.form-select option { color: #111827 !important; }
         </style>
 
-        <div class="row g-3 align-items-end mb-4">
+        <div class="row g-3 align-items-center mb-4">
             <div class="col-lg-6 col-md-12">
-                <label class="form-label admin-text-black mb-1">Search</label>
+                <label for="staff-accessory-search" class="visually-hidden">Search</label>
                 <input id="staff-accessory-search" type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Search accessories...">
             </div>
             <div class="col-lg-4 col-md-6">
-                <label class="form-label admin-text-black mb-1">Category</label>
+                <label class="visually-hidden">Category</label>
                 <select id="staff-accessory-category" class="form-select" name="category">
                     <option value="">All</option>
                     {% if categories %}
@@ -94,7 +94,7 @@
                 </select>
             </div>
             <div class="col-lg-2 col-md-6">
-                <label class="form-label admin-text-black mb-1">Availability</label>
+                <label class="visually-hidden">Availability</label>
                 <select id="staff-accessory-availability" class="form-select" name="availability">
                     <option value="">All statuses</option>
                     <option value="available" {% if availability == 'available' %}selected{% endif %}>Active</option>

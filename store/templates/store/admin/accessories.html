@@ -114,9 +114,9 @@
                 <small class="text-muted" id="accessory-count-summary">Showing {{ filtered_count }} of {{ total_count }}</small>
             </div>
             <div class="card-body">
-                <form method="get" class="row g-3 admin-accessory-filters align-items-end mb-4" id="admin-accessory-filter-form">
+                <form method="get" class="row g-3 admin-accessory-filters align-items-center mb-4" id="admin-accessory-filter-form">
                     <div class="col-md-4 col-lg-3">
-                        <label for="accessory-category" class="form-label text-muted">Category</label>
+                        <label for="accessory-category" class="visually-hidden">Category</label>
                         <select id="accessory-category" name="category" class="form-select form-select-sm">
                             <option value="">All categories</option>
                             {% for category in categories %}
@@ -125,7 +125,7 @@
                         </select>
                     </div>
                     <div class="col-md-4 col-lg-3">
-                        <label for="accessory-status" class="form-label text-muted">Availability</label>
+                        <label for="accessory-status" class="visually-hidden">Availability</label>
                         <select id="accessory-status" name="status" class="form-select form-select-sm">
                             <option value="">All statuses</option>
                             <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
@@ -135,8 +135,11 @@
                         </select>
                     </div>
                     <div class="col-md-6 col-lg-5 flex-grow-1">
-                        <label for="accessory-search" class="form-label text-muted">Search</label>
-                        <input id="accessory-search" type="search" name="search" class="form-control form-control-sm" placeholder="Search accessories" value="{{ search_query }}">
+                        <label for="accessory-search" class="visually-hidden">Search</label>
+                        <div class="input-group input-group-sm">
+                            <input id="accessory-search" type="search" name="search" class="form-control form-control-sm" placeholder="Search accessories" value="{{ search_query }}">
+                            <button class="btn btn-primary" type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+                        </div>
                     </div>
                 </form>
                 <div id="admin-accessories-table" data-ajax-url="{% url 'admin_accessories_ajax' %}">
@@ -155,6 +158,8 @@
     if (!form || !tableContainer || !tableContainer.dataset.ajaxUrl) {
         return;
     }
+
+    const AJAX_ENABLED = form && form.dataset.ajax === 'true';
 
     let debounceTimer = null;
     let activeController = null;
@@ -207,11 +212,15 @@
         });
     }
 
-    form.addEventListener('submit', evt => evt.preventDefault());
+    form.addEventListener('submit', evt => {
+        if (!AJAX_ENABLED) return; // allow normal submit when not using AJAX
+        evt.preventDefault();
+    });
 
     const selectInputs = form.querySelectorAll('select');
     selectInputs.forEach(select => {
         select.addEventListener('change', () => {
+            if (!AJAX_ENABLED) return;
             const formData = new FormData(form);
             fetchAccessories(formData);
         });
@@ -220,13 +229,16 @@
     const searchInput = document.getElementById('accessory-search');
     if (searchInput) {
         searchInput.addEventListener('input', () => {
+            if (!AJAX_ENABLED) return;
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 const formData = new FormData(form);
                 fetchAccessories(formData);
             }, 350);
         });
+        // allow Enter to submit the form by default unless AJAX explicitly enabled
         searchInput.addEventListener('keydown', evt => {
+            if (!AJAX_ENABLED) return;
             if (evt.key === 'Enter') {
                 evt.preventDefault();
             }

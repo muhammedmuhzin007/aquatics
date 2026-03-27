@@ -1106,6 +1106,49 @@
                         });
                     });
                 </script>
+                <script>
+                    // Insert a visible search submit button next to any search input
+                    // so users can perform a full GET submit instead of relying on AJAX.
+                    document.addEventListener('DOMContentLoaded', function(){
+                        try{
+                            const inputs = Array.from(document.querySelectorAll('input[name="search"], input[name="q"]'))
+                                .filter(inp => !inp.hasAttribute('data-no-inject'));
+                            inputs.forEach(inp => {
+                                const form = inp.closest('form');
+                                if (!form) return;
+                                // if form already has a submit button or input[type=submit], skip
+                                if (form.querySelector('button[type="submit"], input[type="submit"]')) return;
+                                // create a compact submit button to place inside the input group (left)
+                                const btn = document.createElement('button');
+                                btn.type = 'submit';
+                                btn.className = 'btn btn-primary btn-search';
+                                btn.setAttribute('aria-label', 'Search');
+                                // prefer an icon for compactness
+                                try { btn.innerHTML = '<i class="fas fa-search"></i>'; } catch(e){ btn.textContent = 'Search'; }
+
+                                const inputGroup = inp.closest('.input-group');
+                                if (inputGroup) {
+                                    // append the button so it appears at the right inside the control
+                                    inputGroup.appendChild(btn);
+                                    return;
+                                }
+
+                                // If there is no input-group, wrap the input in one and append the button
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'input-group';
+                                // preserve size class if present on input (e.g., input-group-lg)
+                                const sizeCls = Array.from(inp.classList).find(c => c.indexOf('input-group-') === 0 || c === 'form-control-lg');
+                                if (sizeCls) wrapper.classList.add(sizeCls);
+
+                                // replace input with wrapper, then move input into wrapper and append the button
+                                const parent = inp.parentNode || form;
+                                parent.insertBefore(wrapper, inp);
+                                wrapper.appendChild(inp);
+                                wrapper.appendChild(btn);
+                            });
+                        }catch(e){/* noop */}
+                    });
+                </script>
                 {% block extra_js %}{% endblock %}
 </body>
 </html>

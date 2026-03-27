@@ -8,14 +8,14 @@
     <h2 class="section-heading">Offers</h2>
 
     <form id="combo-filters" method="get" class="mb-4">
-      <div class="row g-3 align-items-end">
+    <div class="row g-3 align-items-center">
         <div class="col-12 col-md-7 col-lg-8">
-          <label for="combo-search" class="form-label text-muted mb-1">Search offers</label>
+          <label for="combo-search" class="visually-hidden">Search offers</label>
           <input id="combo-search" type="text" name="search" class="form-control form-control-lg"
                  value="{{ search_query }}" placeholder="Search by offer name or fish..." autocomplete="off">
         </div>
         <div class="col-12 col-md-5 col-lg-4">
-          <label for="combo-category-filter" class="form-label text-muted mb-1">Category</label>
+          <label for="combo-category-filter" class="visually-hidden">Category</label>
           <select id="combo-category-filter" name="category" class="form-select form-select-lg">
             <option value=""{% if not category_filter %} selected{% endif %}>All categories</option>
             {% for category in combo_categories %}

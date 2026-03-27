@@ -116,13 +116,13 @@
             </div>
         </div>
 
-        <div class="row g-3 align-items-end mb-4">
+        <div class="row g-3 align-items-center mb-4">
             <div class="col-lg-8 col-md-12">
-                <label class="form-label admin-text-black mb-1">Search</label>
+                <label for="admin-fish-search" class="visually-hidden">Search</label>
                 <input id="admin-fish-search" type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Search fishes...">
             </div>
             <div class="col-lg-2 col-md-6">
-                <label class="form-label admin-text-black mb-1">Category</label>
+                <label class="visually-hidden">Category</label>
                 <select id="admin-fish-category" class="form-select" name="category">
                     <option value="">All</option>
                     {% for cat in categories %}
@@ -131,7 +131,7 @@
                 </select>
             </div>
             <div class="col-lg-2 col-md-6">
-                <label class="form-label admin-text-black mb-1">Availability</label>
+                <label class="visually-hidden">Availability</label>
                 <select id="admin-fish-availability" class="form-select" name="availability">
                     <option value="">All statuses</option>
                     <option value="available" {% if availability == 'available' %}selected{% endif %}>Active</option>

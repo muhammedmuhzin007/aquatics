@@ -10,8 +10,10 @@
             <h2 class="section-heading mb-4"><i class="fas fa-seedling me-2"></i>Plants</h2>
             <form id="plant-filter-form" class="d-flex flex-column flex-md-row gap-3 align-items-stretch mx-auto w-100" method="get">
                 <div class="plant-filter-search flex-grow-1">
+                    <label class="visually-hidden" for="plant-search">Search plants</label>
                     <div class="input-group input-group-lg">
-                        <input type="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Search plants by name or description" autocomplete="off">
+                        <input id="plant-search" type="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Search plants by name or description" autocomplete="off">
+                        <button class="btn btn-primary" type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
                     </div>
                 </div>
                 <div class="plant-filter-select ms-md-auto">
@@ -42,12 +44,15 @@ document.addEventListener('DOMContentLoaded', function(){
     const searchInput = form ? form.querySelector('input[name="search"]') : null;
     const resultsContainer = document.getElementById('plant-results');
     const categorySelect = form ? form.querySelector('select[name="category"]') : null;
-        if (categorySelect) {
-            categorySelect.addEventListener('change', function(){
-                const params = new URLSearchParams(new FormData(form));
-                fetchPlants(params);
-            });
-        }
+    const AJAX_ENABLED = form && form.dataset.ajax === 'true';
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function(){
+            if (!AJAX_ENABLED) return; // allow normal form submit when not using AJAX
+            const params = new URLSearchParams(new FormData(form));
+            fetchPlants(params);
+        });
+    }
     let debounceTimer = null;
 
     function fetchPlants(params){
@@ -68,11 +73,14 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if (searchInput) {
         searchInput.addEventListener('input', function(){
+            if (!AJAX_ENABLED) return; // only live-search when AJAX explicitly enabled
             const params = new URLSearchParams(new FormData(form));
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => fetchPlants(params), 300);
         });
+        // do not intercept Enter — let the form submit by default unless AJAX enabled
         searchInput.addEventListener('keydown', function(evt){
+            if (!AJAX_ENABLED) return;
             if (evt.key === 'Enter') {
                 evt.preventDefault();
                 const params = new URLSearchParams(new FormData(form));
@@ -81,49 +89,51 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
-    resultsContainer.addEventListener('click', function(evt){
-        const paginationLink = evt.target.closest('.pagination a');
-        if (paginationLink) {
+    if (resultsContainer) {
+        resultsContainer.addEventListener('click', function(evt){
+            const paginationLink = evt.target.closest('.pagination a');
+            if (paginationLink && AJAX_ENABLED) {
+                evt.preventDefault();
+                const url = new URL(paginationLink.href, window.location.href);
+                fetch(url.toString(), {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                }).then(resp => resp.ok ? resp.json() : null)
+                  .then(data => {
+                      if (data && data.html !== undefined) {
+                          resultsContainer.innerHTML = data.html;
+                          resultsContainer.classList.remove('fade-in');
+                          void resultsContainer.offsetWidth;
+                          resultsContainer.classList.add('fade-in');
+                      }
+                  }).catch(err => console.error('Plant pagination error', err));
+                return;
+            }
+
+            if (evt.target.closest('form, button, input, select, textarea, label, a')) {
+                return;
+            }
+
+            const card = evt.target.closest('.plant-card[data-href]');
+            if (card) {
+                window.location.href = card.dataset.href;
+            }
+        });
+
+        resultsContainer.addEventListener('keydown', function(evt){
+            if (evt.key !== 'Enter' && evt.key !== ' ') {
+                return;
+            }
+            const card = evt.target.closest('.plant-card[data-href]');
+            if (!card) {
+                return;
+            }
+            if (evt.target.closest('form, button, input, select, textarea, label, a')) {
+                return;
+            }
             evt.preventDefault();
-            const url = new URL(paginationLink.href, window.location.href);
-            fetch(url.toString(), {
-                headers: {'X-Requested-With': 'XMLHttpRequest'}
-            }).then(resp => resp.ok ? resp.json() : null)
-              .then(data => {
-                  if (data && data.html !== undefined) {
-                      resultsContainer.innerHTML = data.html;
-                      resultsContainer.classList.remove('fade-in');
-                      void resultsContainer.offsetWidth;
-                      resultsContainer.classList.add('fade-in');
-                  }
-              }).catch(err => console.error('Plant pagination error', err));
-            return;
-        }
-
-        if (evt.target.closest('form, button, input, select, textarea, label, a')) {
-            return;
-        }
-
-        const card = evt.target.closest('.plant-card[data-href]');
-        if (card) {
             window.location.href = card.dataset.href;
-        }
-    });
-
-    resultsContainer.addEventListener('keydown', function(evt){
-        if (evt.key !== 'Enter' && evt.key !== ' ') {
-            return;
-        }
-        const card = evt.target.closest('.plant-card[data-href]');
-        if (!card) {
-            return;
-        }
-        if (evt.target.closest('form, button, input, select, textarea, label, a')) {
-            return;
-        }
-        evt.preventDefault();
-        window.location.href = card.dataset.href;
-    });
+        });
+    }
 });
 </script>
 <style>

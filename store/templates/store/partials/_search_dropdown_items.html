@@ -1,0 +1,17 @@
+{% load static %}
+{% load currency %}
+<div class="list-group list-group-flush">
+  {% for fish in fishes %}
+  <a href="{% url 'fish_detail' fish.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
+    <div>
+      <div class="fw-semibold">{{ fish.name }}</div>
+      <div class="small text-muted">{{ fish.category.name }} · {{ fish.breed.name }}</div>
+    </div>
+    <div class="text-end" style="min-width:80px;">
+      <div class="fw-semibold">{{ fish.price|rupees }}</div>
+    </div>
+  </a>
+  {% empty %}
+  <div class="list-group-item">No results</div>
+  {% endfor %}
+</div>

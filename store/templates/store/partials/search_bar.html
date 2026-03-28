@@ -1,0 +1,156 @@
+{% load static %}
+<form method="get" action="{% url 'fish_list' %}" class="search-bar-form" role="search">
+  <!-- full-width search bar (no Bootstrap container) -->
+  <div class="search-bar-full" style="margin-bottom: -18px;">
+    <div class="search-bar-full-inner" style="position:relative; width:100%;">
+      <div class="input-group input-group-lg w-100">
+        <label for="site-search" class="visually-hidden">Search site</label>
+        <input id="site-search" type="search" name="search" class="form-control form-control-lg" placeholder="Search fishes, plants, accessories..." aria-label="Search site" autocomplete="off">
+        <button type="submit" class="btn btn-primary" aria-label="Search"><i class="fas fa-search"></i></button>
+      </div>
+
+      <!-- Dropdown-style results anchored to input width -->
+      <div id="home-search-results-wrap" style="position:absolute; left:0; right:0; top:calc(100% + 8px); display:none; z-index:1050;">
+        <div id="home-search-results" class="card" style="max-height:420px; overflow:auto; border-radius:8px; box-shadow:0 6px 24px rgba(2,6,23,0.6);">
+          <!-- injected results -->
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<style>
+  /* Full-width search bar styles */
+  .search-bar-full { width: 100%; }
+  .search-bar-full-inner { width: 100%; }
+
+  /* Match hero content width and centering so edges align */
+  @media (min-width: 768px) {
+    /* Increase max width so the search bar appears longer on desktop */
+    .search-bar-full-inner { max-width: 1400px; margin-left: auto; margin-right: auto; padding: 0 20px; }
+  }
+
+  /* Small-screen: reduce space above and allow near-edge full width */
+  @media (max-width: 768px) {
+    /* tablet and smaller: nudge search bar up a bit */
+    .search-bar-full { margin-top: -40px !important; }
+    .search-bar-full-inner { width: 95vw; margin-left: auto; margin-right: auto; }
+    .search-bar-full .input-group { width: 100%; }
+    .search-bar-full .form-control { flex: 1 1 auto; }
+  }
+
+  @media (max-width: 576px) {
+    /* small phones: move further up */
+    .search-bar-full { margin-top: -80px !important; }
+    .search-bar-full-inner { width: 95vw; margin-left: auto; margin-right: auto; }
+    .search-bar-full .input-group { width: 100%; }
+    .search-bar-full .form-control { flex: 1 1 auto; }
+  }
+
+  /* Theme-aware dropdown styles (uses CSS variables from global theme) */
+  #home-search-results {
+    background: var(--card-bg, #071021);
+    color: var(--text, #ffffff);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.06));
+  }
+
+  #home-search-results .list-group-item {
+    background: transparent;
+    color: inherit;
+    border: none;
+  }
+
+  #home-search-results .list-group-item .text-muted {
+    color: rgba(255,255,255,0.65);
+  }
+
+  #home-search-results .list-group-item-action:hover {
+    background: rgba(255,255,255,0.03);
+  }
+
+  /* Light theme overrides */
+  html[data-theme='light'] #home-search-results {
+    background: var(--light-card, #fff);
+    color: var(--light-text, #111827);
+    border: 1px solid var(--light-border, rgba(0,0,0,0.06));
+  }
+
+  html[data-theme='light'] #home-search-results .list-group-item .text-muted {
+    color: rgba(25,25,25,0.6);
+  }
+
+  html[data-theme='light'] #home-search-results .list-group-item-action:hover {
+    background: rgba(0,0,0,0.04);
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.querySelector('.search-bar-form');
+  const input = document.getElementById('site-search');
+  const resultsWrap = document.getElementById('home-search-results-wrap');
+  const resultsContainer = document.getElementById('home-search-results');
+  const resetBtn = document.getElementById('home-search-reset');
+  const hero = document.querySelector('.hero-section');
+  let debounce = null;
+
+  function showResults(html){
+    resultsContainer.innerHTML = html;
+    resultsWrap.style.display = 'block';
+  }
+
+  function hideResults(){
+    resultsWrap.style.display = 'none';
+    resultsContainer.innerHTML = '';
+  }
+
+  async function fetchResults(q){
+    const params = new URLSearchParams();
+    if (q) params.set('search', q);
+    const url = '/search-suggestions/' + (params.toString() ? ('?' + params.toString()) : '');
+    try {
+      console.debug('Search: fetching', url);
+      const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+      console.debug('Search: response', resp.status);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      console.debug('Search: data', data);
+      if (data && data.html !== undefined) {
+        showResults(data.html);
+      }
+    } catch (e) {
+      console.error('Search error', e);
+      // show debug feedback in results area for easier debugging
+      showResults('<div class="list-group-item">Search error</div>');
+    }
+  }
+
+  if (input) {
+    input.addEventListener('input', function(){
+      clearTimeout(debounce);
+      const q = this.value.trim();
+      debounce = setTimeout(()=>{
+        if (q.length === 0) {
+          hideResults();
+          return;
+        }
+        fetchResults(q);
+      }, 300);
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      const q = (input && input.value) ? input.value.trim() : '';
+      if (!q) { hideResults(); return; }
+      fetchResults(q);
+    });
+  }
+
+  if (resetBtn) resetBtn.addEventListener('click', function(){
+    if (input) input.value = '';
+    hideResults();
+  });
+});
+</script>

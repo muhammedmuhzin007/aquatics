@@ -418,6 +418,13 @@ body.aquatic-bg {
     padding-top: 110px; /* explicit offset for fixed headers: 50px top-nav + 60px main-nav */
 }
 
+/* Reduce top offset on small screens so content sits closer to the nav */
+@media (max-width: 576px) {
+    body.aquatic-bg {
+        padding-top: 60px; /* reduce by 50px on small devices */
+    }
+}
+
 /* Top Navigation Bar */
 .top-nav {
     background: var(--darker-bg);

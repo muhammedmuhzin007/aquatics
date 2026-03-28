@@ -11,7 +11,7 @@
         </div>
         {% endif %}
         {% if fish.image %}
-        <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
+        <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}" loading="lazy" decoding="async">
         {% else %}
         <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
             <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>

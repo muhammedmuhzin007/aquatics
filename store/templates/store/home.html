@@ -1017,6 +1017,11 @@ html[data-theme='light'] .category-carousel-nav:hover {
 {% endblock %}
 
 {% block content %}
+<!-- Common search bar -->
+<div class="container-fluid">
+    {% include 'store/partials/search_bar.html' %}
+</div>
+
 <!-- Hero Section with Carousel -->
 <div class="hero-section">
     <div class="hero-slide active">
@@ -1028,7 +1033,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
     </div>
 
     <div class="hero-slide">
-        <img src="{% static 'images/image2.jpg' %}" alt="Aquatic scape" class="hero-image">
+        <img src="{% static 'images/image2.jpg' %}" alt="Aquatic scape" class="hero-image" loading="lazy" decoding="async">
         <div class="hero-content">
             <h1 class="hero-title">EXPERT KNOWLEDGE, YOUR SUCCESS</h1>
             <p class="hero-subtitle">Master fishkeeping with our comprehensive blogs and expert tips for a thriving ecosystem.</p>
@@ -1036,7 +1041,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
     </div>
 
     <div class="hero-slide">
-        <img src="{% static 'images/image4.png' %}" alt="Aquatic scape" class="hero-image">
+        <img src="{% static 'images/image4.png' %}" alt="Aquatic scape" class="hero-image" loading="lazy" decoding="async">
         <div class="hero-content">
             <h1 class="hero-title">CREATE UNDERWATER MASTERPICES</h1>
             <p class="hero-subtitle">Transform your tank into a living aquascape with stunning plants, hardscape, and vibrant fish.</p>
@@ -1044,7 +1049,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
     </div>
 
     <div class="hero-slide">
-        <img src="{% static 'images/image5.jpg' %}" alt="Aquatic scape" class="hero-image">
+        <img src="{% static 'images/image5.jpg' %}" alt="Aquatic scape" class="hero-image" loading="lazy" decoding="async">
         <div class="hero-content">
             <h1 class="hero-title">DIRECT FROM FARM, STRAIGHT TO YOUR HOME</h1>
             <p class="hero-subtitle">Raised at our own farm or sourced directly from trusted breeders for superior health, better quality, and reasonable prices.</p>
@@ -1052,7 +1057,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
     </div>
 
     <div class="hero-slide">
-        <img src="{% static 'images/image6.JPG' %}" alt="Aquatic scape" class="hero-image">
+        <img src="{% static 'images/image6.JPG' %}" alt="Aquatic scape" class="hero-image" loading="lazy" decoding="async">
         <div class="hero-content">
             <h1 class="hero-title">EXOTIC COLLECTIONS YOU WON’T FIND ANYWHERE ELSE.</h1>
             <p class="hero-subtitle">From rare color morphs to selectively bred exotics, our collection is raised at our own farm for unmatched quality and reliability.</p>
@@ -1060,7 +1065,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
     </div>
 
     <div class="hero-slide">
-        <img src="{% static 'images/image7.JPG' %}" alt="Aquatic scape" class="hero-image">
+        <img src="{% static 'images/image7.JPG' %}" alt="Aquatic scape" class="hero-image" loading="lazy" decoding="async">
         <div class="hero-content">
             <h1 class="hero-title">STARTING A BREEDING PROJECT? WE’VE GOT YOU.</h1>
             <p class="hero-subtitle">New to breeding? We provide the right fish, guidance, and support to help you succeed from the start.</p>
@@ -1068,7 +1073,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
     </div>
 
     <div class="hero-slide">
-        <img src="{% static 'images/image8.jpg' %}" alt="Aquatic scape" class="hero-image">
+        <img src="{% static 'images/image8.jpg' %}" alt="Aquatic scape" class="hero-image" loading="lazy" decoding="async">
         <div class="hero-content">
             <h1 class="hero-title">BATTLING ALGAE? OUR CLEANUP CREW HAS YOUR BACK.</h1>
             <p class="hero-subtitle">From algae-eating fish to snails and shrimp, our cleanup crew works round the clock to keep algae under control.</p>
@@ -1389,7 +1394,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
                 <div class="featured-item">
                     <div class="card">
                         {% if fish.image %}
-                        <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}">
+                        <img src="{{ fish.image.url }}" class="card-img-top" alt="{{ fish.name }}" loading="lazy" decoding="async">
                         {% else %}
                         <div class="card-img-top" style="height: 250px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-light-blue)); display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-fish fa-5x" style="opacity: 0.3;"></i>
@@ -1461,7 +1466,7 @@ html[data-theme='light'] .category-carousel-nav:hover {
 
                         {% if r.image %}
                         <div class="mb-3" style="max-width: 520px; width: 100%;">
-                            <img src="{{ r.image.url }}" alt="Customer review photo" style="width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(100,150,255,0.3); box-shadow: 0 8px 24px rgba(0,0,0,0.25); object-fit: cover;">
+                            <img src="{{ r.image.url }}" alt="Customer review photo" loading="lazy" decoding="async" style="width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(100,150,255,0.3); box-shadow: 0 8px 24px rgba(0,0,0,0.25); object-fit: cover;">
                         </div>
                         {% endif %}
                         

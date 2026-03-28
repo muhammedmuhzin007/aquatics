@@ -796,6 +796,89 @@ from django.contrib.sessions.models import Session
 import os
 
 
+@require_GET
+def search_suggestions_view(request):
+    """AJAX endpoint returning compact search suggestions across products."""
+    try:
+        def _safe_image_url(obj, field_name):
+            field = getattr(obj, field_name, None)
+            if not field:
+                return None
+            try:
+                return field.url
+            except Exception:
+                return None
+
+        q = (request.GET.get('search') or '').strip()
+        items = []
+        if not q:
+            return JsonResponse({'html': render_to_string('store/partials/_search_dropdown_generic.html', {'items': []}, request=request)})
+
+        # Search fishes
+        fishes = Fish.objects.filter(
+            Q(name__icontains=q) | Q(description__icontains=q) | Q(breed__name__icontains=q)
+        ).select_related('category','breed')[:6]
+        for f in fishes:
+            items.append({
+                'name': f.name,
+                'category': getattr(f.category, 'name', ''),
+                'type': getattr(f.breed, 'name', ''),
+                'url': reverse('fish_detail', args=[f.id]),
+                'price': getattr(f, 'price', None),
+                'image': _safe_image_url(f, 'image'),
+            })
+
+        # Search plants
+        plants = Plant.objects.filter(Q(name__icontains=q) | Q(description__icontains=q))[:4]
+        for p in plants:
+            items.append({
+                'name': p.name,
+                'category': getattr(p.category, 'name', ''),
+                'type': 'Plant',
+                'url': reverse('plant_detail', args=[p.id]),
+                'price': p.price if hasattr(p, 'price') else None,
+                'image': _safe_image_url(p, 'image'),
+            })
+
+        # Search accessories
+        accessories = Accessory.objects.filter(Q(name__icontains=q) | Q(description__icontains=q))[:4]
+        for a in accessories:
+            items.append({
+                'name': a.name,
+                'category': getattr(a.category, 'name', ''),
+                'type': 'Accessory',
+                'url': reverse('accessory_detail', args=[a.id]),
+                'price': a.price if hasattr(a, 'price') else None,
+                'image': _safe_image_url(a, 'image'),
+            })
+
+        # Combos
+        combos = ComboOffer.objects.filter(Q(title__icontains=q) | Q(description__icontains=q), is_active=True)[:4]
+        for c in combos:
+            items.append({
+                'name': c.title,
+                'category': getattr(c.category, 'name', ''),
+                'type': 'Combo',
+                'url': reverse('combo_detail', args=[c.id]),
+                'price': None,
+                'image': _safe_image_url(c, 'banner_image'),
+            })
+
+        # Limit total items to 12
+        items = items[:12]
+
+        html = render_to_string('store/partials/_search_dropdown_generic.html', {'items': items}, request=request)
+        return JsonResponse({'html': html})
+    except Exception:
+        import traceback as _tb
+        from django.utils.html import escape as _escape
+        logging.exception('Error in search_suggestions_view')
+        tb = _tb.format_exc()
+        content = _escape(tb)
+        html = f'<div class="list-group-item"><strong>Search error</strong><pre style="white-space:pre-wrap;">{content}</pre></div>'
+        return JsonResponse({'html': html})
+
+
 def is_customer(user):
     return user.is_authenticated and user.role == 'customer'
 
@@ -2523,9 +2606,15 @@ def customer_fish_list_view(request):
     if breed_filter:
         fishes = fishes.filter(breed_id=breed_filter)
     
-    # If AJAX request, return only the rendered grid partial for live search
+    # If AJAX request, return only the rendered partial for live search.
+    # Support a compact dropdown result when `dropdown=1` is passed.
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        html = render(request, 'store/customer/_fish_grid.html', {'fishes': fishes}).content.decode('utf-8')
+        if request.GET.get('dropdown') == '1':
+            # limit results for compact dropdown
+            small_list = fishes[:10]
+            html = render_to_string('store/partials/_search_dropdown_items.html', {'fishes': small_list}, request=request)
+            return JsonResponse({'html': html})
+        html = render_to_string('store/customer/_fish_grid.html', {'fishes': fishes}, request=request)
         return JsonResponse({'html': html})
 
     return render(request, 'store/customer/fish_list.html', {

@@ -11,8 +11,8 @@ from .payments import get_payment_provider
 logger = logging.getLogger(__name__)
 
 
-def _finalize_payment(provider_order, payment_id=None, request=None):
-    """Locate the Order by provider_order id (or fallback) and mark it paid, set tx id and send invoice.
+def _finalize_payment(provider_order, payment_id=None, request=None, local_order_id=None, order_number=None):
+    """Locate the Order by provider order id and reliable fallbacks, then mark it paid.
 
     Returns True if an Order was found and processed, False otherwise.
     """
@@ -20,10 +20,19 @@ def _finalize_payment(provider_order, payment_id=None, request=None):
     try:
         if provider_order:
             order = Order.objects.filter(provider_order_id=provider_order).first()
+        if not order and local_order_id:
+            order = Order.objects.filter(id=local_order_id).first()
+        if not order and order_number:
+            order = Order.objects.filter(order_number__iexact=order_number).first()
         if not order:
             order = Order.objects.filter(order_number__iexact=provider_order).first()
     except Exception:
-        logger.exception('Error locating Order for provider_order %s', provider_order)
+        logger.exception(
+            'Error locating Order for provider_order=%s local_order_id=%s order_number=%s',
+            provider_order,
+            local_order_id,
+            order_number,
+        )
         return False
 
     if not order:
@@ -96,7 +105,15 @@ def verify_razorpay_payment(request):
     payment_id = data.get('razorpay_payment_id')
     provider_order = data.get('razorpay_order_id')
 
-    processed = _finalize_payment(provider_order, payment_id=payment_id, request=request)
+    local_order_id = data.get('order_id')
+    order_number = data.get('order_number')
+    processed = _finalize_payment(
+        provider_order,
+        payment_id=payment_id,
+        request=request,
+        local_order_id=local_order_id,
+        order_number=order_number,
+    )
 
     return JsonResponse({'success': bool(processed)})
 
@@ -113,14 +130,42 @@ def razorpay_webhook(request):
     try:
         event = event_or_msg if isinstance(event_or_msg, dict) else {}
         event_name = event.get('event') or ''
-        # Handle payment captured events: mark order paid and send invoice
+        payload = event.get('payload', {})
+
+        # Handle payment captured events: mark order paid and send invoice.
+        # We prefer provider order id, but also use order_number from notes/receipt
+        # because users can retry checkout and provider ids can rotate.
         if event_name == 'payment.captured':
-            payload = event.get('payload', {})
             payment_entity = payload.get('payment', {}).get('entity', {})
             provider_order = payment_entity.get('order_id')
             payment_id = payment_entity.get('id')
-            if provider_order:
-                _finalize_payment(provider_order, payment_id=payment_id, request=request)
+            notes = payment_entity.get('notes', {}) or {}
+            webhook_order_number = notes.get('order_number')
+            if not webhook_order_number:
+                webhook_order_number = payment_entity.get('receipt')
+            _finalize_payment(
+                provider_order,
+                payment_id=payment_id,
+                request=request,
+                order_number=webhook_order_number,
+            )
+
+        # Also handle order.paid which is emitted in some capture flows.
+        elif event_name == 'order.paid':
+            order_entity = payload.get('order', {}).get('entity', {})
+            payment_entity = payload.get('payment', {}).get('entity', {})
+            provider_order = order_entity.get('id') or payment_entity.get('order_id')
+            payment_id = payment_entity.get('id')
+            webhook_order_number = order_entity.get('receipt')
+            if not webhook_order_number:
+                notes = payment_entity.get('notes', {}) or {}
+                webhook_order_number = notes.get('order_number')
+            _finalize_payment(
+                provider_order,
+                payment_id=payment_id,
+                request=request,
+                order_number=webhook_order_number,
+            )
 
         # Optionally: handle order.paid or other events in future
     except Exception:
